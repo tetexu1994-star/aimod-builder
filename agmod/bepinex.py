@@ -13,7 +13,9 @@ import os
 import shutil
 import subprocess
 import urllib.request
+import zipfile
 
+from . import rollback
 from .manifest import ModManifest
 from .paths import safe_component, safe_extract_zip
 
@@ -30,7 +32,13 @@ def install_bepinex(game_dir: str, version: str = BEPINEX_VERSION) -> str:
     zip_path = os.path.join(game_dir, "_bepinex_tmp.zip")
     urllib.request.urlretrieve(url, zip_path)
     try:
+        with zipfile.ZipFile(zip_path) as zf:
+            names = zf.namelist()
+        targets = [os.path.join(game_dir, n) for n in names if not n.endswith("/")]
+        backups = rollback.backup_files(game_dir, targets)
         safe_extract_zip(zip_path, game_dir)
+        added = [t for t in targets if os.path.isfile(t) and t not in backups]
+        rollback.record_install(game_dir, "bepinex", added, backups)
     finally:
         if os.path.exists(zip_path):
             os.remove(zip_path)
@@ -133,18 +141,24 @@ def build_plugin_with_diagnostics(project_dir: str, game_dir: str, auto_repair: 
             manifest = ModManifest.load(os.path.join(project_dir, "mod.json"))
             plugins = os.path.join(game_dir, "BepInEx", "plugins")
             os.makedirs(plugins, exist_ok=True)
-            installed = []
+            targets = []
             if os.path.isdir(out_dir):
                 for name in os.listdir(out_dir):
                     if name.endswith(".dll") and (not manifest.entry or name == manifest.entry):
-                        shutil.copy2(os.path.join(out_dir, name), os.path.join(plugins, name))
-                        installed.append(name)
+                        targets.append(os.path.join(plugins, name))
+            backups = rollback.backup_files(game_dir, targets)
+            installed = []
+            for t in targets:
+                shutil.copy2(os.path.join(out_dir, os.path.basename(t)), t)
+                installed.append(os.path.basename(t))
             if not installed:
                 return {
                     "success": False,
                     "error": f"manifest entry not found in build output: {manifest.entry or '*.dll'}",
                     "raw_output": res.stdout,
                 }
+            added = [t for t in targets if os.path.isfile(t) and t not in backups]
+            rollback.record_install(game_dir, manifest.id, added, backups)
             return {
                 "success": True,
                 "installed": ", ".join(installed),

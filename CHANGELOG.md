@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added an installation journal (`agmod/rollback.py`) with `uninstall_mod`, `rollback_game`, and `list_installs` tools. Every install path (BepInEx, UE4SS mod install, plugin build, mod update) now records the files it added or overwrote — backing up overwritten originals — so a broken mod can always be removed and the game restored to its pre-mod state.
 - Added `check_environment` tool and CLI `agmod doctor` (`python -m agmod.doctor`) for checking Python, .NET SDK, decompilers (ilspycmd/Cpp2IL), and REA readiness with actionable setup commands.
 - Added C# compiler error parsing and auto-healing loop (`agmod/repair.py`, `diagnose_build_error`):
   - Parses MSBuild/dotnet `CSxxxx` error codes, line numbers, and error descriptions.
@@ -49,7 +50,7 @@
 
 ### Verification
 
-- `python -m unittest discover -s tests`: 41 unit and integration workflow tests passed.
+- `python -m unittest discover -s tests`: 44 unit and integration workflow tests passed.
 - `python -m compileall -q server.py agmod tests`: passed.
 - `python verify.py`: passed (all 33 tools wired and verified).
 - `python -m agmod.doctor`: passed with structured report output.

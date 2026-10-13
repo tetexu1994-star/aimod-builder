@@ -33,7 +33,7 @@ except ImportError:  # pragma: no cover
         def run(self):
             print(f"FastMCP '{self.name}' stub: mcp not installed. Install with `pip install mcp`")
 
-from agmod import bepinex, config, doctor, inspector, knowledge, logs, memory, pack, pattern, planning, rea, repair, safety, saves, tmodloader, updater
+from agmod import bepinex, config, doctor, inspector, knowledge, logs, memory, pack, pattern, planning, rea, repair, rollback, safety, saves, tmodloader, updater
 from agmod.adapters.unreal import UnrealAdapter
 from agmod.registry import adapters, detect_engine as _detect_engine, get_adapter
 from agmod.structures import load_table
@@ -475,6 +475,24 @@ def list_save_backups(game_dir: str) -> str:
 def restore_save_backup(game_dir: str, backup_id: str, destination: str = "") -> str:
     """Restore a savegame backup snapshot back to its destination."""
     return json.dumps(saves.restore_save_backup(game_dir, backup_id=backup_id, destination=destination), ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def uninstall_mod(game_dir: str, mod_id: str) -> str:
+    """Remove a previously-installed mod: delete its files and restore any overwritten originals."""
+    return json.dumps(rollback.uninstall(game_dir, mod_id), ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def rollback_game(game_dir: str) -> str:
+    """Roll back every recorded install, newest first, restoring the pre-mod game state."""
+    return json.dumps(rollback.rollback_all(game_dir), ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def list_installs(game_dir: str) -> str:
+    """List recorded mod installations for a game, so you know what can be uninstalled."""
+    return json.dumps(rollback.list_installs(game_dir), ensure_ascii=False, indent=2)
 
 
 def main() -> None:

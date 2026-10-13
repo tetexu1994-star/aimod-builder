@@ -10,6 +10,7 @@ import glob
 import os
 import shutil
 
+from .. import rollback
 from ..manifest import ModManifest
 from ..paths import safe_component
 from ..structures import StructureTable, fingerprint_files
@@ -148,7 +149,22 @@ print(string.format("[%s] Initialized successfully!", ModRef))
             mods_dir = os.path.join(win64_dir, "Mods", mod_id)
 
         os.makedirs(mods_dir, exist_ok=True)
-        # Copy scripts/ and enabled.txt
+
+        # Collect (src, dst) pairs first so overwritten files can be backed up
+        pairs = []
+        for item in os.listdir(project_dir):
+            s = os.path.join(project_dir, item)
+            d = os.path.join(mods_dir, item)
+            if os.path.isdir(s):
+                for root, _, files in os.walk(s):
+                    for fn in files:
+                        src = os.path.join(root, fn)
+                        pairs.append((src, os.path.join(d, os.path.relpath(src, s))))
+            else:
+                pairs.append((s, d))
+
+        backups = rollback.backup_files(game_dir, [d for _, d in pairs])
+
         for item in os.listdir(project_dir):
             s = os.path.join(project_dir, item)
             d = os.path.join(mods_dir, item)
@@ -156,4 +172,7 @@ print(string.format("[%s] Initialized successfully!", ModRef))
                 shutil.copytree(s, d, dirs_exist_ok=True)
             else:
                 shutil.copy2(s, d)
+
+        added = [d for _, d in pairs if os.path.isfile(d) and d not in backups]
+        rollback.record_install(game_dir, mod_id, added, backups)
         return mods_dir
