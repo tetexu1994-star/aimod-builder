@@ -15,6 +15,7 @@ import shutil
 
 from .config import CACHE_ROOT
 from .paths import slugify, safe_join
+from .process import is_game_running
 
 _PROTECTED_REL_DIRS = {
     "",
@@ -173,10 +174,15 @@ def check_conflicts(game_dir: str, target_files: list[str]) -> dict:
                 "installed_by": owner_map.get(rel) or owner_map.get(rel.lower()),
             })
 
+    running, running_procs = is_game_running(game_dir)
     return {
         "has_conflicts": len(conflicts) > 0,
         "conflict_count": len(conflicts),
         "conflicts": conflicts,
+        "game_running": {
+            "is_running": running,
+            "processes": running_procs,
+        },
     }
 
 

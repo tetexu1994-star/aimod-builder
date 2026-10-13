@@ -33,7 +33,8 @@ except ImportError:  # pragma: no cover
         def run(self):
             print(f"FastMCP '{self.name}' stub: mcp not installed. Install with `pip install mcp`")
 
-from agmod import bepinex, config, doctor, inspector, knowledge, logs, memory, pack, pattern, planning, rea, repair, rollback, safety, saves, tmodloader, updater
+from agmod import bepinex, config, doctor, inspector, knowledge, logs, memory, pack, pattern, planning, process, rea, repair, rollback, safety, saves, tmodloader, updater
+from agmod.adapters.godot import GodotAdapter
 from agmod.adapters.reengine import ReEngineAdapter
 from agmod.adapters.unreal import UnrealAdapter
 from agmod.registry import adapters, detect_engine as _detect_engine, get_adapter
@@ -534,6 +535,36 @@ def install_reframework_mod(project_dir: str, game_dir: str) -> str:
 def validate_package(package_path: str) -> str:
     """Validate a generated Thunderstore/Nexus mod ZIP archive before distribution."""
     return json.dumps(pack.validate_package(package_path), ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def check_game_status(game_dir: str) -> str:
+    """Check game executable status: detected binaries, whether any game process is running (PID/exe), and lock risk."""
+    exes = process.find_game_executables(game_dir)
+    running, running_procs = process.is_game_running(game_dir)
+    return json.dumps({
+        "game_dir": os.path.abspath(game_dir),
+        "executables": exes,
+        "is_running": running,
+        "running_processes": running_procs,
+        "lock_warning": "Game is currently running! File operations (install/update/uninstall) may fail due to file locks." if running else None,
+    }, ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def scaffold_godot_mod(project_dir: str, mod_id: str, mod_name: str, mod_version: str = "0.1.0", author: str = "") -> str:
+    """Scaffold a Godot Engine (GodotModLoader) GDScript mod project (Brotato, Cassette Beasts, etc.)."""
+    adapter = GodotAdapter()
+    path = adapter.scaffold_mod(project_dir, mod_id, mod_name, mod_version=mod_version, author=author)
+    return json.dumps({"project": path, "engine": "godot", "runtime": "gdscript"})
+
+
+@mcp.tool()
+def install_godot_mod(project_dir: str, game_dir: str) -> str:
+    """Install a Godot GDScript mod into `<game_dir>/mods-unpacked/` with rollback journal tracking."""
+    adapter = GodotAdapter()
+    dest = adapter.install_mod(project_dir, game_dir)
+    return json.dumps({"installed": dest, "engine": "godot"})
 
 
 def main() -> None:

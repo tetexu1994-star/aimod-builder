@@ -6,19 +6,21 @@ import os
 from .adapters.base import BaseAdapter
 from .adapters.catalog import CatalogAdapter
 from .adapters.dotnet import XnaAdapter
+from .adapters.godot import GodotAdapter
 from .adapters.reengine import ReEngineAdapter
 from .adapters.unity import UnityAdapter
 from .adapters.unreal import UnrealAdapter
 from .engines import ENGINE_CATALOG
 
-# Register adapters here. Specialized adapters (Unity, Unreal, RE-Engine, .NET-XNA) first for their
+# Register adapters here. Specialized adapters (Unity, Unreal, RE-Engine, Godot, .NET-XNA) first for their
 # deep detection + structure dump / scaffolding; the rest come from the engine catalog.
 _ADAPTERS: list[BaseAdapter] = [
     UnityAdapter(),
     UnrealAdapter(),
     ReEngineAdapter(),
+    GodotAdapter(),
     XnaAdapter(),
-] + [CatalogAdapter(e) for e in ENGINE_CATALOG if e["id"] not in {"unreal", "re-engine"}]
+] + [CatalogAdapter(e) for e in ENGINE_CATALOG if e["id"] not in {"unreal", "re-engine", "godot"}]
 
 
 def adapters() -> list[BaseAdapter]:

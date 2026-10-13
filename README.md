@@ -52,6 +52,9 @@ game-mod-agent/
 | `install_tmod_mod` | 安装 tModLoader mod 至游戏目录（带回滚日志记录） | 无 |
 | `scaffold_reframework_mod` | **生成卡普空 RE 引擎 REFramework Lua Mod 骨架 (怪猎/生化/DMC5)** | 无 |
 | `install_reframework_mod` | 安装 REFramework Lua Mod 至游戏目录（带回滚日志记录） | 无 |
+| `scaffold_godot_mod` | **生成 Godot 引擎 GDScript Mod 骨架 (Brotato/磁带怪兽/恶魔轮盘赌)** | 无 |
+| `install_godot_mod` | 安装 Godot GDScript Mod 至 `mods-unpacked/`（带回滚日志记录） | 无 |
+| `check_game_status` | **游戏进程与运行态感知**：检查可执行文件、活跃 PID 及写锁定风险 | psutil |
 | `check_install_conflicts` | **安装冲突预检**：检查目标文件是否与现有文件或其他已装 Mod 冲突 | 无 |
 | `list_installs` | 列出当前游戏所有已安装的 Mod 及其文件记录 | 无 |
 | `uninstall_mod` | **安全卸载 Mod**：删除该 Mod 文件、还原被覆盖原文件并清理残留空目录 | 无 |
@@ -63,7 +66,7 @@ game-mod-agent/
 | `list_save_backups` | 列出该游戏的所有存档快照历史 | 无 |
 | `restore_save_backup` | **安全还原存档**：遭遇坏档时一键安全还原历史快照 | 无 |
 | `check_update` / `update_mod` | 检查并拉取 GitHub 最新版本 Mod DLL | 网络 |
-| `package_mod` | 打包 Mod 为 Thunderstore/Nexus 风格 ZIP；支持 Unity、Unreal、RE-Engine 等 | 无 |
+| `package_mod` | 打包 Mod 为 Thunderstore/Nexus 风格 ZIP；支持 Unity、Unreal、RE-Engine、Godot | 无 |
 | `validate_package` | **分发包完整性校验**：检查 ZIP 清单规范、README 与载荷有效性 | 无 |
 
 **内存读写和连续值扫描今天就能用**（纯 ctypes）。终端执行 `python -m agmod.doctor` 可一键查看本机开发环境就绪度。

@@ -67,7 +67,7 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
             entry_file = entry_path
         elif os.path.basename(m.entry) not in dlls:
             raise ValueError(f"manifest entry not found: {m.entry}")
-    if not dlls and not (m.engine in {"unreal", "re-engine"} and entry_file):
+    if not dlls and not (m.engine in {"unreal", "re-engine", "godot"} and entry_file):
         raise ValueError("no built DLL or entry script found; run build_mod/build_tmod_mod before packaging")
 
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
@@ -76,7 +76,7 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
             z.write(dlls[fn], fn)
         if entry_file and not entry_file.lower().endswith(".dll"):
             z.write(entry_file, m.entry.replace("\\", "/"))
-            if m.engine in {"unreal", "re-engine"}:
+            if m.engine in {"unreal", "re-engine", "godot"}:
                 for root, dirs, files in os.walk(project_dir):
                     dirs[:] = [d for d in dirs if d not in {"dist", "__pycache__"}]
                     for fn in files:
@@ -131,7 +131,7 @@ def validate_package(package_path: str) -> dict:
             if not payloads:
                 errors.append("archive contains no mod payload files (dll, scripts, assets)")
 
-            has_code = any(n.endswith((".dll", ".lua", ".cs", ".tmod")) for n in payloads)
+            has_code = any(n.endswith((".dll", ".lua", ".cs", ".tmod", ".gd")) for n in payloads)
             if not has_code:
                 warnings.append("archive has no executable DLL or script files")
 

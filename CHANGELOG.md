@@ -4,6 +4,11 @@
 
 ### Added
 
+- Added Godot Engine adapter (`agmod/adapters/godot.py`) with `scaffold_godot_mod` and `install_godot_mod` supporting Godot 3.x/4.x games (Brotato, Cassette Beasts, Dome Keeper, Buckshot Roulette) with GodotModLoader GDScript modding and install journal tracking.
+- Added game process discovery and runtime lock detection (`agmod/process.py`, `check_game_status`):
+  - Automatically identifies primary game executables while filtering crash reporters and uninstallers.
+  - Detects active game processes and warns the agent before file operations to prevent Windows file-lock errors (`ERROR_ACCESS_DENIED` / Errno 13).
+  - Wired into `check_install_conflicts` to provide unified pre-install health status.
 - Added Capcom RE Engine (REFramework) adapter (`agmod/adapters/reengine.py`) with `scaffold_reframework_mod` and `install_reframework_mod` supporting Monster Hunter Rise/Wilds, Resident Evil series, DMC5, and Dragon's Dogma 2 via Lua scripting and automatic install journal tracking.
 - Added pre-installation mod conflict detector (`check_install_conflicts` / `agmod/rollback.py:check_conflicts`) to check whether incoming mod files overwrite existing files or collide with active mods before copying.
 - Hardened installation journal (`agmod/rollback.py`):

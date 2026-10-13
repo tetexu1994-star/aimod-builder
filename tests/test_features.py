@@ -101,5 +101,64 @@ class TestInspector(unittest.TestCase):
             self.assertIn("ue4ss", res["recommended_strategy"]["persistent_mod"].lower())
 
 
+class TestProcessDiscovery(unittest.TestCase):
+    def test_find_game_executables(self):
+        from agmod.process import find_game_executables, is_game_running
+        with tempfile.TemporaryDirectory() as game_dir:
+            open(os.path.join(game_dir, "Game.exe"), "w").close()
+            open(os.path.join(game_dir, "UnityCrashHandler64.exe"), "w").close()
+            open(os.path.join(game_dir, "unins000.exe"), "w").close()
+
+            exes = find_game_executables(game_dir)
+            self.assertIn("Game.exe", exes)
+            self.assertNotIn("UnityCrashHandler64.exe", exes)
+            self.assertNotIn("unins000.exe", exes)
+
+            running, procs = is_game_running(game_dir)
+            self.assertIsInstance(running, bool)
+            self.assertIsInstance(procs, list)
+
+
+class TestGodotAdapter(unittest.TestCase):
+    def test_godot_lifecycle(self):
+        from agmod.adapters.godot import GodotAdapter
+        from agmod import rollback
+        from agmod.pack import package_mod, validate_package
+
+        adapter = GodotAdapter()
+        with tempfile.TemporaryDirectory() as game_dir:
+            open(os.path.join(game_dir, "brotato.pck"), "w").close()
+            self.assertTrue(adapter.detect(game_dir))
+            det = detect_engine(game_dir)
+            self.assertEqual(det["id"], "godot")
+
+            with tempfile.TemporaryDirectory() as proj_dir:
+                adapter.scaffold_mod(proj_dir, "auto-pickup", "Auto Pickup", "0.2.0", "Dev")
+                self.assertTrue(os.path.isfile(os.path.join(proj_dir, "mod_main.gd")))
+                self.assertTrue(os.path.isfile(os.path.join(proj_dir, "mod.json")))
+
+                dest = adapter.install_mod(proj_dir, game_dir)
+                self.assertTrue(os.path.isdir(dest))
+                self.assertTrue(os.path.isfile(os.path.join(dest, "mod_main.gd")))
+
+                # Verify install journal
+                installs = rollback.list_installs(game_dir)
+                self.assertEqual(len(installs), 1)
+                self.assertEqual(installs[0]["mod_id"], "auto-pickup")
+
+                # Test packaging
+                zip_path = package_mod(proj_dir)
+                self.assertTrue(os.path.isfile(zip_path))
+                val = validate_package(zip_path)
+                self.assertTrue(val["valid"])
+                self.assertIn("mod_main.gd", val["payload_files"])
+
+                # Test uninstall
+                res = rollback.uninstall(game_dir, "auto-pickup")
+                self.assertTrue(res["success"])
+                self.assertFalse(os.path.exists(dest))
+                self.assertEqual(rollback.list_installs(game_dir), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

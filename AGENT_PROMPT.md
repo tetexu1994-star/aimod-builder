@@ -55,6 +55,11 @@
 2. 在 `autorun/<mod_id>.lua` 中使用 REFramework API（`re.on_frame` / `re.on_draw_ui` / `sdk.hook`）实现功能与 UI；
 3. `install_reframework_mod(project_dir, game_dir)` —— 自动安装至 `<game_dir>/reframework/autorun/` 并记录回滚日志。
 
+#### 5. Godot 引擎游戏（Brotato / 磁带怪兽 / 恶魔轮盘赌等）
+1. `scaffold_godot_mod(project_dir, mod_id, mod_name)` —— 生成基于 GodotModLoader 的 GDScript Mod 骨架；
+2. 在 `mod_main.gd` 中实现 `_init()` / `_ready()` 挂载节点与资源修改；
+3. `install_godot_mod(project_dir, game_dir)` —— 自动安装至 `<game_dir>/mods-unpacked/` 并记录回滚日志。
+
 ### 路线 C：黑盒逆向与特征码扫描（morluto/rea + AOB Pattern）
 1. 若游戏更新导致偏移改变，使用 `pattern_scan(pid, aob_pattern)` 通过带通配符的机器码特征寻找函数入口；
 2. 使用 `rea_fast_search(dll_path, query)` 秒级过滤 .NET 类型；
@@ -62,11 +67,12 @@
 
 ### 发布前与冲突检测
 
-1. **安装前冲突排查**：调用 `check_install_conflicts(game_dir, target_files_json)`，预检是否会覆盖已有游戏文件或与其他已装 Mod 冲突；
-2. `validate_mod_project(project_dir)` 验证工程完整性；
-3. `package_mod(project_dir)` 打包为 Thunderstore / Nexus 风格 ZIP；
-4. `validate_package(package_path)` 校验分发包的清单 schema、README 与载荷有效性；
-5. 只在用户确认后安装、发布或替换现有 Mod。
+1. **游戏运行态锁预检**：调用 `check_game_status(game_dir)`，若游戏进程活跃，提醒用户退出游戏以防 Windows DLL 文件写锁定；
+2. **安装前冲突排查**：调用 `check_install_conflicts(game_dir, target_files_json)`，预检是否会覆盖已有游戏文件或与其他已装 Mod 冲突；
+3. `validate_mod_project(project_dir)` 验证工程完整性；
+4. `package_mod(project_dir)` 打包为 Thunderstore / Nexus 风格 ZIP；
+5. `validate_package(package_path)` 校验分发包的清单 schema、README 与载荷有效性；
+6. 只在用户确认后安装、发布或替换现有 Mod。
 
 ### 回滚与卸载（改动后可逆）
 
