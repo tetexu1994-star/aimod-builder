@@ -53,7 +53,7 @@ class XnaAdapter(BaseAdapter):
         if cached is not None:
             return cached
 
-        out = exe + ".decomp"
+        out = exe + ".decomp-" + fp[:12]
         if not (os.path.isdir(out) and os.listdir(out)):
             try:
                 subprocess.run(

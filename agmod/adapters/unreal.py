@@ -12,6 +12,7 @@ import os
 import shutil
 
 from ..structures import StructureTable, fingerprint_files
+from ..paths import safe_component
 from .base import BaseAdapter
 
 
@@ -91,6 +92,8 @@ class UnrealAdapter(BaseAdapter):
         author: str = "AI Mod Agent",
     ) -> str:
         """Generate a complete UE4SS Lua Mod skeleton."""
+        mod_id = safe_component(mod_id, "mod_id")
+        lua_name = str(mod_name).replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
         scripts_dir = os.path.join(project_dir, "scripts")
         os.makedirs(scripts_dir, exist_ok=True)
 
@@ -112,10 +115,10 @@ class UnrealAdapter(BaseAdapter):
             json.dump(meta, f, indent=2, ensure_ascii=False)
 
         # 3. scripts/main.lua template
-        lua_template = f"""-- {mod_name} (ID: {mod_id})
+        lua_template = f"""-- {lua_name} (ID: {mod_id})
 -- Built with game-mod-agent for UE4SS (Lua API)
 
-local ModRef = "{mod_name}"
+local ModRef = "{lua_name}"
 print(string.format("[%s] Initialized successfully!", ModRef))
 
 -- Hooking template:
@@ -135,6 +138,7 @@ print(string.format("[%s] Initialized successfully!", ModRef))
 
     def install_mod(self, project_dir: str, game_dir: str, mod_id: str) -> str:
         """Install UE4SS mod into <Game>/Binaries/Win64/ue4ss/Mods/<mod_id>/."""
+        mod_id = safe_component(mod_id, "mod_id")
         target_candidates = glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64"))
         if not target_candidates:
             target_candidates = [os.path.join(game_dir, "Binaries", "Win64")]

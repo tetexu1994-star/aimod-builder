@@ -33,7 +33,7 @@ except ImportError:  # pragma: no cover
         def run(self):
             print(f"FastMCP '{self.name}' stub: mcp not installed. Install with `pip install mcp`")
 
-from agmod import bepinex, config, inspector, knowledge, memory, pack, pattern, rea, safety, tmodloader, updater
+from agmod import bepinex, config, inspector, knowledge, memory, pack, pattern, planning, rea, safety, tmodloader, updater
 from agmod.adapters.unreal import UnrealAdapter
 from agmod.registry import adapters, detect_engine as _detect_engine, get_adapter
 from agmod.structures import load_table
@@ -68,6 +68,35 @@ def inspect_feature(game_dir: str, keyword: str) -> str:
 
 
 @mcp.tool()
+def plan_mod(
+    game_dir: str,
+    request: str,
+    project_dir: str,
+    mod_id: str = "",
+    mod_name: str = "",
+    mod_version: str = "1.0.0",
+    customizations: dict | None = None,
+) -> str:
+    """Turn a natural-language request into a ModSpec, plan, and engine skeleton."""
+    spec = planning.create_mod_plan(
+        game_dir=game_dir,
+        request=request,
+        project_dir=project_dir,
+        mod_id=mod_id,
+        mod_name=mod_name,
+        mod_version=mod_version,
+        customizations=customizations,
+    )
+    return json.dumps({"planned": True, "project_dir": project_dir, "spec": spec}, ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def validate_mod_project(project_dir: str) -> str:
+    """Validate the generated Mod project shape before build, install, or package."""
+    return json.dumps(planning.validate_project(project_dir), ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
 def dump_structures(game_dir: str) -> str:
     """Recover a game's structures (types/fields) and cache them by build fingerprint.
 
@@ -90,6 +119,8 @@ def find_field(game_dir: str, query: str) -> str:
     if r is None:
         return json.dumps({"error": "run detect_engine first"})
     adapter = get_adapter(r["id"])
+    if "query" not in adapter.capabilities:
+        return json.dumps({"error": f"engine {r['id']} does not support structure query", "capabilities": list(adapter.capabilities)})
     game_id = os.path.basename(os.path.normpath(game_dir))
     fp = adapter.fingerprint(game_dir)
     table = load_table(CACHE_ROOT, game_id, fp)
@@ -107,6 +138,8 @@ def get_source(game_dir: str, name: str) -> str:
     if r is None:
         return json.dumps({"error": "run detect_engine first"})
     adapter = get_adapter(r["id"])
+    if "source" not in adapter.capabilities:
+        return json.dumps({"error": f"engine {r['id']} does not support source retrieval", "capabilities": list(adapter.capabilities)})
     game_id = os.path.basename(os.path.normpath(game_dir))
     table = load_table(CACHE_ROOT, game_id, adapter.fingerprint(game_dir))
     if table is None:

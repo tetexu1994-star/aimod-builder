@@ -189,6 +189,7 @@ class ScanSession:
         self.kind = kind
         self.candidates: list[int] = []
         self.last_value: float | int | None = None
+        self.previous_values: dict[int, float | int] = {}
         self.round = 0
         self.updated_at = time.time()
 
@@ -196,6 +197,7 @@ class ScanSession:
         """Perform first scan, storing all matching addresses."""
         self.last_value = value
         self.candidates = scan_value(handle, value, self.kind, limit=limit)
+        self.previous_values = {addr: value for addr in self.candidates}
         self.round = 1
         self.updated_at = time.time()
         return len(self.candidates)
@@ -213,28 +215,34 @@ class ScanSession:
                 continue
 
             matched = False
+            previous = self.previous_values.get(addr, self.last_value)
             if scan_type == "exact":
                 matched = (cur_val == new_value)
             elif scan_type == "increased":
-                matched = (cur_val > (self.last_value or 0))
+                matched = (cur_val > previous)
             elif scan_type == "decreased":
-                matched = (cur_val < (self.last_value or 0))
+                matched = (cur_val < previous)
             elif scan_type == "changed":
-                matched = (cur_val != self.last_value)
+                matched = (cur_val != previous)
             elif scan_type == "unchanged":
-                matched = (cur_val == self.last_value)
+                matched = (cur_val == previous)
+            else:
+                raise ValueError(f"unsupported scan_type: {scan_type}")
 
             if matched:
                 survivors.append(addr)
+                self.previous_values[addr] = cur_val
 
         self.candidates = survivors
-        self.last_value = new_value
+        if scan_type == "exact":
+            self.last_value = new_value
         self.round += 1
         self.updated_at = time.time()
         return len(self.candidates)
 
     def reset(self) -> None:
         self.candidates.clear()
+        self.previous_values.clear()
         self.last_value = None
         self.round = 0
 
@@ -242,10 +250,13 @@ class ScanSession:
 _SESSIONS: dict[int, ScanSession] = {}
 
 
-def get_scan_session(pid: int, kind: str = "int32") -> ScanSession:
-    """Get or create a ScanSession for pid."""
+def get_scan_session(pid: int, kind: str | None = None) -> ScanSession:
+    """Get a session for pid, preserving its kind when `kind` is omitted."""
     sess = _SESSIONS.get(pid)
-    if sess is None or sess.kind != kind:
+    if sess is None:
+        sess = ScanSession(pid, kind or "int32")
+        _SESSIONS[pid] = sess
+    elif kind is not None and sess.kind != kind:
         sess = ScanSession(pid, kind)
         _SESSIONS[pid] = sess
     return sess

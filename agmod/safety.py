@@ -43,10 +43,19 @@ def process_name(pid: int) -> str:
 
 
 def check_target(pid: int) -> tuple[bool, str]:
-    """Return (allowed, reason). Refuse if the target process is a known anti-cheat."""
+    """Return (allowed, reason), failing closed for unknown/protected targets."""
+    if not isinstance(pid, int) or pid <= 0:
+        return False, "pid must be a positive integer"
+    if psutil is None:
+        return False, "psutil is required before process memory access"
     name = process_name(pid)
+    if not name:
+        return False, f"process {pid} is not running or cannot be inspected"
     if is_blocked_name(name):
         return False, f"target process '{name}' is anti-cheat; refusing to touch it"
+    active = active_anticheat()
+    if active:
+        return False, "anti-cheat service is active: " + ", ".join(active)
     return True, ""
 
 
@@ -56,7 +65,10 @@ def active_anticheat() -> list[str]:
         return []
     out = set()
     for p in psutil.process_iter(["name"]):
-        n = (p.info.get("name") or "").lower()
+        try:
+            n = (p.info.get("name") or "").lower()
+        except Exception:
+            continue
         if n in BLOCKED:
             out.add(p.info["name"])
     return sorted(out)

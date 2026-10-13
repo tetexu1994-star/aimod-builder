@@ -6,10 +6,14 @@ the new plugin DLL (update). Uses only stdlib (urllib), no third-party deps.
 from __future__ import annotations
 
 import json
+import hashlib
 import os
-import shutil
+import re
+import tempfile
 import urllib.error
 import urllib.request
+
+from .paths import UnsafePathError, safe_basename, safe_join
 
 API = "https://api.github.com/repos"
 _HEADERS = {"User-Agent": "game-mod-agent", "Accept": "application/vnd.github+json"}
@@ -46,7 +50,7 @@ def check_update(owner: str, repo: str, current_version: str) -> dict:
     if rel.get("tag_name"):
         latest = rel["tag_name"].lstrip("v")
         return {
-            "update_available": latest != current_version,
+            "update_available": _version_gt(latest, current_version),
             "latest": latest,
             "current": current_version,
             "source": "release",
@@ -61,21 +65,60 @@ def check_update(owner: str, repo: str, current_version: str) -> dict:
     }
 
 
+def _version_gt(candidate: str, current: str) -> bool:
+    def parts(value: str) -> tuple[int, ...]:
+        value = value.lstrip("vV")
+        core = re.split(r"[-+]", value, 1)[0]
+        return tuple(int(p) for p in re.findall(r"\d+", core))
+
+    if not candidate or not current:
+        return bool(candidate) and candidate != current
+    try:
+        return parts(candidate) > parts(current)
+    except ValueError:
+        return candidate != current
+
+
+def _verify_digest(path: str, expected: str | None) -> None:
+    if not expected or not expected.startswith("sha256:"):
+        return
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            digest.update(chunk)
+    if digest.hexdigest() != expected.split(":", 1)[1]:
+        raise RuntimeError("downloaded asset failed SHA-256 verification")
+
+
 def update_mod(game_dir: str, owner: str, repo: str, entry_dll: str) -> str:
-    """Download the latest release asset matching `entry_dll` into BepInEx/plugins/."""
+    """Download exactly the named release DLL into BepInEx/plugins/."""
+    try:
+        entry_dll = safe_basename(entry_dll, "entry_dll")
+    except UnsafePathError as exc:
+        raise ValueError(str(exc)) from exc
+    if not entry_dll.lower().endswith(".dll"):
+        raise ValueError("entry_dll must be a .dll filename")
     rel = latest_release(owner, repo)
     if not rel.get("assets"):
         raise RuntimeError(f"repo {owner}/{repo} has no release assets to download")
     match = None
     for a in rel["assets"]:
-        if a["name"].lower() == entry_dll.lower() or a["name"].lower().endswith(".dll"):
+        if a.get("name", "").lower() == entry_dll.lower():
             match = a
             break
     if match is None:
-        raise RuntimeError(f"no .dll asset found in latest release of {owner}/{repo}")
+        raise RuntimeError(f"asset {entry_dll!r} not found in latest release of {owner}/{repo}")
 
     plugins = os.path.join(game_dir, "BepInEx", "plugins")
     os.makedirs(plugins, exist_ok=True)
-    dest = os.path.join(plugins, entry_dll)
-    urllib.request.urlretrieve(match["browser_download_url"], dest)
+    dest = safe_join(plugins, entry_dll)
+    fd, temp_path = tempfile.mkstemp(prefix=entry_dll + ".", suffix=".part", dir=plugins)
+    os.close(fd)
+    try:
+        urllib.request.urlretrieve(match["browser_download_url"], temp_path)
+        _verify_digest(temp_path, match.get("digest"))
+        os.replace(temp_path, dest)
+    finally:
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
     return dest

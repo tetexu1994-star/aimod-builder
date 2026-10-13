@@ -29,6 +29,8 @@ game-mod-agent/
 | 工具 | 作用 | 依赖 |
 |---|---|---|
 | `inspect_feature` | **一键意图侦测**：自动识别引擎、秒级检索字段并推荐最佳方案 | 无 |
+| `plan_mod` | **自然语言生成 Mod 项目计划**：输出 ModSpec、MODDING_PLAN 和引擎骨架 | 无 |
+| `validate_mod_project` | 校验 ModSpec、入口文件和引擎必需文件 | 无 |
 | `detect_engine` | 识别游戏引擎（Unity / Unreal / .NET-XNA 等） | 无 |
 | `dump_structures` | 恢复结构（反编译/dump） | Mono: ilspycmd；IL2CPP: Cpp2IL |
 | `find_field` | 在结构里搜字段名 | dump 之后 |
@@ -49,7 +51,7 @@ game-mod-agent/
 | `rea_disassemble` | 反汇编/反编译指定 Native 函数 | morluto/rea |
 | `rea_call_graph` | 查看函数调用关系图与交叉引用 | morluto/rea |
 | `check_update` / `update_mod` | 检查并拉取 GitHub 最新版本 Mod DLL | 网络 |
-| `package_mod` | 打包 Mod 为 Thunderstore/Nexus 规范 ZIP | 无 |
+| `package_mod` | 打包 Mod 为 Thunderstore/Nexus 风格 ZIP；编译型 Mod 必须先 build，UE4SS Lua Mod 可直接打包源文件 | 无 |
 
 **内存读写和连续值扫描今天就能用**（纯 ctypes）。
 
@@ -77,6 +79,8 @@ dotnet tool install -g ilspycmd
 npm install -g rea-agents
 ```
 
+REA 桥接使用当前 `rea-agents` 命令契约：Managed 成员、JS/Electron、PE 资源、`function` 和 `xrefs`。工具会使用 JSON 输出并在命令失败时返回明确错误。
+
 ## 注册到 Claude Code
 
 把 `mcp_config.json` 的内容合并进项目的 `.mcp.json`（或用户级配置），
@@ -86,6 +90,18 @@ claude mcp add game-mod-agent -- python <绝对路径>/server.py
 ```
 
 ## 核心工作流
+
+### 0. 从一句话开始：先生成可审查的 Mod 项目
+
+```
+用户："给主角加 99999 金币，并允许通过配置修改数值"
+1. plan_mod(game_dir, request, project_dir, customizations={"amount": 99999})
+2. 查看 mod-spec.json / MODDING_PLAN.md，确认范围和自定义项
+3. 让 agent 按 plan 实现具体 Harmony / UE4SS / tModLoader 代码
+4. validate_mod_project(project_dir) -> build -> install preview -> game test
+```
+
+`plan_mod` 负责把用户需求变成稳定契约和引擎骨架，具体功能实现由上层 Agent 基于 `request.md` 和 `mod-spec.json` 完成。
 
 ### 1. 内存修改：Cheat Engine 式连续扫描
 

@@ -13,17 +13,19 @@ import os
 from dataclasses import dataclass, field
 
 def fingerprint_files(paths) -> str:
-    """Hash (basename + size + first 256 KiB) of the given files, order-independent."""
+    """Hash complete file contents, order-independent, for safe cache keys."""
     h = hashlib.sha256()
     entries = []
     for path in paths:
         try:
             size = os.path.getsize(path)
+            digest = hashlib.sha256()
             with open(path, "rb") as f:
-                head = f.read(256 * 1024)
+                for chunk in iter(lambda: f.read(1 << 20), b""):
+                    digest.update(chunk)
         except OSError:
             continue
-        entries.append((os.path.basename(path), size, hashlib.sha256(head).hexdigest()))
+        entries.append((os.path.basename(path), size, digest.hexdigest()))
     entries.sort()
     for name, size, digest in entries:
         h.update(f"{name}|{size}|{digest}".encode())

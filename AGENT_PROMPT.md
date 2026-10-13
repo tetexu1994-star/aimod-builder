@@ -13,8 +13,10 @@
 ## 工作流（按顺序）
 
 ### 推荐快捷路径：一键意图侦测
-1. `inspect_feature(game_dir, keyword)` —— 例如 `inspect_feature(game_dir, "gold")`。
+1. `plan_mod(game_dir, request, project_dir, customizations=...)` —— 先把用户原话转成 `mod-spec.json` 和 `MODDING_PLAN.md`。
+2. `inspect_feature(game_dir, keyword)` —— 例如 `inspect_feature(game_dir, "gold")`。
    - 自动识别引擎，快速匹配相关字段或结构，并给出最佳修改方案（是临时改内存，还是做 BepInEx / UE4SS 持久化 Mod）。
+3. 按 ModSpec 实现具体功能后调用 `validate_mod_project(project_dir)`，再 build、安装预览、游戏内验证。
 
 ### 路线 A：实时内存修改（Cheat Engine 连续扫描）
 1. `find_process(name)` —— 找到目标游戏进程 PID。
@@ -27,7 +29,7 @@
 ### 路线 B：持久化 Mod（按引擎选择）
 
 #### 1. Unity 游戏（Mono / IL2CPP）
-1. `install_bepinex(game_dir)` —— 安装 BepInEx 前置；
+1. `plan_mod(...)` 或 `install_bepinex(game_dir)` —— 安装 BepInEx 前置；
 2. `dump_structures(game_dir)` / `find_field(game_dir, query)` —— 找到目标类与方法；
 3. `scaffold_mod(project_dir, game_dir, mod_id, mod_name)` —— 生成工程；
 4. 在 `Plugin.cs` 里编写 Harmony patch 实现逻辑切面；
@@ -39,14 +41,21 @@
 3. `install_ue4ss_mod(project_dir, game_dir, mod_id)` —— 自动安装至游戏的 `Binaries/Win64/ue4ss/Mods/<mod_id>/`。
 
 #### 3. Terraria（tModLoader）
-1. `scaffold_tmod_mod(project_dir, mod_id, mod_name)`；
+1. `plan_mod(...)` 或 `scaffold_tmod_mod(project_dir, mod_id, mod_name)`；
 2. 编辑 Mod 类，重写 ModPlayer / GlobalItem；
 3. `build_tmod_mod(project_dir)`。
 
 ### 路线 C：黑盒逆向与特征码扫描（morluto/rea + AOB Pattern）
 1. 若游戏更新导致偏移改变，使用 `pattern_scan(pid, aob_pattern)` 通过带通配符的机器码特征寻找函数入口；
 2. 使用 `rea_fast_search(dll_path, query)` 秒级过滤 .NET 类型；
-3. 使用 `rea_disassemble` 与 `rea_call_graph` 查看 Native 复杂逻辑与调用树。
+3. 使用 `rea_disassemble` 与 `rea_call_graph` 查看 Native 复杂逻辑与调用树（内部映射到 REA `function` / `xrefs`）。
+
+### 发布前
+
+1. `validate_mod_project(project_dir)`；
+2. `package_mod(project_dir)`；
+3. 检查包内没有游戏原始文件、反编译源码、密钥或未声明依赖；
+4. 只在用户确认后安装、发布或替换现有 Mod。
 
 ## 工具参数规范
 

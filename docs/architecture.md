@@ -14,7 +14,7 @@
         │
 [3] 适配器层        agmod/adapters/ —— 统一接口，每引擎一个（17 个）
         │
-[4] 能力模块        bepinex / tmodloader / memory / updater / rea / pack / knowledge
+[4] 能力模块        planning / bepinex / tmodloader / memory / updater / rea / pack / knowledge
         │
 [5] 目标游戏进程 / 文件
 ```
@@ -47,6 +47,7 @@ detect_engine → dump_structures(prepare) → find_field(query)
 - **安全护栏**（`safety.py`）：代码级拒绝反作弊进程 + `write_memory` 的 dry_run 预览。
 - **知识库**（`knowledge.py`）：游戏字段笔记持久化，避免重复逆向。
 - **mod 生命周期**：scaffold → build → package → check/update（GitHub 轮询自动更新）。
+- **需求工作流**：`plan_mod` 将自然语言请求固化为 `mod-spec.json`、`request.md`、`MODDING_PLAN.md`，再由 adapter 生成引擎骨架；`validate_mod_project` 在 build/install/package 前校验入口和必需文件。
 
 ## 扩展点
 

@@ -82,10 +82,10 @@ class UnityAdapter(BaseAdapter):
         if not asm:
             raise ValueError("Assembly-CSharp.dll not found")
         table.files = [os.path.relpath(a, game_dir) for a in asm]
-        table.decomp_dir = self._decompile_mono(asm[0])
+        table.decomp_dir = self._decompile_mono(asm[0], table.fingerprint)
 
-    def _decompile_mono(self, assembly: str) -> str:
-        out = assembly + ".decomp"
+    def _decompile_mono(self, assembly: str, fingerprint: str) -> str:
+        out = assembly + ".decomp-" + fingerprint[:12]
         if os.path.isdir(out) and os.listdir(out):
             return out
         try:
@@ -110,10 +110,10 @@ class UnityAdapter(BaseAdapter):
             os.path.relpath(meta[0], game_dir),
             "GameAssembly.dll",
         ]
-        table.decomp_dir = self._dump_il2cpp(game_asm, meta[0])
+        table.decomp_dir = self._dump_il2cpp(game_asm, meta[0], table.fingerprint)
 
-    def _dump_il2cpp(self, game_asm: str, metadata: str) -> str:
-        out = os.path.dirname(game_asm) + ".il2cpp-dump"
+    def _dump_il2cpp(self, game_asm: str, metadata: str, fingerprint: str) -> str:
+        out = os.path.dirname(game_asm) + ".il2cpp-dump-" + fingerprint[:12]
         if os.path.isdir(out) and os.listdir(out):
             return out
         try:

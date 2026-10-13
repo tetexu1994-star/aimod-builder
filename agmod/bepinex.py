@@ -13,9 +13,9 @@ import os
 import shutil
 import subprocess
 import urllib.request
-import zipfile
 
 from .manifest import ModManifest
+from .paths import safe_component, safe_extract_zip
 
 BEPINEX_VERSION = "5.4.23.0"
 _BASE_URL = "https://github.com/BepInEx/BepInEx/releases/download"
@@ -30,8 +30,7 @@ def install_bepinex(game_dir: str, version: str = BEPINEX_VERSION) -> str:
     zip_path = os.path.join(game_dir, "_bepinex_tmp.zip")
     urllib.request.urlretrieve(url, zip_path)
     try:
-        with zipfile.ZipFile(zip_path) as z:
-            z.extractall(game_dir)
+        safe_extract_zip(zip_path, game_dir)
     finally:
         if os.path.exists(zip_path):
             os.remove(zip_path)
@@ -62,6 +61,10 @@ namespace {namespace}
 }}
 '''
 
+
+def _cs_string(value: str) -> str:
+    return str(value).replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+
 _CSPROJ = '''<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
@@ -89,6 +92,9 @@ _CSPROJ = '''<Project Sdk="Microsoft.NET.Sdk">
 
 def scaffold_plugin(project_dir: str, game_dir: str, mod_id: str, mod_name: str, mod_version: str = "1.0.0", repo: str = "") -> str:
     """Write a BepInEx plugin project (Plugin.cs + .csproj + mod.json) into `project_dir`."""
+    mod_id = safe_component(mod_id, "mod_id")
+    manifest_name = mod_name
+    manifest_version = mod_version
     os.makedirs(project_dir, exist_ok=True)
     namespace = mod_id.replace("-", "_").replace(".", "_")
     class_name = "".join(part.capitalize() for part in mod_id.replace("-", " ").replace(".", " ").split()) or "Plugin"
@@ -97,11 +103,11 @@ def scaffold_plugin(project_dir: str, game_dir: str, mod_id: str, mod_name: str,
     with open(os.path.join(project_dir, "Plugin.cs"), "w", encoding="utf-8") as f:
         f.write(_PLUGIN_CS.format(
             namespace=namespace, class_name=class_name,
-            mod_id=mod_id, mod_name=mod_name, mod_version=mod_version,
+            mod_id=mod_id, mod_name=_cs_string(mod_name), mod_version=_cs_string(mod_version),
         ))
     with open(os.path.join(project_dir, f"{mod_id}.csproj"), "w", encoding="utf-8") as f:
         f.write(_CSPROJ.format(mod_id=mod_id, namespace=namespace, bepin_core=bepin_core))
-    ModManifest(id=mod_id, name=mod_name, version=mod_version, engine="unity",
+    ModManifest(id=mod_id, name=manifest_name, version=manifest_version, engine="unity",
                 repo=repo, entry=f"{mod_id}.dll").save(os.path.join(project_dir, "mod.json"))
     return project_dir
 
@@ -116,11 +122,14 @@ def build_plugin(project_dir: str, game_dir: str) -> str:
     except FileNotFoundError:
         raise RuntimeError("dotnet not found. Install the .NET SDK (dotnet).") from None
 
+    manifest = ModManifest.load(os.path.join(project_dir, "mod.json"))
     plugins = os.path.join(game_dir, "BepInEx", "plugins")
     os.makedirs(plugins, exist_ok=True)
     installed = []
     for name in os.listdir(os.path.join(project_dir, "out")):
-        if name.endswith(".dll"):
+        if name.endswith(".dll") and (not manifest.entry or name == manifest.entry):
             shutil.copy2(os.path.join(project_dir, "out", name), os.path.join(plugins, name))
             installed.append(name)
+    if not installed:
+        raise RuntimeError(f"manifest entry not found in build output: {manifest.entry or '*.dll'}")
     return ", ".join(installed)

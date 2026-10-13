@@ -12,9 +12,11 @@ produces the same minimal shape by hand.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 
 from .manifest import ModManifest
+from .paths import safe_component
 
 _MOD_CS = '''using Terraria.ModLoader;
 
@@ -66,8 +68,16 @@ both DLLs. For a fully wired template use:
 '''
 
 
+def _one_line(value: str) -> str:
+    return re.sub(r"[\r\n]+", " ", str(value)).strip()
+
+
 def scaffold_tmod_mod(project_dir: str, mod_id: str, mod_name: str, mod_version: str = "0.1.0", author: str = "") -> str:
     """Write a minimal tModLoader mod skeleton into `project_dir`."""
+    mod_id = safe_component(mod_id, "mod_id")
+    mod_name = _one_line(mod_name)
+    author = _one_line(author or "unknown")
+    mod_version = _one_line(mod_version)
     os.makedirs(os.path.join(project_dir, "lib"), exist_ok=True)
     namespace = mod_id.replace("-", "_").replace(".", "_")
     class_name = "".join(p.capitalize() for p in mod_id.replace("-", " ").replace(".", " ").split()) or "MyMod"
