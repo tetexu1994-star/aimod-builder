@@ -15,8 +15,11 @@ import os
 import re
 import subprocess
 
+import shutil
+
+from . import rollback
 from .manifest import ModManifest
-from .paths import safe_component
+from .paths import safe_component, safe_join
 
 _MOD_CS = '''using Terraria.ModLoader;
 
@@ -105,3 +108,43 @@ def build_tmod_mod(project_dir: str) -> str:
     except FileNotFoundError:
         raise RuntimeError("dotnet not found. Install the .NET 6 SDK.") from None
     return os.path.join(project_dir, "out")
+
+
+def install_tmod_mod(project_dir: str, game_dir: str) -> dict:
+    """Install built tModLoader mod files into game directory with rollback journal tracking."""
+    manifest_path = os.path.join(project_dir, "mod.json")
+    if not os.path.isfile(manifest_path):
+        raise ValueError(f"no mod.json found in {project_dir}")
+    manifest = ModManifest.load(manifest_path)
+    out_dir = os.path.join(project_dir, "out")
+    if not os.path.isdir(out_dir):
+        raise ValueError("no out/ directory found; run build_tmod_mod first")
+
+    # tModLoader mods typically live in ModLoader/Mods or Mods
+    mods_dir = os.path.join(game_dir, "ModLoader", "Mods")
+    os.makedirs(mods_dir, exist_ok=True)
+
+    targets = []
+    for fn in os.listdir(out_dir):
+        if fn.endswith((".dll", ".tmod")):
+            targets.append(safe_join(mods_dir, fn))
+
+    if not targets:
+        raise ValueError("no built .dll or .tmod found in out/ directory")
+
+    backups = rollback.backup_files(game_dir, targets)
+    installed = []
+    for t in targets:
+        src = os.path.join(out_dir, os.path.basename(t))
+        shutil.copy2(src, t)
+        installed.append(os.path.basename(t))
+
+    added = [t for t in targets if os.path.isfile(t) and t not in backups]
+    rollback.record_install(game_dir, manifest.id, added, backups)
+    return {
+        "success": True,
+        "mod_id": manifest.id,
+        "installed": installed,
+        "destination": mods_dir,
+    }
+

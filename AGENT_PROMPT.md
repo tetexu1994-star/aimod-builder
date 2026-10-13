@@ -47,26 +47,34 @@
 #### 3. Terraria（tModLoader）
 1. `plan_mod(...)` 或 `scaffold_tmod_mod(project_dir, mod_id, mod_name)`；
 2. 编辑 Mod 类，重写 ModPlayer / GlobalItem；
-3. `build_tmod_mod(project_dir)`。
+3. `build_tmod_mod(project_dir)`；
+4. `install_tmod_mod(project_dir, game_dir)` —— 安装至游戏 Mod 目录并自动记录回滚日志。
+
+#### 4. 卡普空 RE 引擎游戏（Monster Hunter / Resident Evil / DMC5 等）
+1. `scaffold_reframework_mod(project_dir, mod_id, mod_name)` —— 生成基于 REFramework 的 Lua Mod 骨架；
+2. 在 `autorun/<mod_id>.lua` 中使用 REFramework API（`re.on_frame` / `re.on_draw_ui` / `sdk.hook`）实现功能与 UI；
+3. `install_reframework_mod(project_dir, game_dir)` —— 自动安装至 `<game_dir>/reframework/autorun/` 并记录回滚日志。
 
 ### 路线 C：黑盒逆向与特征码扫描（morluto/rea + AOB Pattern）
 1. 若游戏更新导致偏移改变，使用 `pattern_scan(pid, aob_pattern)` 通过带通配符的机器码特征寻找函数入口；
 2. 使用 `rea_fast_search(dll_path, query)` 秒级过滤 .NET 类型；
 3. 使用 `rea_disassemble` 与 `rea_call_graph` 查看 Native 复杂逻辑与调用树（内部映射到 REA `function` / `xrefs`）。
 
-### 发布前
+### 发布前与冲突检测
 
-1. `validate_mod_project(project_dir)`；
-2. `package_mod(project_dir)`；
-3. 检查包内没有游戏原始文件、反编译源码、密钥或未声明依赖；
-4. 只在用户确认后安装、发布或替换现有 Mod。
+1. **安装前冲突排查**：调用 `check_install_conflicts(game_dir, target_files_json)`，预检是否会覆盖已有游戏文件或与其他已装 Mod 冲突；
+2. `validate_mod_project(project_dir)` 验证工程完整性；
+3. `package_mod(project_dir)` 打包为 Thunderstore / Nexus 风格 ZIP；
+4. `validate_package(package_path)` 校验分发包的清单 schema、README 与载荷有效性；
+5. 只在用户确认后安装、发布或替换现有 Mod。
 
 ### 回滚与卸载（改动后可逆）
 
-所有文件级安装（BepInEx / UE4SS mod / 插件 DLL / 更新）都会自动记入安装日志，并备份被覆盖的原文件：
+所有文件级安装（BepInEx / UE4SS / REFramework / tModLoader / 插件 DLL / 更新）都会自动记入安装日志，并备份被覆盖的原文件：
 
+- `check_install_conflicts(game_dir, target_files_json)` —— 预检目标文件是否已被其他 mod 安装或存在冲突；
 - `list_installs(game_dir)` —— 查看该游戏装过哪些 mod；
-- `uninstall_mod(game_dir, mod_id)` —— 卸载单个 mod（删除新增文件、还原覆盖的原文件）；
+- `uninstall_mod(game_dir, mod_id)` —— 卸载单个 mod（删除新增文件、还原覆盖的原文件、自动清理残留空目录）；
 - `rollback_game(game_dir)` —— 一键逆序撤销全部安装，恢复到装 mod 前的状态。
 
 **任何安装后游戏异常/崩溃，先执行 `rollback_game(game_dir)` 恢复，再排查原因。**

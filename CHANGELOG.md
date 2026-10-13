@@ -4,6 +4,15 @@
 
 ### Added
 
+- Added Capcom RE Engine (REFramework) adapter (`agmod/adapters/reengine.py`) with `scaffold_reframework_mod` and `install_reframework_mod` supporting Monster Hunter Rise/Wilds, Resident Evil series, DMC5, and Dragon's Dogma 2 via Lua scripting and automatic install journal tracking.
+- Added pre-installation mod conflict detector (`check_install_conflicts` / `agmod/rollback.py:check_conflicts`) to check whether incoming mod files overwrite existing files or collide with active mods before copying.
+- Hardened installation journal (`agmod/rollback.py`):
+  - Added recursive pruning of empty mod directories after uninstallation (`_cleanup_empty_dirs`), keeping framework root directories protected (`BepInEx`, `Mods`, `reframework`, `ModLoader`).
+  - Added safe error capture on file locks or permission errors during file removal and restoration.
+  - Added safe path bounds preventing directory traversal outside the target game folder and backup storage.
+  - Added automatic pruning of restored backup copies from the backup store to save disk space.
+- Added tModLoader installation support (`install_tmod_mod`) with full installation journal recording and reversible uninstallation.
+- Added mod distribution package validator (`validate_package` / `agmod/pack.py`) to verify Thunderstore/Nexus ZIP structure, manifest schema, README, and payload code files before release.
 - Added an installation journal (`agmod/rollback.py`) with `uninstall_mod`, `rollback_game`, and `list_installs` tools. Every install path (BepInEx, UE4SS mod install, plugin build, mod update) now records the files it added or overwrote — backing up overwritten originals — so a broken mod can always be removed and the game restored to its pre-mod state.
 - Added `check_environment` tool and CLI `agmod doctor` (`python -m agmod.doctor`) for checking Python, .NET SDK, decompilers (ilspycmd/Cpp2IL), and REA readiness with actionable setup commands.
 - Added C# compiler error parsing and auto-healing loop (`agmod/repair.py`, `diagnose_build_error`):

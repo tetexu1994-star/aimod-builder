@@ -34,6 +34,7 @@ except ImportError:  # pragma: no cover
             print(f"FastMCP '{self.name}' stub: mcp not installed. Install with `pip install mcp`")
 
 from agmod import bepinex, config, doctor, inspector, knowledge, logs, memory, pack, pattern, planning, rea, repair, rollback, safety, saves, tmodloader, updater
+from agmod.adapters.reengine import ReEngineAdapter
 from agmod.adapters.unreal import UnrealAdapter
 from agmod.registry import adapters, detect_engine as _detect_engine, get_adapter
 from agmod.structures import load_table
@@ -493,6 +494,46 @@ def rollback_game(game_dir: str) -> str:
 def list_installs(game_dir: str) -> str:
     """List recorded mod installations for a game, so you know what can be uninstalled."""
     return json.dumps(rollback.list_installs(game_dir), ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def check_install_conflicts(game_dir: str, target_files_json: str) -> str:
+    """Check if proposed target files conflict with existing files or existing installed mods."""
+    try:
+        files = json.loads(target_files_json)
+        if not isinstance(files, list):
+            return json.dumps({"error": "target_files_json must be a JSON array of file paths"})
+    except json.JSONDecodeError as e:
+        return json.dumps({"error": f"invalid JSON: {e}"})
+    return json.dumps(rollback.check_conflicts(game_dir, files), ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def install_tmod_mod(project_dir: str, game_dir: str) -> str:
+    """Install built tModLoader mod into game directory with rollback journal tracking."""
+    return json.dumps(tmodloader.install_tmod_mod(project_dir, game_dir), ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def scaffold_reframework_mod(project_dir: str, mod_id: str, mod_name: str, mod_version: str = "0.1.0", author: str = "") -> str:
+    """Scaffold a Capcom RE Engine REFramework Lua mod (Monster Hunter, Resident Evil, DMC5, etc.)."""
+    adapter = ReEngineAdapter()
+    path = adapter.scaffold_mod(project_dir, mod_id, mod_name, mod_version=mod_version, author=author)
+    return json.dumps({"project": path, "engine": "re-engine", "framework": "reframework"})
+
+
+@mcp.tool()
+def install_reframework_mod(project_dir: str, game_dir: str) -> str:
+    """Install a REFramework Lua mod into `<game_dir>/reframework/autorun` with rollback journal tracking."""
+    adapter = ReEngineAdapter()
+    dest = adapter.install_mod(project_dir, game_dir)
+    return json.dumps({"installed": dest, "engine": "re-engine"})
+
+
+@mcp.tool()
+def validate_package(package_path: str) -> str:
+    """Validate a generated Thunderstore/Nexus mod ZIP archive before distribution."""
+    return json.dumps(pack.validate_package(package_path), ensure_ascii=False, indent=2)
 
 
 def main() -> None:

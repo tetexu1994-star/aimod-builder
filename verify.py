@@ -25,10 +25,18 @@ tools = [
     "read_memory", "write_memory",
     "install_bepinex", "scaffold_mod", "build_mod", "diagnose_build_error",
     "scaffold_ue4ss_mod", "install_ue4ss_mod",
-    "scaffold_tmod_mod", "build_tmod_mod",
+    "scaffold_tmod_mod", "build_tmod_mod", "install_tmod_mod",
+    "scaffold_reframework_mod", "install_reframework_mod",
     "read_mod_logs", "create_save_backup", "list_save_backups", "restore_save_backup",
-    "check_update", "update_mod", "package_mod",
+    "uninstall_mod", "rollback_game", "list_installs", "check_install_conflicts",
+    "check_update", "update_mod", "package_mod", "validate_package",
     "rea_managed_members", "rea_analyze_js", "rea_inspect_pe",
     "rea_disassemble", "rea_call_graph", "rea_fast_search",
 ]
-print("tools wired:", {t: hasattr(server, t) for t in tools})
+status = {t: hasattr(server, t) for t in tools}
+print("tools wired:", status)
+missing = [t for t, ok in status.items() if not ok]
+if missing:
+    print(f"ERROR: missing tools: {missing}")
+    sys.exit(1)
+

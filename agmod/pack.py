@@ -67,8 +67,8 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
             entry_file = entry_path
         elif os.path.basename(m.entry) not in dlls:
             raise ValueError(f"manifest entry not found: {m.entry}")
-    if not dlls and not (m.engine == "unreal" and entry_file):
-        raise ValueError("no built DLL found; run build_mod/build_tmod_mod before packaging")
+    if not dlls and not (m.engine in {"unreal", "re-engine"} and entry_file):
+        raise ValueError("no built DLL or entry script found; run build_mod/build_tmod_mod before packaging")
 
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2))
@@ -76,7 +76,7 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
             z.write(dlls[fn], fn)
         if entry_file and not entry_file.lower().endswith(".dll"):
             z.write(entry_file, m.entry.replace("\\", "/"))
-            if m.engine == "unreal":
+            if m.engine in {"unreal", "re-engine"}:
                 for root, dirs, files in os.walk(project_dir):
                     dirs[:] = [d for d in dirs if d not in {"dist", "__pycache__"}]
                     for fn in files:
@@ -84,7 +84,7 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
                         rel = os.path.relpath(source, project_dir).replace("\\", "/")
                         if rel == m.entry.replace("\\", "/"):
                             continue
-                        if rel in {"mod-spec.json", "request.md", "MODDING_PLAN.md"}:
+                        if rel in {"mod-spec.json", "request.md", "MODDING_PLAN.md", "README.md", "icon.png"}:
                             continue
                         z.write(source, rel)
         readme = os.path.join(project_dir, "README.md")
@@ -97,3 +97,52 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
             z.write(icon, "icon.png")
 
     return path
+
+
+def validate_package(package_path: str) -> dict:
+    """Validate a generated Thunderstore/Nexus mod ZIP archive."""
+    if not os.path.isfile(package_path):
+        return {"valid": False, "error": f"file not found: {package_path}"}
+
+    errors: list[str] = []
+    warnings: list[str] = []
+    manifest_data = {}
+
+    try:
+        with zipfile.ZipFile(package_path, "r") as z:
+            names = z.namelist()
+            if "manifest.json" not in names:
+                errors.append("missing manifest.json")
+            else:
+                try:
+                    manifest_data = json.loads(z.read("manifest.json").decode("utf-8"))
+                    for req in ("name", "version_number", "description", "dependencies"):
+                        if req not in manifest_data:
+                            errors.append(f"manifest.json missing required key: {req}")
+                    if "version_number" in manifest_data and not re.fullmatch(r"\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?", str(manifest_data["version_number"])):
+                        warnings.append(f"version_number '{manifest_data['version_number']}' is not standard semver")
+                except json.JSONDecodeError:
+                    errors.append("manifest.json is not valid JSON")
+
+            if "README.md" not in names:
+                warnings.append("missing README.md (recommended for distribution)")
+
+            payloads = [n for n in names if n not in {"manifest.json", "README.md", "icon.png"}]
+            if not payloads:
+                errors.append("archive contains no mod payload files (dll, scripts, assets)")
+
+            has_code = any(n.endswith((".dll", ".lua", ".cs", ".tmod")) for n in payloads)
+            if not has_code:
+                warnings.append("archive has no executable DLL or script files")
+
+            return {
+                "valid": len(errors) == 0,
+                "errors": errors,
+                "warnings": warnings,
+                "file_count": len(names),
+                "payload_files": payloads,
+                "manifest": manifest_data,
+            }
+    except zipfile.BadZipFile:
+        return {"valid": False, "error": "file is not a valid zip archive"}
+

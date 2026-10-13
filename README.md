@@ -46,9 +46,16 @@ game-mod-agent/
 | `build_mod` | 编译插件并装入 BepInEx/plugins（**支持自动解析报错并自愈重试**） | .NET SDK |
 | `diagnose_build_error` | **编译报错诊断器**：解析 CSxxxx 错误并生成针对性修复代码建议 | 无 |
 | `scaffold_ue4ss_mod` | **生成 UE4SS 免编译 Lua Mod 工程 (Unreal Engine 4/5)** | 无 |
-| `install_ue4ss_mod` | 安装 UE4SS Lua Mod 至游戏目录 | 无 |
+| `install_ue4ss_mod` | 安装 UE4SS Lua Mod 至游戏目录（带回滚日志记录） | 无 |
 | `scaffold_tmod_mod` | 生成 tModLoader mod 骨架（Terraria） | 无 |
 | `build_tmod_mod` | 编译 tModLoader mod | .NET 6 SDK |
+| `install_tmod_mod` | 安装 tModLoader mod 至游戏目录（带回滚日志记录） | 无 |
+| `scaffold_reframework_mod` | **生成卡普空 RE 引擎 REFramework Lua Mod 骨架 (怪猎/生化/DMC5)** | 无 |
+| `install_reframework_mod` | 安装 REFramework Lua Mod 至游戏目录（带回滚日志记录） | 无 |
+| `check_install_conflicts` | **安装冲突预检**：检查目标文件是否与现有文件或其他已装 Mod 冲突 | 无 |
+| `list_installs` | 列出当前游戏所有已安装的 Mod 及其文件记录 | 无 |
+| `uninstall_mod` | **安全卸载 Mod**：删除该 Mod 文件、还原被覆盖原文件并清理残留空目录 | 无 |
+| `rollback_game` | **一键全量回滚**：逆序撤销所有 Mod 安装，安全恢复原版纯净游戏 | 无 |
 | `rea_fast_search` | 秒级搜索 .NET 成员（免全量反编译） | morluto/rea |
 | `rea_disassemble` | 反汇编/反编译指定 Native 函数 | morluto/rea |
 | `read_mod_logs` | **运行时日志诊断**：查看 BepInEx/UE4SS/tModLoader 日志并自动检测异常 | 无 |
@@ -56,7 +63,8 @@ game-mod-agent/
 | `list_save_backups` | 列出该游戏的所有存档快照历史 | 无 |
 | `restore_save_backup` | **安全还原存档**：遭遇坏档时一键安全还原历史快照 | 无 |
 | `check_update` / `update_mod` | 检查并拉取 GitHub 最新版本 Mod DLL | 网络 |
-| `package_mod` | 打包 Mod 为 Thunderstore/Nexus 风格 ZIP；编译型 Mod 必须先 build，UE4SS Lua Mod 可直接打包源文件 | 无 |
+| `package_mod` | 打包 Mod 为 Thunderstore/Nexus 风格 ZIP；支持 Unity、Unreal、RE-Engine 等 | 无 |
+| `validate_package` | **分发包完整性校验**：检查 ZIP 清单规范、README 与载荷有效性 | 无 |
 
 **内存读写和连续值扫描今天就能用**（纯 ctypes）。终端执行 `python -m agmod.doctor` 可一键查看本机开发环境就绪度。
 
