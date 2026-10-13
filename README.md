@@ -31,7 +31,7 @@ game-mod-agent/
 | `check_environment` | **环境健康自检 (Doctor)**：检查 Python、.NET SDK、反编译工具与 REA 就绪状态 | 无 |
 | `inspect_feature` | **一键意图侦测**：自动识别引擎、秒级检索字段并推荐最佳方案 | 无 |
 | `plan_mod` | **自然语言生成 Mod 项目计划**：输出 ModSpec、MODDING_PLAN 和引擎骨架 | 无 |
-| `validate_mod_project` | 校验 ModSpec、入口文件和引擎必需文件 | 无 |
+| `validate_mod_project` | 校验 ModSpec、入口文件和引擎必需文件；支持 `pre_build` / `post_build` | 无 |
 | `detect_engine` | 识别游戏引擎（Unity / Unreal / .NET-XNA 等） | 无 |
 | `dump_structures` | 恢复结构（反编译/dump） | Mono: ilspycmd；IL2CPP: Cpp2IL |
 | `find_field` | 在结构里搜字段名 | dump 之后 |

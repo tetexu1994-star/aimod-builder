@@ -44,11 +44,11 @@ _TYPE_TO_USING = {
 @dataclass
 class CompileError:
     file: str
-    line: int
-    column: int
     code: str
     message: str
     severity: str
+    line: int = 0
+    column: int = 0
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -68,6 +68,40 @@ def parse_dotnet_errors(compiler_output: str) -> list[CompileError]:
                 severity=match.group("severity"),
             )
         )
+    generic = re.compile(
+        r"^(?P<prefix>.*?)(?:\s:\s|\s+)(?P<severity>error|warning)\s+(?P<code>[A-Z]{2,10}\d{2,6}):\s*(?P<msg>[^\r\n]+)",
+        re.MULTILINE,
+    )
+    known = {(e.file, e.code, e.line, e.column) for e in results}
+    for match in generic.finditer(compiler_output):
+        if match.group("code").startswith("CS"):
+            continue
+        prefix = match.group("prefix").strip()
+        file_name = os.path.basename(prefix) if prefix else "build"
+        item = CompileError(
+            file=file_name,
+            code=match.group("code"),
+            message=match.group("msg").strip(),
+            severity=match.group("severity"),
+        )
+        key = (item.file, item.code, item.line, item.column)
+        if key not in known:
+            results.append(item)
+            known.add(key)
+    bare = re.compile(r"^(?P<code>[A-Z]{2,10}\d{2,6}):\s*(?P<msg>[^\r\n]+)", re.MULTILINE)
+    for match in bare.finditer(compiler_output):
+        if match.group("code").startswith("CS"):
+            continue
+        item = CompileError(
+            file="build",
+            code=match.group("code"),
+            message=match.group("msg").strip(),
+            severity="error",
+        )
+        key = (item.file, item.code, item.line, item.column)
+        if key not in known:
+            results.append(item)
+            known.add(key)
     return results
 
 
@@ -80,7 +114,7 @@ def suggest_fixes(errors: list[CompileError]) -> list[str]:
 
         if err.code == "CS0246":  # Type or namespace not found
             for type_name, using_stmt in _TYPE_TO_USING.items():
-                if f"'{type_name}'" in err.message or f"<{type_name}>" in err.message or type_name in err.message:
+                if re.search(rf"(?<![A-Za-z0-9_]){re.escape(type_name)}(?![A-Za-z0-9_])", err.message):
                     suggestion = f"{err.file}:{err.line} Missing namespace: add `{using_stmt}` at top of file"
                     if suggestion not in suggestions:
                         suggestions.append(suggestion)
@@ -96,19 +130,32 @@ def suggest_fixes(errors: list[CompileError]) -> list[str]:
 
         elif err.code == "CS0117":  # Does not contain a definition
             suggestions.append(f"{err.file}:{err.line} Member not found: check API spelling or game version differences")
+        elif err.code.startswith("NETSDK"):
+            suggestions.append(f"{err.file}: Restore/build prerequisites first ({err.code}: {err.message})")
+        elif err.code.startswith("MSB"):
+            suggestions.append(f"{err.file}: Check project path/tooling ({err.code}: {err.message})")
+        elif err.code.startswith("NU"):
+            suggestions.append(f"{err.file}: Restore NuGet dependencies ({err.code}: {err.message})")
 
     return suggestions
 
 
-def diagnose_build_output(output: str) -> dict:
+def diagnose_build_output(output: str, return_code: int | None = None) -> dict:
     """Analyze compiler output and return a structured diagnostic report."""
     all_hits = parse_dotnet_errors(output)
     errors = [e for e in all_hits if e.severity == "error"]
     warnings = [e for e in all_hits if e.severity == "warning"]
     fixes = suggest_fixes(errors)
 
+    if return_code not in (None, 0) and not errors:
+        detail = next((line.strip() for line in output.splitlines() if line.strip()), "unknown build failure")
+        errors = [CompileError(file="build", code="BUILD_FAILED", message=detail, severity="error")]
+        fixes = suggest_fixes(errors)
     summary = "Build succeeded with no errors"
-    if errors:
+    if errors or return_code not in (None, 0):
+        if not errors:
+            errors = [CompileError(file="build", code="BUILD_FAILED", message="Build failed without a recognized compiler diagnostic", severity="error")]
+            fixes = suggest_fixes(errors)
         summary = f"Build failed with {len(errors)} error(s): " + ", ".join(
             f"{e.code} in {e.file}:{e.line}" for e in errors[:3]
         )
@@ -134,7 +181,7 @@ def auto_heal_csharp_source(source_code: str, errors: list[CompileError]) -> tup
     for err in errors:
         if err.code == "CS0246":
             for type_name, using_stmt in _TYPE_TO_USING.items():
-                if type_name in err.message and using_stmt not in source_code:
+                if re.search(rf"(?<![A-Za-z0-9_]){re.escape(type_name)}(?![A-Za-z0-9_])", err.message) and using_stmt not in source_code:
                     missing_usings.add(using_stmt)
 
     if missing_usings:
@@ -149,4 +196,7 @@ def auto_heal_csharp_source(source_code: str, errors: list[CompileError]) -> tup
             applied.append(f"Injected `{u}`")
             insert_idx += 1
 
-    return "\n".join(lines), applied
+    result = "\n".join(lines)
+    if source_code.endswith(("\n", "\r\n")):
+        result += "\n"
+    return result, applied

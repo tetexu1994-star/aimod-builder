@@ -35,6 +35,21 @@ class TestLogs(unittest.TestCase):
 
 
 class TestSaves(unittest.TestCase):
+    def test_backup_ids_do_not_collide_and_symlinks_are_skipped(self):
+        with tempfile.TemporaryDirectory() as game_dir, tempfile.TemporaryDirectory() as cache_dir:
+            save_dir = os.path.join(game_dir, "saves")
+            os.makedirs(save_dir)
+            with open(os.path.join(save_dir, "slot.dat"), "w") as f:
+                f.write("OK")
+            with open(os.path.join(game_dir, "outside.dat"), "w") as f:
+                f.write("SECRET")
+            os.symlink(os.path.join(game_dir, "outside.dat"), os.path.join(save_dir, "link.dat"))
+            first = saves.create_save_backup(game_dir, tag="same", cache_root=cache_dir)
+            second = saves.create_save_backup(game_dir, tag="same", cache_root=cache_dir)
+            self.assertNotEqual(first["backup_id"], second["backup_id"])
+            self.assertEqual(first["files_count"], 1)
+            self.assertEqual(first["skipped_symlinks"], 1)
+
     def test_backup_and_restore_cycle(self):
         with tempfile.TemporaryDirectory() as game_dir, tempfile.TemporaryDirectory() as cache_dir:
             # 1. Create a dummy save directory

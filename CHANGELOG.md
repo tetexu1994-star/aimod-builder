@@ -9,7 +9,7 @@
   - Parses MSBuild/dotnet `CSxxxx` error codes, line numbers, and error descriptions.
   - Generates targeted fix suggestions (missing using directives, missing semicolons, unmatched braces).
   - Automatically heals common C# errors (e.g. injecting missing `using UnityEngine;` / `using HarmonyLib;`) and retries `dotnet build` up to 2 attempts.
-- Added end-to-end integration test suite (`tests/test_e2e_pipeline.py`) validating the complete lifecycle from doctor check, save backup, feature inspection, planning, validation, error healing, to log diagnostics and restore.
+- Added integration workflow tests (`tests/test_e2e_pipeline.py`) validating the simulated lifecycle from doctor check, save backup, feature inspection, planning, validation, error healing, to log diagnostics and restore. Real Windows/game-process E2E coverage remains a follow-up.
 - Added `read_mod_logs` for tailing mod framework logs (BepInEx `LogOutput.log`, UE4SS `UE4SS.log`, tModLoader `Launch.log`) with automated diagnostics for `NullReferenceException`, failed patches, missing methods, and Lua syntax errors.
 - Added savegame snapshot and recovery manager (`create_save_backup`, `list_save_backups`, `restore_save_backup`) with traversal-safe zip extraction to protect players from save corruption before mod injection.
 - Added `plan_mod` for turning a natural-language mod request into:
@@ -22,12 +22,12 @@
 
 ### Changed
 
-- `build_mod` now uses `build_plugin_with_diagnostics`, returning structured CS error codes, file lines, and actionable fix suggestions on failure instead of raw unparsed stack traces.
+- `build_mod` now uses `build_plugin_with_diagnostics`, returning structured compiler diagnostics and actionable fix suggestions on failure; non-CS MSBuild/NETSDK failures are reported too.
 - `plan_mod` now automatically calls `inspect_feature` on request keywords, injecting detected symbol candidates and route recommendations into `mod-spec.json`.
 - REA integration now targets the current `rea-agents` command contract (`function`, `xrefs`) and invokes the CLI without `shell=True`.
 - Process-memory tools now fail closed when the target cannot be inspected or an anti-cheat service is active.
 - Scan sessions preserve non-`int32` kinds and track previous values per address for relative scans.
-- Structure fingerprints hash complete file contents, and decompiler output directories are fingerprint-scoped to avoid stale dumps after game updates.
+- Structure fingerprints use bounded head/middle/tail samples, and decompiler output directories are fingerprint-scoped to avoid stale dumps after game updates.
 - Update downloads require the exact declared DLL asset, reject path traversal, download atomically, and verify SHA-256 digests when GitHub provides them.
 - Packaging rejects empty packages, validates semantic versions and manifest entries, supports UE4SS Lua source packages, and writes a usable README.
 - Generated C#, Lua, and tModLoader metadata escape or normalize user-provided names and versions.
@@ -37,12 +37,19 @@
 ### Fixed
 
 - `create_save_backup` / `list_save_backups` / `restore_save_backup` crashed with `UnsafePathError` for game directories containing spaces or non-ASCII characters (e.g. "Monster Hunter World"). The backup key is now slugified via `paths.slugify`.
-- Structure fingerprints hashed complete file contents, forcing multi-GB Unreal `.pak` archives to be fully read on every fingerprint computation. Fingerprints now use file size plus bounded head/tail sampling.
+- Structure fingerprints hashed complete file contents, forcing multi-GB Unreal `.pak` archives to be fully read on every fingerprint computation. Fingerprints now use file size plus bounded head/middle/tail sampling.
 - `scaffold_ue4ss_mod` wrote `mod.json` as an ad-hoc dict; it now uses `ModManifest` so every engine scaffold emits a consistent manifest schema.
+- `validate_mod_project` now supports `pre_build`/`post_build`, so compiled Unity/tModLoader projects can be validated before their DLL exists.
+- Build diagnostics now recognize MSBuild/NETSDK/NUGet failures instead of reporting non-CS failures as successful builds.
+- Planning now extracts Chinese feature terms, filters command verbs, checks multiple keywords, and records inspection warnings.
+- Save backups now use collision-resistant IDs, skip symlinks, and preserve distinct source directories during restore.
+- Log discovery now rejects symlinks escaping the game directory and bounds `tail_lines`.
+- C# auto-repair now matches type names precisely and rolls back its source edit when the retry build still fails.
+- IL2CPP doctor checks now match the adapter's actual `Cpp2IL` requirement instead of treating Il2CppDumper as equivalent.
 
 ### Verification
 
-- `pytest`: 35 unit and E2E integration tests passed in 0.09s.
+- `python -m unittest discover -s tests`: 41 unit and integration workflow tests passed.
 - `python -m compileall -q server.py agmod tests`: passed.
 - `python verify.py`: passed (all 33 tools wired and verified).
 - `python -m agmod.doctor`: passed with structured report output.

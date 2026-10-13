@@ -102,9 +102,9 @@ def plan_mod(
 
 
 @mcp.tool()
-def validate_mod_project(project_dir: str) -> str:
-    """Validate the generated Mod project shape before build, install, or package."""
-    return json.dumps(planning.validate_project(project_dir), ensure_ascii=False, indent=2)
+def validate_mod_project(project_dir: str, stage: str = "pre_build") -> str:
+    """Validate a Mod project before (`pre_build`) or after (`post_build`) compilation."""
+    return json.dumps(planning.validate_project(project_dir, stage=stage), ensure_ascii=False, indent=2)
 
 
 @mcp.tool()
@@ -328,14 +328,14 @@ def scaffold_mod(project_dir: str, game_dir: str, mod_id: str, mod_name: str, mo
 @mcp.tool()
 def build_mod(project_dir: str, game_dir: str) -> str:
     """Build the BepInEx plugin and install the DLL into the game's BepInEx/plugins/."""
-    installed = bepinex.build_plugin(project_dir, game_dir)
-    return json.dumps({"installed": installed})
+    result = bepinex.build_plugin_with_diagnostics(project_dir, game_dir)
+    return json.dumps(result, ensure_ascii=False, indent=2)
 
 
 @mcp.tool()
-def diagnose_build_error(compiler_output: str) -> str:
+def diagnose_build_error(compiler_output: str, return_code: int = 0) -> str:
     """Parse compiler error outputs (CSxxxx) and generate automated repair suggestions."""
-    return json.dumps(repair.diagnose_build_output(compiler_output), ensure_ascii=False, indent=2)
+    return json.dumps(repair.diagnose_build_output(compiler_output, return_code=return_code), ensure_ascii=False, indent=2)
 
 
 @mcp.tool()

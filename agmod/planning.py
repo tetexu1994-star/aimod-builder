@@ -19,6 +19,17 @@ def _slug(value: str) -> str:
     return value or "ai-mod"
 
 
+_STOPWORDS = {
+    "add", "set", "make", "give", "create", "enable", "disable", "increase", "decrease",
+    "the", "and", "with", "for", "from", "into", "game", "mod", "please",
+}
+_FEATURE_TERMS = {
+    "金币": "gold", "金钱": "money", "血量": "health", "生命": "health",
+    "经验": "experience", "速度": "speed", "伤害": "damage", "物品": "item",
+    "背包": "inventory", "弹药": "ammo", "任务": "quest",
+}
+
+
 def _route(engine_id: str, adapter) -> tuple[str, list[str]]:
     if engine_id == "unity":
         return "BepInEx plugin + Harmony patch", ["BepInEx", ".NET SDK", "ilspycmd/Cpp2IL as needed"]
@@ -52,17 +63,31 @@ def create_mod_plan(
     route, prerequisites = _route(engine["id"], adapter)
 
     # Automated feature inspection linked with the request
-    keywords = re.findall(r"[A-Za-z0-9_]{3,}", request)
+    keywords: list[str] = []
+    for zh, en in _FEATURE_TERMS.items():
+        if zh in request:
+            keywords.append(en)
+    keywords.extend(
+        token for token in re.findall(r"[A-Za-z0-9_]{3,}", request)
+        if token.lower() not in _STOPWORDS
+    )
+    if isinstance(customizations, dict):
+        keywords.extend(str(key) for key in customizations.keys())
+    keywords = list(dict.fromkeys(keywords))[:6]
+    if not keywords:
+        keywords = [request.strip()]
     candidate_symbols: list[str] = []
     recommended_strategy: dict = {}
-    if keywords:
+    inspection_warnings: list[str] = []
+    for keyword in keywords:
         try:
-            ins = inspector.inspect_feature(game_dir, keywords[0])
+            ins = inspector.inspect_feature(game_dir, keyword)
             if ins.get("success"):
-                candidate_symbols = ins.get("symbol_matches", [])
-                recommended_strategy = ins.get("recommended_strategy", {})
+                candidate_symbols.extend(ins.get("symbol_matches", []))
+                recommended_strategy = recommended_strategy or ins.get("recommended_strategy", {})
         except Exception:
-            pass
+            inspection_warnings.append(f"inspection failed for keyword: {keyword}")
+    candidate_symbols = list(dict.fromkeys(candidate_symbols))
 
     spec = {
         "schema_version": 1,
@@ -75,6 +100,8 @@ def create_mod_plan(
         "route": route,
         "prerequisites": prerequisites,
         "candidate_symbols": candidate_symbols,
+        "inspection_keywords": keywords,
+        "inspection_warnings": inspection_warnings,
         "recommended_strategy": recommended_strategy,
         "expected_artifacts": ["source", "manifest", "build output", "install preview", "verification report"],
         "validation": ["compile", "install preview", "runtime read-back or game log", "package contents"],
@@ -138,8 +165,10 @@ confirm before installing loaders, and never bypass anti-cheat, DRM, or ownershi
 """
 
 
-def validate_project(project_dir: str) -> dict:
+def validate_project(project_dir: str, stage: str = "pre_build") -> dict:
     """Validate the stable project shape before build/install/package."""
+    if stage not in {"pre_build", "post_build"}:
+        raise ValueError("stage must be pre_build or post_build")
     errors: list[str] = []
     warnings: list[str] = []
     try:
@@ -149,7 +178,7 @@ def validate_project(project_dir: str) -> dict:
     if manifest.entry:
         try:
             entry_path = safe_join(project_dir, manifest.entry)
-            if not os.path.isfile(entry_path):
+            if stage == "post_build" and not os.path.isfile(entry_path):
                 errors.append(f"manifest entry does not exist: {manifest.entry}")
         except UnsafePathError as exc:
             errors.append(str(exc))

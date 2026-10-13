@@ -13,14 +13,13 @@ import os
 from dataclasses import dataclass, field
 
 def fingerprint_files(paths) -> str:
-    """Order-independent fingerprint: file size + bounded head/tail content sample.
+    """Order-independent fingerprint: size plus bounded head/middle/tail samples.
 
-    Bounded on purpose — multi-GB archives (e.g. Unreal `Content/Paks/*.pak`)
-    must not force a full read on every fingerprint computation. Size + a
-    head/tail sample detects content changes with high probability while
-    staying fast.
+    Bounded on purpose so multi-GB archives do not force a full read. Small
+    files are hashed completely; large files include evenly spaced middle
+    samples so a same-size change outside the head/tail is still detected.
     """
-    SAMPLE = 512 * 1024
+    SAMPLE = 256 * 1024
     h = hashlib.sha256()
     entries = []
     for path in paths:
@@ -28,10 +27,17 @@ def fingerprint_files(paths) -> str:
             size = os.path.getsize(path)
             digest = hashlib.sha256()
             with open(path, "rb") as f:
-                digest.update(f.read(SAMPLE))
-                if size > SAMPLE:
-                    f.seek(size - SAMPLE)
-                    digest.update(f.read(SAMPLE))
+                if size <= SAMPLE * 4:
+                    digest.update(f.read())
+                else:
+                    offsets = [0]
+                    offsets.extend(int(size * fraction) for fraction in (0.2, 0.4, 0.6, 0.8))
+                    offsets.append(size - SAMPLE)
+                    for offset in dict.fromkeys(offsets):
+                        f.seek(max(0, min(offset, max(0, size - SAMPLE))))
+                        chunk = f.read(SAMPLE)
+                        digest.update(str(offset).encode())
+                        digest.update(chunk)
         except OSError:
             continue
         entries.append((os.path.basename(path), size, digest.hexdigest()))

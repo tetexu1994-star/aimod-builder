@@ -98,14 +98,27 @@ def check_environment() -> dict:
     # 3. REA CLI (morluto/rea)
     rea_bin = _find_rea()
     if rea_bin:
+        rea_version = "installed"
+        rea_status = "ok"
+        rea_remedy = ""
+        try:
+            rea_check = subprocess.run([rea_bin, "--version"], capture_output=True, text=True, timeout=5, check=False)
+            if rea_check.returncode != 0:
+                rea_status = "warn"
+                rea_remedy = "REA binary exists but failed its version check"
+            else:
+                rea_version = (rea_check.stdout or rea_check.stderr or "installed").strip()[:120]
+        except Exception as exc:
+            rea_status = "warn"
+            rea_remedy = f"REA binary exists but could not be executed: {exc}"
         checks.append(
             ToolCheck(
                 name="REA (morluto/rea)",
                 category="reverse_engineering",
-                status="ok",
-                version="installed",
+                status=rea_status,
+                version=rea_version,
                 path=rea_bin,
-                remedy="",
+                remedy=rea_remedy,
             )
         )
     else:
@@ -148,7 +161,7 @@ def check_environment() -> dict:
         actions_needed.append("dotnet tool install -g ilspycmd")
 
     # 5. Cpp2IL / Il2CppDumper
-    cpp2il = shutil.which("Cpp2IL") or shutil.which("Il2CppDumper")
+    cpp2il = shutil.which("Cpp2IL")
     if cpp2il:
         checks.append(
             ToolCheck(
@@ -168,13 +181,18 @@ def check_environment() -> dict:
                 status="optional_missing",
                 version="",
                 path="NOT FOUND",
-                remedy="Download Cpp2IL or Il2CppDumper and put on PATH for Unity IL2CPP games",
+                remedy="Install Cpp2IL on PATH; the current Unity adapter invokes Cpp2IL directly",
             )
         )
 
     # 6. Cache Directory
-    os.makedirs(CACHE_ROOT, exist_ok=True)
-    cache_writable = os.access(CACHE_ROOT, os.W_OK)
+    cache_error = ""
+    try:
+        os.makedirs(CACHE_ROOT, exist_ok=True)
+        cache_writable = os.access(CACHE_ROOT, os.W_OK)
+    except OSError as exc:
+        cache_writable = False
+        cache_error = str(exc)
     checks.append(
         ToolCheck(
             name="Cache & Backups Root",
@@ -182,7 +200,7 @@ def check_environment() -> dict:
             status="ok" if cache_writable else "error",
             version="",
             path=os.path.abspath(CACHE_ROOT),
-            remedy="Ensure write permissions on CACHE_ROOT" if not cache_writable else "",
+            remedy=(cache_error or "Ensure write permissions on CACHE_ROOT") if not cache_writable else "",
         )
     )
 

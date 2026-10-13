@@ -8,11 +8,12 @@ from __future__ import annotations
 import glob
 import json
 import os
+import shutil
 import time
 import zipfile
 
 from .config import CACHE_ROOT
-from .paths import safe_component, safe_extract_zip, safe_join, slugify
+from .paths import UnsafePathError, safe_component, safe_extract_zip, safe_join, slugify
 
 _COMMON_SAVE_PATTERNS = [
     "saves",
@@ -51,7 +52,7 @@ def _get_backup_dir(game_dir: str, cache_root: str = "") -> str:
 def create_save_backup(game_dir: str, tag: str = "pre-mod", custom_save_dir: str = "", cache_root: str = "") -> dict:
     """Create a timestamped zip snapshot of the game's save directories."""
     tag = safe_component(tag or "backup", "tag")
-    save_dirs = [os.path.abspath(custom_save_dir)] if custom_save_dir else detect_save_dirs(game_dir)
+    save_dirs = [os.path.abspath(custom_save_dir)] if custom_save_dir else list(dict.fromkeys(detect_save_dirs(game_dir)))
 
     if not save_dirs:
         return {
@@ -61,20 +62,32 @@ def create_save_backup(game_dir: str, tag: str = "pre-mod", custom_save_dir: str
 
     bdir = _get_backup_dir(game_dir, cache_root)
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    backup_id = f"save_{timestamp}_{tag}"
+    backup_id = f"save_{timestamp}_{time.time_ns()}_{tag}"
     archive_path = os.path.join(bdir, f"{backup_id}.zip")
 
     files_count = 0
+    skipped_links = 0
+    source_entries = []
     with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        for sdir in save_dirs:
+        for index, sdir in enumerate(save_dirs):
             if not os.path.isdir(sdir):
                 continue
-            base_name = os.path.basename(sdir)
-            for root, _, files in os.walk(sdir):
+            base_name = os.path.basename(sdir) or "save"
+            archive_root = f"{index:02d}-{slugify(base_name, fallback='save')}"
+            source_entries.append({
+                "archive_root": archive_root,
+                "source_dir": os.path.abspath(sdir),
+                "basename": base_name,
+            })
+            for root, dirs, files in os.walk(sdir, followlinks=False):
+                dirs[:] = [d for d in dirs if not os.path.islink(os.path.join(root, d))]
                 for file in files:
                     full_p = os.path.join(root, file)
+                    if os.path.islink(full_p):
+                        skipped_links += 1
+                        continue
                     rel_p = os.path.relpath(full_p, sdir)
-                    arc_name = os.path.join(base_name, rel_p).replace("\\", "/")
+                    arc_name = os.path.join(archive_root, rel_p).replace("\\", "/")
                     zf.write(full_p, arc_name)
                     files_count += 1
 
@@ -85,7 +98,9 @@ def create_save_backup(game_dir: str, tag: str = "pre-mod", custom_save_dir: str
         "tag": tag,
         "archive_path": archive_path,
         "source_dirs": save_dirs,
+        "sources": source_entries,
         "files_count": files_count,
+        "skipped_symlinks": skipped_links,
         "size_bytes": size_bytes,
     }
     with open(os.path.join(bdir, f"{backup_id}.json"), "w", encoding="utf-8") as f:
@@ -117,25 +132,48 @@ def restore_save_backup(game_dir: str, backup_id: str, destination: str = "", ca
     if not os.path.isfile(zip_path):
         return {"success": False, "error": f"Backup archive not found: {backup_id}"}
 
-    target_dir = destination
-    if not target_dir and os.path.isfile(meta_path):
+    meta = {}
+    if os.path.isfile(meta_path):
         try:
             with open(meta_path, "r", encoding="utf-8") as f:
                 meta = json.load(f)
-                srcs = meta.get("source_dirs", [])
-                if srcs:
-                    target_dir = os.path.dirname(srcs[0])
         except (OSError, ValueError):
             pass
 
-    if not target_dir:
-        target_dir = game_dir
-
-    os.makedirs(target_dir, exist_ok=True)
-    safe_extract_zip(zip_path, target_dir)
+    source_entries = meta.get("sources", [])
+    if source_entries:
+        restored_files = 0
+        with zipfile.ZipFile(zip_path) as zf:
+            for entry in source_entries:
+                root = entry.get("archive_root", "")
+                source_dir = entry.get("source_dir", "")
+                basename = entry.get("basename") or os.path.basename(source_dir)
+                target_dir = os.path.abspath(destination and os.path.join(destination, basename) or source_dir)
+                os.makedirs(target_dir, exist_ok=True)
+                prefix = root.rstrip("/") + "/"
+                for info in zf.infolist():
+                    name = info.filename.replace("\\", "/")
+                    if not name.startswith(prefix):
+                        continue
+                    rel = name[len(prefix):]
+                    if not rel:
+                        continue
+                    target = safe_join(target_dir, rel)
+                    os.makedirs(os.path.dirname(target), exist_ok=True)
+                    with zf.open(info) as src, open(target, "wb") as dst:
+                        shutil.copyfileobj(src, dst)
+                    restored_files += 1
+        restored_to = os.path.abspath(destination) if destination else os.path.abspath(source_entries[0].get("source_dir", game_dir))
+    else:
+        target_dir = destination or game_dir
+        os.makedirs(target_dir, exist_ok=True)
+        safe_extract_zip(zip_path, target_dir)
+        restored_files = 0
+        restored_to = os.path.abspath(target_dir)
 
     return {
         "success": True,
         "backup_id": backup_id,
-        "restored_to": os.path.abspath(target_dir),
+        "restored_to": restored_to,
+        "restored_files": restored_files,
     }

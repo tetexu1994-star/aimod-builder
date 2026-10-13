@@ -10,7 +10,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agmod import memory, pack, rea, safety, updater
+from agmod import logs, memory, pack, rea, repair, safety, updater
 from agmod.paths import UnsafePathError, safe_extract_zip, safe_join
 from agmod.planning import create_mod_plan, validate_project
 from agmod.structures import fingerprint_files
@@ -34,6 +34,17 @@ class TestStability(unittest.TestCase):
                 f.write(b"B")
             self.assertNotEqual(first, fingerprint_files([path]))
 
+    def test_fingerprint_sees_middle_file_changes(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "game.pak")
+            with open(path, "wb") as f:
+                f.write(b"A" * 2_000_000)
+            first = fingerprint_files([path])
+            with open(path, "r+b") as f:
+                f.seek(1_000_000)
+                f.write(b"B")
+            self.assertNotEqual(first, fingerprint_files([path]))
+
     def test_rea_uses_current_commands_without_shell(self):
         result = mock.Mock(returncode=0, stdout='{"ok": true}', stderr="")
         with mock.patch.object(rea, "_find_rea", return_value="rea"), mock.patch.object(rea.subprocess, "run", return_value=result) as run:
@@ -48,6 +59,12 @@ class TestStability(unittest.TestCase):
             rea.call_graph("game.exe", "Player::Update")
             args, _ = run.call_args
         self.assertEqual(args[0][:3], ["rea", "xrefs", "game.exe"])
+
+    def test_build_diagnostics_report_non_cs_failure(self):
+        result = repair.diagnose_build_output("NETSDK1004: Assets file not found.", return_code=1)
+        self.assertTrue(result["has_errors"])
+        self.assertEqual(result["errors"][0]["code"], "NETSDK1004")
+        self.assertIn("Build failed", result["summary"])
 
     def test_update_rejects_traversal_and_non_exact_assets(self):
         with tempfile.TemporaryDirectory() as game:
@@ -93,6 +110,20 @@ class TestStability(unittest.TestCase):
             self.assertTrue(Path(project, "scripts", "main.lua").is_file())
             self.assertTrue(validate_project(project)["ok"])
 
+    def test_plan_prebuild_accepts_compiled_entry(self):
+        with tempfile.TemporaryDirectory() as game, tempfile.TemporaryDirectory() as project:
+            managed = Path(game, "Game_Data", "Managed")
+            managed.mkdir(parents=True)
+            (managed / "Assembly-CSharp.dll").write_bytes(b"")
+            create_mod_plan(game, "增加金币", project, mod_id="demo-mod", mod_name="Demo")
+            self.assertTrue(validate_project(project, stage="pre_build")["ok"])
+
+    def test_plan_extracts_chinese_feature_terms(self):
+        with tempfile.TemporaryDirectory() as game, tempfile.TemporaryDirectory() as project:
+            Path(game, "Game.uproject").write_text("{}", encoding="utf-8")
+            spec = create_mod_plan(game, "增加金币", project, mod_id="demo-mod", mod_name="Demo")
+            self.assertIn("gold", spec["inspection_keywords"])
+
     def test_safe_zip_rejects_traversal(self):
         import zipfile
         with tempfile.TemporaryDirectory() as d:
@@ -101,6 +132,14 @@ class TestStability(unittest.TestCase):
                 z.writestr("../escape.txt", "bad")
             with self.assertRaises(UnsafePathError):
                 safe_extract_zip(archive, os.path.join(d, "out"))
+
+    def test_log_reader_ignores_symlinks_outside_game(self):
+        with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as outside:
+            target = Path(outside, "secret.log")
+            target.write_text("SECRET", encoding="utf-8")
+            Path(d, "BepInEx").mkdir()
+            (Path(d, "BepInEx") / "LogOutput.log").symlink_to(target)
+            self.assertFalse(logs.read_mod_logs(d)["found"])
 
     def test_safety_rejects_invalid_pid(self):
         self.assertFalse(safety.check_target(0)[0])

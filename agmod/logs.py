@@ -9,7 +9,6 @@ import glob
 import os
 import re
 
-from .paths import safe_join
 
 # Known log patterns across mod frameworks
 _LOG_CANDIDATES = [
@@ -44,16 +43,24 @@ def find_mod_logs(game_dir: str) -> list[str]:
     if not os.path.isdir(game_dir):
         return hits
 
+    root = os.path.realpath(game_dir)
     for pattern in _LOG_CANDIDATES:
         full_pattern = os.path.join(game_dir, pattern)
         for match in glob.glob(full_pattern):
-            if os.path.isfile(match):
+            real = os.path.realpath(match)
+            try:
+                contained = os.path.commonpath([root, real]) == root
+            except ValueError:
+                contained = False
+            if os.path.isfile(match) and not os.path.islink(match) and contained:
                 hits.append(os.path.abspath(match))
     return hits
 
 
 def read_mod_logs(game_dir: str, tail_lines: int = 120) -> dict:
     """Read recent lines of the mod log and perform automated diagnostics."""
+    if not isinstance(tail_lines, int) or not 1 <= tail_lines <= 10000:
+        raise ValueError("tail_lines must be between 1 and 10000")
     logs = find_mod_logs(game_dir)
     if not logs:
         return {

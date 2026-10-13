@@ -119,6 +119,9 @@ def build_plugin_with_diagnostics(project_dir: str, game_dir: str, auto_repair: 
     out_dir = os.path.join(project_dir, "out")
     cmd = ["dotnet", "build", "-c", "Release", "-o", out_dir]
     repairs_applied = []
+    plugin_path = os.path.join(project_dir, "Plugin.cs")
+    original_source = ""
+    repair_backup = ""
 
     for attempt in range(2 if auto_repair else 1):
         try:
@@ -151,23 +154,26 @@ def build_plugin_with_diagnostics(project_dir: str, game_dir: str, auto_repair: 
 
         # Build failed: run diagnostics
         combined_output = (res.stdout or "") + "\n" + (res.stderr or "")
-        diag = repair.diagnose_build_output(combined_output)
+        diag = repair.diagnose_build_output(combined_output, return_code=res.returncode)
 
         if auto_repair and attempt == 0 and diag["errors"]:
             # Try auto-healing Plugin.cs
-            plugin_path = os.path.join(project_dir, "Plugin.cs")
             if os.path.isfile(plugin_path):
                 with open(plugin_path, "r", encoding="utf-8") as f:
                     src = f.read()
-                err_objs = repair.parse_dotnet_errors(combined_output)
+                err_objs = [e for e in repair.parse_dotnet_errors(combined_output) if e.file.lower() == "plugin.cs"]
                 new_src, applied = repair.auto_heal_csharp_source(src, err_objs)
                 if applied:
+                    original_source = src
+                    repair_backup = plugin_path + ".pre-repair"
+                    with open(repair_backup, "w", encoding="utf-8") as f:
+                        f.write(src)
                     with open(plugin_path, "w", encoding="utf-8") as f:
                         f.write(new_src)
                     repairs_applied.extend(applied)
                     continue  # Retry build on next attempt
 
-        return {
+        result = {
             "success": False,
             "error_code": res.returncode,
             "summary": diag["summary"],
@@ -175,6 +181,12 @@ def build_plugin_with_diagnostics(project_dir: str, game_dir: str, auto_repair: 
             "suggested_fixes": diag["suggested_fixes"],
             "raw_output": combined_output[:2000],
         }
+        if repairs_applied and original_source:
+            with open(plugin_path, "w", encoding="utf-8") as f:
+                f.write(original_source)
+            result["repair_rolled_back"] = True
+            result["repair_backup"] = repair_backup
+        return result
 
     return {"success": False, "error": "Build failed after repair attempts"}
 
