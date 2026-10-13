@@ -7,12 +7,12 @@ powerful Lua API that runs in-process without requiring MSVC/C++ compilation.
 from __future__ import annotations
 
 import glob
-import json
 import os
 import shutil
 
-from ..structures import StructureTable, fingerprint_files
+from ..manifest import ModManifest
 from ..paths import safe_component
+from ..structures import StructureTable, fingerprint_files
 from .base import BaseAdapter
 
 
@@ -101,18 +101,16 @@ class UnrealAdapter(BaseAdapter):
         with open(os.path.join(project_dir, "enabled.txt"), "w", encoding="utf-8") as f:
             f.write("1\n")
 
-        # 2. mod.json metadata
-        meta = {
-            "id": mod_id,
-            "name": mod_name,
-            "version": mod_version,
-            "author": author,
-            "engine": "unreal",
-            "framework": "UE4SS",
-            "entry": "scripts/main.lua",
-        }
-        with open(os.path.join(project_dir, "mod.json"), "w", encoding="utf-8") as f:
-            json.dump(meta, f, indent=2, ensure_ascii=False)
+        # 2. mod.json metadata (via ModManifest, consistent with other scaffolds)
+        ModManifest(
+            id=mod_id,
+            name=mod_name,
+            version=mod_version,
+            engine="unreal",
+            author=author,
+            entry="scripts/main.lua",
+            description="UE4SS Lua mod",
+        ).save(os.path.join(project_dir, "mod.json"))
 
         # 3. scripts/main.lua template
         lua_template = f"""-- {lua_name} (ID: {mod_id})

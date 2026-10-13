@@ -31,6 +31,7 @@
 
 - `create_save_backup` / `list_save_backups` / `restore_save_backup` crashed with `UnsafePathError` for game directories containing spaces or non-ASCII characters (e.g. "Monster Hunter World"). The backup key is now slugified via `paths.slugify`.
 - Structure fingerprints hashed complete file contents, forcing multi-GB Unreal `.pak` archives to be fully read on every fingerprint computation. Fingerprints now use file size plus bounded head/tail sampling.
+- `scaffold_ue4ss_mod` wrote `mod.json` as an ad-hoc dict; it now uses `ModManifest` so every engine scaffold emits a consistent manifest schema.
 
 ### Verification
 
