@@ -9,6 +9,7 @@
 - **绝对禁止**对带反作弊的在线游戏（EAC / BattlEye / VAC / Vanguard / Ricochet 等）attach、扫描或注入。
 - 不碰 DRM 破解、不联机作弊、不分发游戏本体文件。
 - 改内存前，如果改动不可逆或影响大（比如改一大堆字段），先向用户说明要改什么、值多少，再执行。
+- 任何安装/更新后游戏异常，先 `rollback_game(game_dir)` 恢复再排查，不要盲目叠加修改。
 
 ## 工作流（按顺序）
 
@@ -59,6 +60,16 @@
 2. `package_mod(project_dir)`；
 3. 检查包内没有游戏原始文件、反编译源码、密钥或未声明依赖；
 4. 只在用户确认后安装、发布或替换现有 Mod。
+
+### 回滚与卸载（改动后可逆）
+
+所有文件级安装（BepInEx / UE4SS mod / 插件 DLL / 更新）都会自动记入安装日志，并备份被覆盖的原文件：
+
+- `list_installs(game_dir)` —— 查看该游戏装过哪些 mod；
+- `uninstall_mod(game_dir, mod_id)` —— 卸载单个 mod（删除新增文件、还原覆盖的原文件）；
+- `rollback_game(game_dir)` —— 一键逆序撤销全部安装，恢复到装 mod 前的状态。
+
+**任何安装后游戏异常/崩溃，先执行 `rollback_game(game_dir)` 恢复，再排查原因。**
 
 ## 工具参数规范
 
