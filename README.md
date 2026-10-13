@@ -49,7 +49,10 @@ game-mod-agent/
 | `build_tmod_mod` | 编译 tModLoader mod | .NET 6 SDK |
 | `rea_fast_search` | 秒级搜索 .NET 成员（免全量反编译） | morluto/rea |
 | `rea_disassemble` | 反汇编/反编译指定 Native 函数 | morluto/rea |
-| `rea_call_graph` | 查看函数调用关系图与交叉引用 | morluto/rea |
+| `read_mod_logs` | **运行时日志诊断**：查看 BepInEx/UE4SS/tModLoader 日志并自动检测异常 | 无 |
+| `create_save_backup` | **存档快照备份**：修改内存或安装 Mod 前一键安全备份游戏存档 | 无 |
+| `list_save_backups` | 列出该游戏的所有存档快照历史 | 无 |
+| `restore_save_backup` | **安全还原存档**：遭遇坏档时一键安全还原历史快照 | 无 |
 | `check_update` / `update_mod` | 检查并拉取 GitHub 最新版本 Mod DLL | 网络 |
 | `package_mod` | 打包 Mod 为 Thunderstore/Nexus 风格 ZIP；编译型 Mod 必须先 build，UE4SS Lua Mod 可直接打包源文件 | 无 |
 

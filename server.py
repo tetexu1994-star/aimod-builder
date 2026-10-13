@@ -33,7 +33,7 @@ except ImportError:  # pragma: no cover
         def run(self):
             print(f"FastMCP '{self.name}' stub: mcp not installed. Install with `pip install mcp`")
 
-from agmod import bepinex, config, inspector, knowledge, memory, pack, pattern, planning, rea, safety, tmodloader, updater
+from agmod import bepinex, config, inspector, knowledge, logs, memory, pack, pattern, planning, rea, safety, saves, tmodloader, updater
 from agmod.adapters.unreal import UnrealAdapter
 from agmod.registry import adapters, detect_engine as _detect_engine, get_adapter
 from agmod.structures import load_table
@@ -434,6 +434,30 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
     """Package a built mod into a Thunderstore/Nexus-style zip (manifest.json + dlls)."""
     path = pack.package_mod(project_dir, output_dir or "")
     return json.dumps({"package": path})
+
+
+@mcp.tool()
+def read_mod_logs(game_dir: str, tail_lines: int = 120) -> str:
+    """Read recent lines of the mod framework log (BepInEx / UE4SS / tModLoader) with failure diagnostics."""
+    return json.dumps(logs.read_mod_logs(game_dir, tail_lines=tail_lines), ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def create_save_backup(game_dir: str, tag: str = "pre-mod", custom_save_dir: str = "") -> str:
+    """Create a safe timestamped ZIP backup of the game's save directories before modifying."""
+    return json.dumps(saves.create_save_backup(game_dir, tag=tag, custom_save_dir=custom_save_dir), ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def list_save_backups(game_dir: str) -> str:
+    """List all available savegame backups for this game."""
+    return json.dumps(saves.list_save_backups(game_dir), ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def restore_save_backup(game_dir: str, backup_id: str, destination: str = "") -> str:
+    """Restore a savegame backup snapshot back to its destination."""
+    return json.dumps(saves.restore_save_backup(game_dir, backup_id=backup_id, destination=destination), ensure_ascii=False, indent=2)
 
 
 def main() -> None:

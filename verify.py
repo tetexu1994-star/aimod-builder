@@ -26,6 +26,7 @@ tools = [
     "install_bepinex", "scaffold_mod", "build_mod",
     "scaffold_ue4ss_mod", "install_ue4ss_mod",
     "scaffold_tmod_mod", "build_tmod_mod",
+    "read_mod_logs", "create_save_backup", "list_save_backups", "restore_save_backup",
     "check_update", "update_mod", "package_mod",
     "rea_managed_members", "rea_analyze_js", "rea_inspect_pe",
     "rea_disassemble", "rea_call_graph", "rea_fast_search",

@@ -1,4 +1,4 @@
-"""Turn a natural-language request into a stable ModSpec and scaffold."""
+"""Turn a natural-language request into a stable ModSpec, scaffold, and inspection plan."""
 from __future__ import annotations
 
 import json
@@ -6,7 +6,7 @@ import os
 import re
 import unicodedata
 
-from . import bepinex, tmodloader
+from . import bepinex, inspector, tmodloader
 from .adapters.unreal import UnrealAdapter
 from .manifest import ModManifest
 from .paths import UnsafePathError, safe_component, safe_join
@@ -50,6 +50,20 @@ def create_mod_plan(
     name = re.sub(r"[\r\n]+", " ", (mod_name or request.strip().splitlines()[0])[:80]).strip()
     mod_id = safe_component(mod_id or _slug(name), "mod_id")
     route, prerequisites = _route(engine["id"], adapter)
+
+    # Automated feature inspection linked with the request
+    keywords = re.findall(r"[A-Za-z0-9_]{3,}", request)
+    candidate_symbols: list[str] = []
+    recommended_strategy: dict = {}
+    if keywords:
+        try:
+            ins = inspector.inspect_feature(game_dir, keywords[0])
+            if ins.get("success"):
+                candidate_symbols = ins.get("symbol_matches", [])
+                recommended_strategy = ins.get("recommended_strategy", {})
+        except Exception:
+            pass
+
     spec = {
         "schema_version": 1,
         "id": mod_id,
@@ -60,6 +74,8 @@ def create_mod_plan(
         "engine": engine,
         "route": route,
         "prerequisites": prerequisites,
+        "candidate_symbols": candidate_symbols,
+        "recommended_strategy": recommended_strategy,
         "expected_artifacts": ["source", "manifest", "build output", "install preview", "verification report"],
         "validation": ["compile", "install preview", "runtime read-back or game log", "package contents"],
         "status": "planned",
@@ -83,6 +99,7 @@ def create_mod_plan(
 
 def _plan_markdown(spec: dict) -> str:
     custom = json.dumps(spec["customizations"], ensure_ascii=False, indent=2)
+    symbols = "\n".join(f"- `{s}`" for s in spec.get("candidate_symbols", [])) or "None detected automatically"
     return f"""# Modding Plan
 
 ## Request
@@ -95,6 +112,10 @@ def _plan_markdown(spec: dict) -> str:
 - Engine: `{spec["engine"]["id"]}`
 - Route: {spec["route"]}
 - Version: `{spec["version"]}`
+
+## Reverse Engineering Candidates
+
+{symbols}
 
 ## Customizations
 
@@ -146,4 +167,17 @@ def validate_project(project_dir: str) -> dict:
     for item in required:
         if not os.path.isfile(os.path.join(project_dir, item)):
             errors.append(f"missing required file: {item}")
+
+    # Semantic sanity checks
+    if manifest.engine == "unity":
+        plugin_cs = os.path.join(project_dir, "Plugin.cs")
+        if os.path.isfile(plugin_cs):
+            try:
+                with open(plugin_cs, "r", encoding="utf-8", errors="ignore") as f:
+                    txt = f.read()
+                if "BaseUnityPlugin" not in txt and "[BepInPlugin" not in txt:
+                    warnings.append("Plugin.cs does not appear to declare a standard BaseUnityPlugin class")
+            except OSError:
+                pass
+
     return {"ok": not errors, "errors": errors, "warnings": warnings, "engine": manifest.engine, "entry": manifest.entry}
