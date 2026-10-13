@@ -33,7 +33,7 @@ except ImportError:  # pragma: no cover
         def run(self):
             print(f"FastMCP '{self.name}' stub: mcp not installed. Install with `pip install mcp`")
 
-from agmod import bepinex, config, inspector, knowledge, logs, memory, pack, pattern, planning, rea, safety, saves, tmodloader, updater
+from agmod import bepinex, config, doctor, inspector, knowledge, logs, memory, pack, pattern, planning, rea, repair, safety, saves, tmodloader, updater
 from agmod.adapters.unreal import UnrealAdapter
 from agmod.registry import adapters, detect_engine as _detect_engine, get_adapter
 from agmod.structures import load_table
@@ -50,6 +50,17 @@ mcp = FastMCP("game-mod-agent")
 
 def _int_kinds():
     return {"int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64"}
+
+
+@mcp.tool()
+def check_environment() -> str:
+    """Run full environment diagnostics (doctor) checking .NET SDK, REA, decompilers, and cache."""
+    report = doctor.check_environment()
+    return json.dumps({
+        "ready": report["ready"],
+        "markdown": doctor.format_doctor_report(report),
+        "details": report,
+    }, ensure_ascii=False, indent=2)
 
 
 @mcp.tool()
@@ -319,6 +330,12 @@ def build_mod(project_dir: str, game_dir: str) -> str:
     """Build the BepInEx plugin and install the DLL into the game's BepInEx/plugins/."""
     installed = bepinex.build_plugin(project_dir, game_dir)
     return json.dumps({"installed": installed})
+
+
+@mcp.tool()
+def diagnose_build_error(compiler_output: str) -> str:
+    """Parse compiler error outputs (CSxxxx) and generate automated repair suggestions."""
+    return json.dumps(repair.diagnose_build_output(compiler_output), ensure_ascii=False, indent=2)
 
 
 @mcp.tool()

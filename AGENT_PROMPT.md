@@ -13,11 +13,13 @@
 ## 工作流（按顺序）
 
 ### 推荐快捷路径：一键意图侦测
-1. `create_save_backup(game_dir)` —— 改动前先对游戏存档创建时间戳快照，防止坏档。
-2. `plan_mod(game_dir, request, project_dir, customizations=...)` —— 把用户原话转成 `mod-spec.json` 和 `MODDING_PLAN.md`（自动联动符号侦测）。
-3. `inspect_feature(game_dir, keyword)` —— 例如 `inspect_feature(game_dir, "gold")` 深入嗅探符号。
-4. 按 ModSpec 实现具体功能后调用 `validate_mod_project(project_dir)`，再 build、安装预览、游戏内验证。
-5. 若游戏启动后 Mod 未生效或崩溃，调用 `read_mod_logs(game_dir)` 读取框架日志并自动分析异常堆栈。
+1. `check_environment()` —— 检查本地 .NET SDK、反编译工具与 REA 是否就绪。
+2. `create_save_backup(game_dir)` —— 改动前先对游戏存档创建时间戳快照，防止坏档。
+3. `plan_mod(game_dir, request, project_dir, customizations=...)` —— 把用户原话转成 `mod-spec.json` 和 `MODDING_PLAN.md`（自动联动符号侦测）。
+4. `inspect_feature(game_dir, keyword)` —— 例如 `inspect_feature(game_dir, "gold")` 深入嗅探符号。
+5. 按 ModSpec 实现具体功能后调用 `validate_mod_project(project_dir)`。
+6. 若编译报错，系统会自动尝试注入缺失的 using 指令自愈；也可调用 `diagnose_build_error(output)` 获取精准修复指引。
+7. 若游戏启动后 Mod 未生效或崩溃，调用 `read_mod_logs(game_dir)` 读取框架日志并自动分析异常堆栈。
 
 ### 路线 A：实时内存修改（Cheat Engine 连续扫描）
 1. `find_process(name)` —— 找到目标游戏进程 PID。

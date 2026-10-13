@@ -28,6 +28,7 @@ game-mod-agent/
 
 | 工具 | 作用 | 依赖 |
 |---|---|---|
+| `check_environment` | **环境健康自检 (Doctor)**：检查 Python、.NET SDK、反编译工具与 REA 就绪状态 | 无 |
 | `inspect_feature` | **一键意图侦测**：自动识别引擎、秒级检索字段并推荐最佳方案 | 无 |
 | `plan_mod` | **自然语言生成 Mod 项目计划**：输出 ModSpec、MODDING_PLAN 和引擎骨架 | 无 |
 | `validate_mod_project` | 校验 ModSpec、入口文件和引擎必需文件 | 无 |
@@ -42,7 +43,8 @@ game-mod-agent/
 | `read_memory` / `write_memory` | 读写目标进程内存（临时改值） | 无 |
 | `install_bepinex` | 安装 BepInEx 前置 mod loader (Unity) | 网络 |
 | `scaffold_mod` | 生成 BepInEx 插件工程 (Unity) | 无 |
-| `build_mod` | 编译插件并装入 BepInEx/plugins | .NET SDK |
+| `build_mod` | 编译插件并装入 BepInEx/plugins（**支持自动解析报错并自愈重试**） | .NET SDK |
+| `diagnose_build_error` | **编译报错诊断器**：解析 CSxxxx 错误并生成针对性修复代码建议 | 无 |
 | `scaffold_ue4ss_mod` | **生成 UE4SS 免编译 Lua Mod 工程 (Unreal Engine 4/5)** | 无 |
 | `install_ue4ss_mod` | 安装 UE4SS Lua Mod 至游戏目录 | 无 |
 | `scaffold_tmod_mod` | 生成 tModLoader mod 骨架（Terraria） | 无 |
@@ -56,7 +58,7 @@ game-mod-agent/
 | `check_update` / `update_mod` | 检查并拉取 GitHub 最新版本 Mod DLL | 网络 |
 | `package_mod` | 打包 Mod 为 Thunderstore/Nexus 风格 ZIP；编译型 Mod 必须先 build，UE4SS Lua Mod 可直接打包源文件 | 无 |
 
-**内存读写和连续值扫描今天就能用**（纯 ctypes）。
+**内存读写和连续值扫描今天就能用**（纯 ctypes）。终端执行 `python -m agmod.doctor` 可一键查看本机开发环境就绪度。
 
 ## 安装
 

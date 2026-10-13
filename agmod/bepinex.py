@@ -112,24 +112,81 @@ def scaffold_plugin(project_dir: str, game_dir: str, mod_id: str, mod_name: str,
     return project_dir
 
 
+def build_plugin_with_diagnostics(project_dir: str, game_dir: str, auto_repair: bool = True) -> dict:
+    """Build the plugin with automated error parsing and self-healing repair loop."""
+    from . import repair
+
+    out_dir = os.path.join(project_dir, "out")
+    cmd = ["dotnet", "build", "-c", "Release", "-o", out_dir]
+    repairs_applied = []
+
+    for attempt in range(2 if auto_repair else 1):
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, cwd=project_dir, check=False)
+        except FileNotFoundError:
+            raise RuntimeError("dotnet not found. Install the .NET SDK (dotnet).") from None
+
+        if res.returncode == 0:
+            manifest = ModManifest.load(os.path.join(project_dir, "mod.json"))
+            plugins = os.path.join(game_dir, "BepInEx", "plugins")
+            os.makedirs(plugins, exist_ok=True)
+            installed = []
+            if os.path.isdir(out_dir):
+                for name in os.listdir(out_dir):
+                    if name.endswith(".dll") and (not manifest.entry or name == manifest.entry):
+                        shutil.copy2(os.path.join(out_dir, name), os.path.join(plugins, name))
+                        installed.append(name)
+            if not installed:
+                return {
+                    "success": False,
+                    "error": f"manifest entry not found in build output: {manifest.entry or '*.dll'}",
+                    "raw_output": res.stdout,
+                }
+            return {
+                "success": True,
+                "installed": ", ".join(installed),
+                "auto_repaired": bool(repairs_applied),
+                "repairs": repairs_applied,
+            }
+
+        # Build failed: run diagnostics
+        combined_output = (res.stdout or "") + "\n" + (res.stderr or "")
+        diag = repair.diagnose_build_output(combined_output)
+
+        if auto_repair and attempt == 0 and diag["errors"]:
+            # Try auto-healing Plugin.cs
+            plugin_path = os.path.join(project_dir, "Plugin.cs")
+            if os.path.isfile(plugin_path):
+                with open(plugin_path, "r", encoding="utf-8") as f:
+                    src = f.read()
+                err_objs = repair.parse_dotnet_errors(combined_output)
+                new_src, applied = repair.auto_heal_csharp_source(src, err_objs)
+                if applied:
+                    with open(plugin_path, "w", encoding="utf-8") as f:
+                        f.write(new_src)
+                    repairs_applied.extend(applied)
+                    continue  # Retry build on next attempt
+
+        return {
+            "success": False,
+            "error_code": res.returncode,
+            "summary": diag["summary"],
+            "errors": diag["errors"],
+            "suggested_fixes": diag["suggested_fixes"],
+            "raw_output": combined_output[:2000],
+        }
+
+    return {"success": False, "error": "Build failed after repair attempts"}
+
+
 def build_plugin(project_dir: str, game_dir: str) -> str:
     """Build the plugin and install the DLL into `game_dir/BepInEx/plugins/`."""
-    try:
-        subprocess.run(
-            ["dotnet", "build", "-c", "Release", "-o", os.path.join(project_dir, "out")],
-            check=True, capture_output=True, text=True, cwd=project_dir,
-        )
-    except FileNotFoundError:
-        raise RuntimeError("dotnet not found. Install the .NET SDK (dotnet).") from None
-
-    manifest = ModManifest.load(os.path.join(project_dir, "mod.json"))
-    plugins = os.path.join(game_dir, "BepInEx", "plugins")
-    os.makedirs(plugins, exist_ok=True)
-    installed = []
-    for name in os.listdir(os.path.join(project_dir, "out")):
-        if name.endswith(".dll") and (not manifest.entry or name == manifest.entry):
-            shutil.copy2(os.path.join(project_dir, "out", name), os.path.join(plugins, name))
-            installed.append(name)
-    if not installed:
-        raise RuntimeError(f"manifest entry not found in build output: {manifest.entry or '*.dll'}")
-    return ", ".join(installed)
+    res = build_plugin_with_diagnostics(project_dir, game_dir)
+    if not res.get("success"):
+        summary = res.get("summary", res.get("error", "Build failed"))
+        fixes = res.get("suggested_fixes", [])
+        msg = f"Build failed: {summary}"
+        if fixes:
+            msg += "\nSuggested fixes:\n" + "\n".join(f"  - {f}" for f in fixes)
+        raise RuntimeError(msg)
+    return res["installed"]
