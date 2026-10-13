@@ -7,14 +7,16 @@ from .adapters.base import BaseAdapter
 from .adapters.catalog import CatalogAdapter
 from .adapters.dotnet import XnaAdapter
 from .adapters.unity import UnityAdapter
+from .adapters.unreal import UnrealAdapter
 from .engines import ENGINE_CATALOG
 
-# Register adapters here. Specialized adapters (Unity, .NET-XNA) first for their
-# deep detection + structure dump; the rest come from the engine catalog.
+# Register adapters here. Specialized adapters (Unity, Unreal, .NET-XNA) first for their
+# deep detection + structure dump / scaffolding; the rest come from the engine catalog.
 _ADAPTERS: list[BaseAdapter] = [
     UnityAdapter(),
+    UnrealAdapter(),
     XnaAdapter(),
-] + [CatalogAdapter(e) for e in ENGINE_CATALOG]
+] + [CatalogAdapter(e) for e in ENGINE_CATALOG if e["id"] != "unreal"]
 
 
 def adapters() -> list[BaseAdapter]:
@@ -24,7 +26,7 @@ def adapters() -> list[BaseAdapter]:
 def detect_engine(game_dir: str) -> dict | None:
     """Return {id, runtime, name} of the first adapter that claims `game_dir`."""
     if not os.path.isdir(game_dir):
-        raise ValueError(f"not a directory: {game_dir}")
+        return None
     for a in _ADAPTERS:
         if a.detect(game_dir):
             return {"id": a.id, "runtime": a.runtime, "name": a.name}

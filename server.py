@@ -4,12 +4,13 @@ Register in Claude Code's `.mcp.json` (or any MCP client):
 
     { "mcpServers": { "game-mod-agent": {
         "command": "python",
-        "args": ["C:/Users/Administrator/kanbanpachong/game-mod-agent/server.py"]
+        "args": ["<absolute-path>/server.py"]
     } } }
 
-Exposes a small, stable tool set the agent drives in order:
-    detect_engine -> dump_structures -> find_field -> scan_value/read_memory
-    -> write_memory -> read_memory (verify)
+Exposes a stable tool set the agent drives in order:
+    detect_engine -> dump_structures / inspect_feature -> find_field
+    -> scan_start -> scan_next -> write_memory -> read_memory (verify)
+    or scaffold_mod / scaffold_ue4ss_mod -> build / install
 """
 from __future__ import annotations
 
@@ -17,9 +18,23 @@ import json
 import os
 import subprocess
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+except ImportError:  # pragma: no cover
+    class FastMCP:  # type: ignore
+        def __init__(self, name: str):
+            self.name = name
 
-from agmod import bepinex, config, knowledge, memory, pack, rea, safety, tmodloader, updater
+        def tool(self):
+            def decorator(f):
+                return f
+            return decorator
+
+        def run(self):
+            print(f"FastMCP '{self.name}' stub: mcp not installed. Install with `pip install mcp`")
+
+from agmod import bepinex, config, inspector, knowledge, memory, pack, pattern, rea, safety, tmodloader, updater
+from agmod.adapters.unreal import UnrealAdapter
 from agmod.registry import adapters, detect_engine as _detect_engine, get_adapter
 from agmod.structures import load_table
 
@@ -47,11 +62,18 @@ def detect_engine(game_dir: str) -> str:
 
 
 @mcp.tool()
+def inspect_feature(game_dir: str, keyword: str) -> str:
+    """Inspect game structures for a desired feature (e.g. 'gold', 'health') and get recommended mod route in 1 call."""
+    return json.dumps(inspector.inspect_feature(game_dir, keyword), ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
 def dump_structures(game_dir: str) -> str:
     """Recover a game's structures (types/fields) and cache them by build fingerprint.
 
     Mono Unity: decompiles Assembly-CSharp.dll with ilspycmd.
     IL2CPP Unity: dumps global-metadata.dat with Cpp2IL.
+    Unreal: produces UE4SS dumper / reflection guidance.
     """
     r = _detect_engine(game_dir)
     if r is None:
@@ -117,11 +139,72 @@ def find_process(name: str) -> str:
 
 
 @mcp.tool()
-def scan_value(pid: int, value: float, kind: str = "int32") -> str:
-    """Cheat-Engine style scan for `value` in the target process. Returns candidate addresses.
+def scan_start(pid: int, value: float, kind: str = "int32") -> str:
+    """Start an iterative Cheat-Engine style scan session for `value` in the target process."""
+    ok, reason = safety.check_target(pid)
+    if not ok:
+        return json.dumps({"ok": False, "error": reason})
+    if kind in _int_kinds():
+        value = int(value)
+    h = memory.open_process(pid)
+    try:
+        sess = memory.get_scan_session(pid, kind)
+        count = sess.start_scan(h, value)
+    finally:
+        memory.close_process(h)
+    return json.dumps({
+        "pid": pid,
+        "round": sess.round,
+        "kind": kind,
+        "matched_count": count,
+        "addresses_sample": [hex(a) for a in sess.candidates[:30]],
+        "hint": "Now change the value inside the game, then call scan_next(pid, new_value) to narrow down.",
+    })
 
-    `kind` is one of int8/uint8/int16/uint16/int32/uint32/int64/uint64/float32/float64.
+
+@mcp.tool()
+def scan_next(pid: int, new_value: float, scan_type: str = "exact") -> str:
+    """Filter previous scan results by matching against `new_value`.
+
+    `scan_type` is one of: exact, increased, decreased, changed, unchanged.
     """
+    ok, reason = safety.check_target(pid)
+    if not ok:
+        return json.dumps({"ok": False, "error": reason})
+    sess = memory.get_scan_session(pid)
+    if not sess.candidates:
+        return json.dumps({"error": "No active candidates. Call scan_start first."})
+    if sess.kind in _int_kinds():
+        new_value = int(new_value)
+    h = memory.open_process(pid)
+    try:
+        count = sess.next_scan(h, new_value, scan_type=scan_type)
+    finally:
+        memory.close_process(h)
+    return json.dumps({
+        "pid": pid,
+        "round": sess.round,
+        "scan_type": scan_type,
+        "remaining_count": count,
+        "candidates": [hex(a) for a in sess.candidates[:30]],
+        "converged": (count <= 3),
+        "hint": "If remaining_count <= 3, you can write_memory to modify the value!" if count <= 3 else "Change value again in game and run scan_next.",
+    })
+
+
+@mcp.tool()
+def scan_reset(pid: int = 0) -> str:
+    """Clear memory scan session for a PID or all sessions."""
+    if pid:
+        memory.clear_scan_session(pid)
+        return json.dumps({"status": f"Session cleared for pid {pid}"})
+    memory.clear_all_sessions()
+    return json.dumps({"status": "All scan sessions cleared"})
+
+
+@mcp.tool()
+def scan_value(pid: int, value: float, kind: str = "int32") -> str:
+    """Cheat-Engine style single scan for `value` in the target process (compat wrapper)."""
     ok, reason = safety.check_target(pid)
     if not ok:
         return json.dumps({"ok": False, "error": reason})
@@ -133,6 +216,19 @@ def scan_value(pid: int, value: float, kind: str = "int32") -> str:
     finally:
         memory.close_process(h)
     return json.dumps({"count": len(hits), "addresses": [hex(a) for a in hits[:60]]})
+
+
+@mcp.tool()
+def pattern_scan(pid: int, aob_pattern: str, limit: int = 20) -> str:
+    """Scan process memory for an AOB byte signature with wildcards (e.g. '48 89 5C 24 ?? 48 89')."""
+    ok, reason = safety.check_target(pid)
+    if not ok:
+        return json.dumps({"ok": False, "error": reason})
+    try:
+        hits = pattern.scan_process_pattern(pid, aob_pattern, limit=limit)
+        return json.dumps({"pattern": aob_pattern, "matches": [hex(a) for a in hits]})
+    except Exception as e:
+        return json.dumps({"error": str(e)})
 
 
 @mcp.tool()
@@ -170,7 +266,7 @@ def write_memory(pid: int, address: int, value: float, kind: str = "int32", dry_
 
 @mcp.tool()
 def install_bepinex(game_dir: str) -> str:
-    """Install the BepInEx mod loader (the prerequisite) into a Unity game directory."""
+    """Install the BepInEx mod loader into a Unity game directory."""
     return bepinex.install_bepinex(game_dir)
 
 
@@ -190,6 +286,27 @@ def build_mod(project_dir: str, game_dir: str) -> str:
     """Build the BepInEx plugin and install the DLL into the game's BepInEx/plugins/."""
     installed = bepinex.build_plugin(project_dir, game_dir)
     return json.dumps({"installed": installed})
+
+
+@mcp.tool()
+def scaffold_ue4ss_mod(project_dir: str, mod_id: str, mod_name: str, mod_version: str = "1.0.0", author: str = "AI Mod Agent") -> str:
+    """Generate a compiler-free Lua Mod skeleton for Unreal Engine (UE4 / UE5) using UE4SS."""
+    adapter = UnrealAdapter()
+    adapter.scaffold_mod(project_dir, mod_id, mod_name, mod_version, author)
+    return json.dumps({
+        "project_dir": project_dir,
+        "engine": "unreal",
+        "framework": "UE4SS",
+        "hint": "Edit scripts/main.lua to register hooks via RegisterHook / StaticFindObject, then install_ue4ss_mod",
+    })
+
+
+@mcp.tool()
+def install_ue4ss_mod(project_dir: str, game_dir: str, mod_id: str) -> str:
+    """Install a UE4SS Lua Mod into the game's Binaries/Win64/ue4ss/Mods/<mod_id>/ directory."""
+    adapter = UnrealAdapter()
+    dest = adapter.install_mod(project_dir, game_dir, mod_id)
+    return json.dumps({"installed": dest})
 
 
 @mcp.tool()
@@ -245,6 +362,25 @@ def rea_analyze_js(path: str) -> str:
 def rea_inspect_pe(path: str) -> str:
     """Inspect a PE's icons/version/manifest via rea."""
     return rea.pe_resources(path)
+
+
+@mcp.tool()
+def rea_disassemble(target: str, symbol_or_addr: str) -> str:
+    """Disassemble or inspect a native function in binary via REA."""
+    return rea.disassemble(target, symbol_or_addr)
+
+
+@mcp.tool()
+def rea_call_graph(target: str, symbol: str) -> str:
+    """Inspect function call graph and cross-references via REA."""
+    return rea.call_graph(target, symbol)
+
+
+@mcp.tool()
+def rea_fast_search(path: str, query: str) -> str:
+    """Fast-search .NET types and fields without running full decompiler."""
+    matches = rea.fast_search_members(path, query)
+    return json.dumps({"query": query, "matches": matches}, ensure_ascii=False)
 
 
 @mcp.tool()

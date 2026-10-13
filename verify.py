@@ -17,8 +17,11 @@ print("dotnet available:", shutil.which("dotnet") or "NOT FOUND")
 
 tools = [
     "detect_engine", "dump_structures", "find_field", "find_process",
-    "scan_value", "read_memory", "write_memory",
-    "install_bepinex", "scaffold_mod", "build_mod", "check_update", "update_mod",
+    "scan_value", "scan_start", "scan_next", "scan_reset", "pattern_scan",
+    "inspect_feature", "read_memory", "write_memory",
+    "install_bepinex", "scaffold_mod", "build_mod",
+    "scaffold_ue4ss_mod", "install_ue4ss_mod",
+    "check_update", "update_mod",
 ]
 print("tools wired:", {t: hasattr(server, t) for t in tools})
 

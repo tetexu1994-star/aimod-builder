@@ -12,6 +12,7 @@ from __future__ import annotations
 import ctypes
 import struct
 import sys
+import time
 
 IS_WINDOWS = sys.platform == "win32"
 
@@ -125,6 +126,14 @@ def write_value(handle: int, address: int, value, kind: str = "int32") -> int:
     return write_bytes(handle, address, struct.pack(fmt, value))
 
 
+def _query(handle: int, addr: int):
+    if not IS_WINDOWS:
+        return None
+    mbi = MEMORY_BASIC_INFORMATION()
+    n = _k32.VirtualQueryEx(handle, ctypes.c_void_p(addr), ctypes.byref(mbi), ctypes.sizeof(mbi))
+    return mbi if n else None
+
+
 def _iter_regions(handle: int, start: int = 0, end: int = MAX_ADDRESS):
     _require_windows()
     addr = start
@@ -166,3 +175,86 @@ def scan_value(handle: int, value, kind: str = "int32", start: int = 0, end: int
     """Scan for a scalar value of the given kind and return candidate addresses."""
     fmt, _ = _SIZES[kind]
     return scan_bytes(handle, struct.pack(fmt, value), start, end, limit)
+
+
+# -------------------------------------------------------------------------
+# State-managed multi-stage memory scanning (Cheat Engine style)
+# -------------------------------------------------------------------------
+
+class ScanSession:
+    """Manages iterative value scanning to narrow down memory addresses."""
+
+    def __init__(self, pid: int, kind: str = "int32"):
+        self.pid = pid
+        self.kind = kind
+        self.candidates: list[int] = []
+        self.last_value: float | int | None = None
+        self.round = 0
+        self.updated_at = time.time()
+
+    def start_scan(self, handle: int, value: float | int, limit: int = 100000) -> int:
+        """Perform first scan, storing all matching addresses."""
+        self.last_value = value
+        self.candidates = scan_value(handle, value, self.kind, limit=limit)
+        self.round = 1
+        self.updated_at = time.time()
+        return len(self.candidates)
+
+    def next_scan(self, handle: int, new_value: float | int, scan_type: str = "exact") -> int:
+        """Filter cached candidates by reading their new values."""
+        if not self.candidates:
+            return 0
+
+        survivors: list[int] = []
+        for addr in self.candidates:
+            try:
+                cur_val = read_value(handle, addr, self.kind)
+            except OSError:
+                continue
+
+            matched = False
+            if scan_type == "exact":
+                matched = (cur_val == new_value)
+            elif scan_type == "increased":
+                matched = (cur_val > (self.last_value or 0))
+            elif scan_type == "decreased":
+                matched = (cur_val < (self.last_value or 0))
+            elif scan_type == "changed":
+                matched = (cur_val != self.last_value)
+            elif scan_type == "unchanged":
+                matched = (cur_val == self.last_value)
+
+            if matched:
+                survivors.append(addr)
+
+        self.candidates = survivors
+        self.last_value = new_value
+        self.round += 1
+        self.updated_at = time.time()
+        return len(self.candidates)
+
+    def reset(self) -> None:
+        self.candidates.clear()
+        self.last_value = None
+        self.round = 0
+
+
+_SESSIONS: dict[int, ScanSession] = {}
+
+
+def get_scan_session(pid: int, kind: str = "int32") -> ScanSession:
+    """Get or create a ScanSession for pid."""
+    sess = _SESSIONS.get(pid)
+    if sess is None or sess.kind != kind:
+        sess = ScanSession(pid, kind)
+        _SESSIONS[pid] = sess
+    return sess
+
+
+def clear_scan_session(pid: int) -> None:
+    """Clear session for pid."""
+    _SESSIONS.pop(pid, None)
+
+
+def clear_all_sessions() -> None:
+    _SESSIONS.clear()
