@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "game-mod-agent": {
+      "command": "python",
+      "args": ["C:/Users/Administrator/kanbanpachong/game-mod-agent/server.py"]
+    }
+  }
+}
