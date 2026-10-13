@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import re
+import unicodedata
 import zipfile
 
 
@@ -20,6 +21,17 @@ def safe_component(value: str, field: str = "name") -> str:
     if not _COMPONENT_RE.fullmatch(value):
         raise UnsafePathError(f"unsafe {field}: {value!r}")
     return value
+
+
+def slugify(value: str, fallback: str = "item") -> str:
+    """Turn an arbitrary name into a safe filesystem identifier (ASCII, no spaces).
+
+    Used for derived identifiers like a game-directory basename, where we want
+    a usable key rather than rejecting names with spaces or non-ASCII chars.
+    """
+    value = unicodedata.normalize("NFKD", str(value or "")).encode("ascii", "ignore").decode()
+    value = re.sub(r"[^A-Za-z0-9]+", "-", value).strip("-").lower()
+    return value or fallback
 
 
 def safe_basename(value: str, field: str = "file") -> str:

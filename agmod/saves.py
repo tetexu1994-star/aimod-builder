@@ -12,7 +12,7 @@ import time
 import zipfile
 
 from .config import CACHE_ROOT
-from .paths import safe_component, safe_extract_zip, safe_join
+from .paths import safe_component, safe_extract_zip, safe_join, slugify
 
 _COMMON_SAVE_PATTERNS = [
     "saves",
@@ -42,7 +42,7 @@ def detect_save_dirs(game_dir: str) -> list[str]:
 
 def _get_backup_dir(game_dir: str, cache_root: str = "") -> str:
     root = cache_root or CACHE_ROOT
-    game_id = safe_component(os.path.basename(os.path.normpath(game_dir)) or "game", "game_id")
+    game_id = slugify(os.path.basename(os.path.normpath(game_dir)) or "game")
     bdir = os.path.join(root, "backups", game_id)
     os.makedirs(bdir, exist_ok=True)
     return bdir

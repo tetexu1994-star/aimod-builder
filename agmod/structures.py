@@ -13,7 +13,14 @@ import os
 from dataclasses import dataclass, field
 
 def fingerprint_files(paths) -> str:
-    """Hash complete file contents, order-independent, for safe cache keys."""
+    """Order-independent fingerprint: file size + bounded head/tail content sample.
+
+    Bounded on purpose — multi-GB archives (e.g. Unreal `Content/Paks/*.pak`)
+    must not force a full read on every fingerprint computation. Size + a
+    head/tail sample detects content changes with high probability while
+    staying fast.
+    """
+    SAMPLE = 512 * 1024
     h = hashlib.sha256()
     entries = []
     for path in paths:
@@ -21,8 +28,10 @@ def fingerprint_files(paths) -> str:
             size = os.path.getsize(path)
             digest = hashlib.sha256()
             with open(path, "rb") as f:
-                for chunk in iter(lambda: f.read(1 << 20), b""):
-                    digest.update(chunk)
+                digest.update(f.read(SAMPLE))
+                if size > SAMPLE:
+                    f.seek(size - SAMPLE)
+                    digest.update(f.read(SAMPLE))
         except OSError:
             continue
         entries.append((os.path.basename(path), size, digest.hexdigest()))
