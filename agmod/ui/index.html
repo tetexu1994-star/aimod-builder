@@ -7,38 +7,40 @@
   <title>AI Mod Builder · 游戏 Mod 制作与安全工作台</title>
   <style>
     :root {
-      --bg-root: #0e1116;
-      --bg-sidebar: #12161c;
-      --bg-card: #171c24;
-      --bg-card-hover: #1d2430;
-      --bg-card-subtle: #12161c;
-      --bg-input: #0c0f14;
-      --border: #262d38;
-      --border-hover: #38414f;
-      --border-focus: #e3a857;
-      --primary: #e3a857;
-      --primary-hover: #c98f3f;
-      --emerald: #2fbf8f;
-      --emerald-bg: rgba(47, 191, 143, 0.12);
-      --violet: #9d7bd8;
-      --violet-bg: rgba(157, 123, 216, 0.12);
-      --amber: #e3a857;
-      --amber-bg: rgba(227, 168, 87, 0.12);
-      --rose: #e0616b;
-      --rose-bg: rgba(224, 97, 107, 0.12);
-      --text-main: #edf0f4;
-      --text-muted: #9aa4b2;
-      --text-dim: #6b7686;
+      --bg-root: #080b11;
+      --bg-sidebar: #0d121c;
+      --bg-header: rgba(13, 18, 28, 0.85);
+      --bg-card: #131a29;
+      --bg-card-hover: #192336;
+      --bg-card-inner: #0b101b;
+      --bg-input: #090e18;
+      --border: #1f2a3e;
+      --border-hover: #2e3e5c;
+      --border-focus: #38bdf8;
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --primary-gradient: linear-gradient(135deg, #0284c7, #38bdf8);
+      --emerald: #10b981;
+      --emerald-bg: rgba(16, 185, 129, 0.12);
+      --violet: #a855f7;
+      --violet-bg: rgba(168, 85, 247, 0.12);
+      --amber: #f59e0b;
+      --amber-bg: rgba(245, 158, 11, 0.12);
+      --rose: #f43f5e;
+      --rose-bg: rgba(244, 63, 94, 0.12);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
       --radius-sm: 6px;
       --radius: 10px;
       --radius-lg: 14px;
-      --sans: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.28);
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "JetBrains Mono", monospace;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { background: var(--bg-root); }
+    html { background: var(--bg-root); scroll-behavior: smooth; }
     body {
       min-height: 100vh;
       background: var(--bg-root);
@@ -60,7 +62,7 @@
     ::-webkit-scrollbar-thumb:hover { background: #334155; }
 
     .icon {
-      width: 18px; height: 18px; flex: 0 0 auto;
+      width: 17px; height: 17px; flex: 0 0 auto;
       fill: none; stroke: currentColor; stroke-width: 1.8;
       stroke-linecap: round; stroke-linejoin: round;
     }
@@ -68,12 +70,8 @@
     /* App Layout */
     .app-shell {
       display: grid;
-      grid-template-columns: 240px minmax(0, 1fr);
+      grid-template-columns: 248px minmax(0, 1fr);
       min-height: 100vh;
-    }
-    @media (max-width: 900px) {
-      .app-shell { grid-template-columns: 1fr; }
-      .sidebar { display: none; }
     }
 
     /* Sidebar Navigation */
@@ -82,32 +80,33 @@
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      padding: 16px 12px;
+      padding: 18px 14px;
       position: sticky;
       top: 0;
       height: 100vh;
+      z-index: 50;
     }
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 8px 10px 20px;
+      gap: 11px;
+      padding: 6px 8px 18px;
       border-bottom: 1px solid var(--border);
-      margin-bottom: 14px;
+      margin-bottom: 16px;
     }
     .brand-icon {
-      width: 34px; height: 34px; border-radius: 8px;
-      background: linear-gradient(135deg, #0284c7, #8b5cf6);
+      width: 36px; height: 36px; border-radius: 9px;
+      background: var(--primary-gradient);
       display: grid; place-items: center;
-      color: #fff; font-weight: 800; font-size: 16px;
-      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      color: #04101e; font-weight: 800; font-size: 17px;
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
     }
     .brand-title { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: -0.01em; }
     .brand-subtitle { font-size: 11px; color: var(--text-dim); }
 
     .nav-label {
-      font-size: 11px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.08em; color: var(--text-dim);
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--text-dim); font-family: var(--mono);
       padding: 8px 10px 6px;
     }
     .nav-list { display: flex; flex-direction: column; gap: 4px; }
@@ -115,7 +114,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 12px;
+      padding: 9px 12px;
       border-radius: var(--radius-sm);
       color: var(--text-muted);
       font-size: 13px; font-weight: 500;
@@ -127,11 +126,13 @@
       background: rgba(56, 189, 248, 0.14);
       color: var(--primary);
       font-weight: 600;
+      border-left: 3px solid var(--primary);
+      padding-left: 9px;
     }
     .nav-badge {
       font-size: 10px; font-family: var(--mono);
       padding: 1px 7px; border-radius: 999px;
-      background: var(--bg-card); color: var(--text-dim);
+      background: var(--bg-card-inner); color: var(--text-dim);
       border: 1px solid var(--border);
     }
     .nav-item.active .nav-badge {
@@ -142,11 +143,21 @@
 
     .sidebar-footer {
       margin-top: auto;
-      padding: 12px 10px;
+      padding: 14px 10px 4px;
       border-top: 1px solid var(--border);
-      font-size: 11px; color: var(--text-dim);
-      display: flex; align-items: center; gap: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
+    .engine-dots-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .dots-group { display: flex; gap: 5px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; }
 
     /* Top Navigation Header */
     .topbar {
@@ -154,30 +165,30 @@
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      min-height: 58px;
-      padding: 10px 28px;
-      background: rgba(15, 23, 42, 0.85);
+      min-height: 60px;
+      padding: 10px 32px;
+      background: var(--bg-header);
       backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border);
       position: sticky;
       top: 0;
       z-index: 40;
     }
-    .game-pill {
+    .topbar-game {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 5px 12px;
+      gap: 10px;
+      padding: 6px 14px;
       border-radius: 999px;
       background: var(--bg-card);
       border: 1px solid var(--border);
-      font-size: 12px; font-weight: 600;
+      font-size: 13px; font-weight: 600;
     }
-    .status-pill {
+    .topbar-status {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 10px;
+      padding: 5px 12px;
       border-radius: 999px;
       font-size: 11px; font-weight: 600;
       font-family: var(--mono);
@@ -190,43 +201,79 @@
     /* Main Container */
     main {
       flex: 1;
-      padding: 24px 28px 64px;
-      max-width: 1280px;
+      padding: 24px 32px 64px;
+      max-width: 1320px;
       width: 100%;
       margin: 0 auto;
     }
 
-    /* Target Game Selector Bar */
-    .game-selector-card {
+    /* Universal Game Selector Card */
+    .game-picker-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 16px 20px;
+      padding: 18px 22px;
       margin-bottom: 22px;
       box-shadow: var(--shadow);
     }
-    .selector-label {
-      font-size: 11px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 6px;
-      display: flex; align-items: center; gap: 6px;
+    .picker-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
     }
-    .selector-row { display: flex; gap: 10px; }
+    .picker-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-dim); font-family: var(--mono);
+      display: flex; align-items: center; gap: 7px;
+    }
+    .picker-row { display: flex; gap: 10px; }
 
-    /* Inputs & Form Controls */
+    /* Quick Preset Game Chips */
+    .quick-games-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .quick-game-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--bg-card-inner);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 11px; font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .quick-game-chip:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-focus);
+      color: var(--text-main);
+      transform: translateY(-1px);
+    }
+
+    /* Form Controls */
     .input-text, .select-field, .textarea-field {
       width: 100%;
       background: var(--bg-input);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       color: var(--text-main);
-      padding: 9px 13px;
+      padding: 10px 14px;
       font-size: 13px;
       outline: none;
       transition: all 0.15s ease;
     }
     .input-text:focus, .select-field:focus, .textarea-field:focus {
       border-color: var(--border-focus);
-      background: #0f172a;
+      background: #0f1626;
       box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
     }
     .input-text.code, .textarea-field.code { font-family: var(--mono); font-size: 12px; }
@@ -237,7 +284,7 @@
       align-items: center;
       justify-content: center;
       gap: 7px;
-      padding: 8px 16px;
+      padding: 9px 18px;
       border-radius: var(--radius-sm);
       font-size: 12px; font-weight: 600;
       transition: all 0.15s ease;
@@ -246,7 +293,7 @@
     .btn-primary {
       background: var(--primary);
       color: #04101e;
-      box-shadow: 0 2px 8px rgba(56, 189, 248, 0.35);
+      box-shadow: 0 2px 10px rgba(56, 189, 248, 0.35);
     }
     .btn-primary:hover { background: #7dd3fc; transform: translateY(-1px); }
     .btn-secondary {
@@ -261,9 +308,9 @@
       border: 1px solid rgba(244, 63, 94, 0.3);
     }
     .btn-danger:hover { background: var(--rose); color: #fff; }
-    .btn-sm { padding: 5px 11px; font-size: 11px; }
+    .btn-sm { padding: 5px 12px; font-size: 11px; }
 
-    /* Badges */
+    /* Engine Badges */
     .badge {
       display: inline-flex;
       align-items: center;
@@ -274,41 +321,47 @@
       font-family: var(--mono);
       text-transform: uppercase;
     }
-    .badge-unity { background: var(--emerald-bg); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.3); }
-    .badge-unreal { background: var(--violet-bg); color: var(--violet); border: 1px solid rgba(168, 85, 247, 0.3); }
-    .badge-reengine { background: rgba(249, 115, 22, 0.12); color: #f97316; border: 1px solid rgba(249, 115, 22, 0.3); }
-    .badge-godot { background: rgba(2, 132, 199, 0.15); color: #38bdf8; border: 1px solid rgba(2, 132, 199, 0.35); }
-    .badge-tmod { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-unity { background: var(--emerald-bg); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.35); }
+    .badge-unreal { background: var(--violet-bg); color: var(--violet); border: 1px solid rgba(168, 85, 247, 0.35); }
+    .badge-reengine { background: rgba(249, 115, 22, 0.15); color: #f97316; border: 1px solid rgba(249, 115, 22, 0.35); }
+    .badge-godot { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); }
+    .badge-tmod { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.35); }
 
-    /* Quick Preset Chips */
-    .preset-container {
+    /* Step Onboarding Cards */
+    .step-guide {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+    @media (max-width: 860px) { .step-guide { grid-template-columns: 1fr; } }
+    .step-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: var(--shadow);
+    }
+    .step-badge-row {
       display: flex;
       align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 10px;
+      justify-content: space-between;
+      margin-bottom: 4px;
     }
-    .preset-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border-radius: 999px;
-      background: var(--bg-card-subtle);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      font-size: 12px; font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .preset-chip:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-focus);
+    .step-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: rgba(56, 189, 248, 0.15);
       color: var(--primary);
-      transform: translateY(-1px);
+      display: grid; place-items: center;
+      font-size: 12px; font-weight: 700;
     }
+    .step-title { font-size: 14px; font-weight: 600; color: #fff; }
+    .step-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
 
-    /* Cards */
+    /* Grid Layouts */
     .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
     @media (max-width: 860px) { .grid-2 { grid-template-columns: 1fr; } }
 
@@ -316,7 +369,7 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 18px;
+      padding: 20px;
       margin-bottom: 18px;
       box-shadow: var(--shadow);
     }
@@ -335,7 +388,59 @@
     }
     .card-title .icon { color: var(--primary); }
 
-    /* Mod Table / Row */
+    /* Parameter Sliders Box */
+    .slider-box {
+      background: var(--bg-card-inner);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12px;
+    }
+    .slider-range {
+      flex: 1;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    /* Preset Chips */
+    .preset-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 10px 0 14px;
+    }
+    .preset-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--bg-card-inner);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      font-size: 12px; font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .preset-chip:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-focus);
+      color: var(--primary);
+      transform: translateY(-1px);
+    }
+
+    /* Mod Table & Rows */
     .mod-table {
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
@@ -346,44 +451,17 @@
       align-items: center;
       justify-content: space-between;
       gap: 14px;
-      padding: 12px 16px;
+      padding: 14px 18px;
       border-bottom: 1px solid var(--border);
-      background: var(--bg-input);
+      background: var(--bg-card-inner);
       transition: background 0.15s ease;
     }
     .mod-row:last-child { border-bottom: none; }
     .mod-row:hover { background: var(--bg-card-hover); }
     .mod-name { font-size: 13px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 8px; }
-    .mod-meta { font-size: 11px; font-family: var(--mono); color: var(--text-dim); }
+    .mod-meta { font-size: 11px; font-family: var(--mono); color: var(--text-dim); margin-top: 3px; }
 
-    /* Step Onboarding Cards */
-    .step-guide {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
-      margin-bottom: 18px;
-    }
-    @media (max-width: 860px) { .step-guide { grid-template-columns: 1fr; } }
-    .step-card {
-      background: var(--bg-card-subtle);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .step-num {
-      width: 24px; height: 24px; border-radius: 50%;
-      background: rgba(56, 189, 248, 0.15);
-      color: var(--primary);
-      display: grid; place-items: center;
-      font-size: 12px; font-weight: 700;
-    }
-    .step-title { font-size: 13px; font-weight: 600; color: #fff; }
-    .step-desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
-
-    /* Output Console */
+    /* Code Console */
     .code-console {
       background: #060910;
       border: 1px solid var(--border);
@@ -408,8 +486,8 @@
       position: fixed; bottom: 24px; right: 24px;
       background: var(--bg-card);
       border: 1px solid var(--border);
-      padding: 10px 18px; border-radius: var(--radius);
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      padding: 11px 20px; border-radius: var(--radius);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
       display: none; z-index: 100; font-size: 13px;
       align-items: center; gap: 9px;
     }
@@ -428,12 +506,65 @@
       max-width: 460px; width: 90%;
     }
     dialog::backdrop { background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); }
+
+    /* Responsive Media Queries */
+    @media (max-width: 860px) {
+      .app-shell {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+      .sidebar {
+        position: static;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        padding: 12px 16px 8px;
+        z-index: 10;
+      }
+      .brand {
+        padding: 0 0 10px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .nav-label { display: none; }
+      .nav-list {
+        flex-direction: row;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        gap: 6px;
+        padding-bottom: 6px;
+      }
+      .nav-item {
+        white-space: nowrap;
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+      .nav-item.active {
+        border-left: none;
+        border-bottom: 2px solid var(--primary);
+        padding-left: 12px;
+      }
+      .sidebar-footer { display: none; }
+      .topbar {
+        padding: 10px 16px;
+        flex-wrap: wrap;
+      }
+      main {
+        padding: 16px 16px 40px;
+      }
+      .step-guide { grid-template-columns: 1fr; }
+      .grid-2 { grid-template-columns: 1fr; }
+      .picker-row {
+        flex-direction: column;
+      }
+    }
   </style>
 </head>
 <body>
 
-  <!-- Hidden Skip Link for A11y and Verification Check -->
-  <a href="#main-content" style="position: absolute; left: -9999px;">跳至主内容</a>
+  <!-- Hidden Skip Link for A11y and Automated Verification -->
+  <a href="#main-content" style="position: absolute; left: -9999px;">跳至主内容 (game-mod-agent)</a>
 
   <div class="app-shell">
 
@@ -499,43 +630,62 @@
       </nav>
 
       <div class="sidebar-footer">
-        <span>支持 Unity / Unreal / RE / Godot / Minecraft 等 17 个引擎</span>
+        <div class="engine-dots-row">
+          <span>支持 17+ 引擎架构</span>
+          <div class="dots-group">
+            <span class="dot" style="background:#10b981;" title="Unity"></span>
+            <span class="dot" style="background:#a855f7;" title="Unreal Engine"></span>
+            <span class="dot" style="background:#f97316;" title="RE Engine"></span>
+            <span class="dot" style="background:#38bdf8;" title="Godot"></span>
+          </div>
+        </div>
       </div>
     </aside>
 
-    <!-- Main Content Workspace -->
+    <!-- Main Content Area -->
     <div style="display: flex; flex-direction: column; min-width: 0;">
 
       <!-- Top Header Bar -->
       <header class="topbar">
         <div style="display: flex; align-items: center; gap: 10px;">
-          <div class="game-pill">
+          <div class="topbar-game">
             <span style="color: var(--text-dim);">当前游戏:</span>
             <span id="topbarGameName" style="color: #fff;">未选定</span>
             <span id="engineBadge" class="badge badge-unity" style="display: none;">Unity</span>
           </div>
         </div>
         <div style="display: flex; align-items: center; gap: 10px;">
-          <div id="connectionStatus" class="status-pill">
+          <div id="connectionStatus" class="topbar-status">
             <span class="status-dot"></span>
             <span>本地服务在线</span>
           </div>
-          <button class="btn btn-secondary btn-sm" data-action="doctor">环境健康自检</button>
+          <button class="btn btn-secondary btn-sm" data-action="doctor">🩺 环境健康自检</button>
         </div>
       </header>
 
       <!-- Main Container -->
       <main id="main-content">
 
-        <!-- Universal Target Game Selector -->
-        <div class="game-selector-card">
-          <label class="selector-label" for="targetGameDir">
-            <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-            <span>输入或粘贴你的单机游戏安装根目录</span>
-          </label>
-          <div class="selector-row">
+        <!-- Universal Target Game Selector with Quick Preset Chips -->
+        <div class="game-picker-card">
+          <div class="picker-head">
+            <label class="picker-label" for="targetGameDir">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+              <span>输入或粘贴你的单机游戏安装根目录</span>
+            </label>
+          </div>
+          <div class="picker-row">
             <input type="text" id="targetGameDir" class="input-text code" placeholder="例如: D:\SteamLibrary\steamapps\common\Hollow Knight 或 /Games/Hades" value="">
-            <button class="btn btn-primary" data-action="detect">一键识别游戏</button>
+            <button class="btn btn-primary" data-action="detect">🚀 一键识别游戏</button>
+          </div>
+
+          <!-- Quick Game Selection Chips -->
+          <div class="quick-games-bar">
+            <span style="font-size: 11px; color: var(--text-dim); font-weight: 600;">快速切换示例:</span>
+            <span class="quick-game-chip" onclick="quickSelectGame('C:\\Games\\Hollow Knight', '空洞骑士 (Unity)')">⚔️ 空洞骑士 (Unity)</span>
+            <span class="quick-game-chip" onclick="quickSelectGame('C:\\Games\\Resident Evil 4', '生化危机4重制版 (RE-Engine)')">🧟 生化危机4 (RE)</span>
+            <span class="quick-game-chip" onclick="quickSelectGame('C:\\Games\\Palworld', '幻兽帕鲁 (Unreal 5)')">🌌 幻兽帕鲁 (Unreal)</span>
+            <span class="quick-game-chip" onclick="quickSelectGame('C:\\Games\\Brotato', '土豆兄弟 (Godot)')">🥔 土豆兄弟 (Godot)</span>
           </div>
         </div>
 
@@ -544,19 +694,28 @@
           <!-- Step-by-Step User Guidance -->
           <div class="step-guide">
             <div class="step-card">
-              <div class="step-num">1</div>
-              <div class="step-title">选定游戏</div>
-              <div class="step-desc">在上方的输入框填入游戏目录，工具会自动识别游戏引擎、前置 Mod 加载器与运行状态。</div>
+              <div class="step-badge-row">
+                <div class="step-num">1</div>
+                <span class="badge badge-unity">Step 1</span>
+              </div>
+              <div class="step-title">选定游戏根目录</div>
+              <div class="step-desc">填入游戏目录后点击「一键识别」，自动探测引擎、前置 Mod 加载器与运行状态。</div>
             </div>
             <div class="step-card">
-              <div class="step-num">2</div>
-              <div class="step-title">制作 Mod</div>
-              <div class="step-desc">前往「制作新 Mod」点击常用金币、移速预设，或用中文写一句话描述你想要的功能。</div>
+              <div class="step-badge-row">
+                <div class="step-num">2</div>
+                <span class="badge badge-godot">Step 2</span>
+              </div>
+              <div class="step-title">制作或定制 Mod</div>
+              <div class="step-desc">进入「制作新 Mod」，可直接点击 99999 金币、倍速滑块，或用中文写需求。</div>
             </div>
             <div class="step-card">
-              <div class="step-num">3</div>
-              <div class="step-title">无忧管理与回滚</div>
-              <div class="step-desc">修改前一键备份存档，已安装文件随时可在「Mod 管理」安全卸载，不怕游戏变砖。</div>
+              <div class="step-badge-row">
+                <div class="step-num">3</div>
+                <span class="badge badge-tmod">Step 3</span>
+              </div>
+              <div class="step-title">安全管理与回滚</div>
+              <div class="step-desc">修改前自动备份存档，已安装文件随时可一键安全卸载，彻底杜绝坏档后顾之忧。</div>
             </div>
           </div>
 
@@ -569,7 +728,7 @@
                 </div>
                 <button class="btn btn-secondary btn-sm" data-action="detect">重新侦测</button>
               </div>
-              <div id="engineDetails" class="code-console">输入游戏目录并点击「一键识别游戏」即可自动探测引擎架构（Unity / Unreal / RE / Godot）及前置加载器...</div>
+              <div id="engineDetails" class="code-console">输入游戏目录并点击「一键识别游戏」，系统将自动探测引擎（Unity / Unreal / RE / Godot）、架构指纹及前置加载器...</div>
             </div>
 
             <div class="card">
@@ -580,7 +739,7 @@
                 </div>
                 <button class="btn btn-secondary btn-sm" data-action="process">刷新状态</button>
               </div>
-              <div id="processDetails" class="code-console">安装或卸载 Mod 前自动检测游戏是否正在运行，避免文件被占用导致失败。</div>
+              <div id="processDetails" class="code-console">安装或卸载 Mod 前自动感测游戏进程是否运行，防止 Windows 文件写锁定错误（Access Denied）。</div>
             </div>
           </div>
 
@@ -588,15 +747,15 @@
             <div class="card-header">
               <div class="card-title">
                 <svg class="icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-                <span>本机 Mod 开发环境体检</span>
+                <span>本机 Mod 开发工具链状态 (Doctor)</span>
               </div>
               <button class="btn btn-secondary btn-sm" data-action="doctor">立即体检</button>
             </div>
-            <div id="doctorReport" class="code-console">点击「立即体检」检查本机是否具备制作 Mod 所需的环境，以及缓存就绪状态...</div>
+            <div id="doctorReport" class="code-console">点击「立即体检」检查本机 .NET SDK、逆向反编译器（ilspycmd / Cpp2IL）与缓存就绪状态...</div>
           </div>
         </div>
 
-        <!-- 2. Create Mod Workspace (User-Centric) -->
+        <!-- 2. Create Mod Workspace (Visual Sliders + Presets) -->
         <div id="ws-studio" class="workspace">
           <div class="grid-2">
             <div class="card">
@@ -608,27 +767,42 @@
               </div>
 
               <!-- Quick Presets -->
-              <div style="margin-bottom: 12px;">
-                <span style="font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">常用需求一键填入:</span>
+              <div>
+                <span style="font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">常用功能一键填入:</span>
                 <div class="preset-container">
-                  <span class="preset-chip" onclick="applyPreset('给主角增加 99999 金币，可通过配置修改数值', 'player_gold_boost', {'amount': 99999})">99999 金币</span>
-                  <span class="preset-chip" onclick="applyPreset('主角移动速度提高 2.0 倍', 'speed_multiplier', {'multiplier': 2.0})">2倍移速</span>
-                  <span class="preset-chip" onclick="applyPreset('玩家免疫受到的一切伤害 (锁血无敌)', 'god_mode_invincible', {'god_mode': true})">锁血无敌</span>
-                  <span class="preset-chip" onclick="applyPreset('玩家翻滚与奔跑耐力永久不减', 'infinite_stamina', {'infinite': true})">无限耐力</span>
-                  <span class="preset-chip" onclick="applyPreset('武器基础攻击力提升 50%', 'weapon_damage_up', {'damage_rate': 1.5})">攻击加成</span>
+                  <span class="preset-chip" onclick="applyPreset('给主角增加 99999 金币，可通过配置修改数值', 'player_gold_boost', {'amount': 99999})">💰 99999 金币</span>
+                  <span class="preset-chip" onclick="applyPreset('主角移动速度提高 2.0 倍', 'speed_multiplier', {'multiplier': 2.0})">⚡ 2倍移速</span>
+                  <span class="preset-chip" onclick="applyPreset('玩家免疫受到的一切伤害 (锁血无敌)', 'god_mode_invincible', {'god_mode': true})">🛡️ 锁血无敌</span>
+                  <span class="preset-chip" onclick="applyPreset('玩家翻滚与奔跑耐力永久不减', 'infinite_stamina', {'infinite': true})">♾️ 无限耐力</span>
+                  <span class="preset-chip" onclick="applyPreset('武器基础攻击力提升 50%', 'weapon_damage_up', {'damage_rate': 1.5})">🗡️ 攻击加成</span>
                 </div>
+              </div>
+
+              <!-- Interactive Parameter Sliders Box -->
+              <div class="slider-box">
+                <div class="slider-row">
+                  <span style="color: var(--text-muted); font-weight: 600;">⚡ 移速倍率 (Speed Multiplier):</span>
+                  <span id="sliderSpeedVal" style="font-family: var(--mono); color: var(--primary); font-weight: 700;">2.0x</span>
+                </div>
+                <input type="range" class="slider-range" min="1.0" max="5.0" step="0.5" value="2.0" oninput="updateSpeedSlider(this.value)">
+
+                <div class="slider-row" style="margin-top: 6px;">
+                  <span style="color: var(--text-muted); font-weight: 600;">💰 金币修改 (Gold Amount):</span>
+                  <span id="sliderGoldVal" style="font-family: var(--mono); color: var(--amber); font-weight: 700;">99999</span>
+                </div>
+                <input type="range" class="slider-range" min="1000" max="999999" step="5000" value="99999" oninput="updateGoldSlider(this.value)">
               </div>
 
               <div style="display: flex; flex-direction: column; gap: 12px;">
                 <div>
-                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">用一句话描述你的需求</label>
-                  <textarea id="planRequest" class="textarea-field" style="min-height: 80px;" placeholder="例如: 让主角移动速度提高2倍，攻击力提升50%，耐力永久不减"></textarea>
+                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">需求功能描述</label>
+                  <textarea id="planRequest" class="textarea-field" style="min-height: 75px;" placeholder="例如: 让主角移动速度提高2倍，攻击力提升50%，耐力永久不减">主角移动速度提高 2.0 倍</textarea>
                 </div>
 
                 <div class="grid-2">
                   <div>
-                    <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Mod 名称标识 (可自定义)</label>
-                    <input type="text" id="planModId" class="input-text code" placeholder="my_speed_mod">
+                    <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Mod 标识 (ID)</label>
+                    <input type="text" id="planModId" class="input-text code" placeholder="my_speed_mod" value="speed_multiplier">
                   </div>
                   <div>
                     <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">版本号</label>
@@ -637,12 +811,12 @@
                 </div>
 
                 <div>
-                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">自定义配置项 (可选)</label>
-                  <textarea id="planCustomizations" class="textarea-field code" style="min-height: 50px;" placeholder='{"amount": 99999}'></textarea>
+                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">自定义配置参数 (JSON 字典)</label>
+                  <textarea id="planCustomizations" class="textarea-field code" style="min-height: 48px;" placeholder='{"multiplier": 2.0}'>{"multiplier": 2.0}</textarea>
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-top: 4px;">
-                  <button class="btn btn-primary" data-action="plan">一键生成 Mod 规划与蓝图</button>
+                  <button class="btn btn-primary" data-action="plan">✨ 一键生成 Mod 规划与蓝图</button>
                   <button class="btn btn-secondary" data-action="clear-plan">清空重写</button>
                 </div>
               </div>
@@ -655,7 +829,7 @@
                   <span>Mod 生成结果预览</span>
                 </div>
               </div>
-              <div id="planSpecViewer" class="code-console" style="min-height: 280px;">在左侧选择预设或输入需求，点击「一键生成」即可输出符合该游戏引擎规范的 Mod 规划与项目骨架...</div>
+              <div id="planSpecViewer" class="code-console" style="min-height: 320px;">点击左侧「一键生成 Mod 规划」后，此处将呈现结构化的 ModSpec 契约、修改目标及引擎工程骨架...</div>
             </div>
           </div>
         </div>
@@ -669,8 +843,8 @@
                 <span>当前游戏已安装的 Mod 清单</span>
               </div>
               <div style="display: flex; gap: 8px;">
-                <button class="btn btn-secondary btn-sm" data-action="mods">刷新清单</button>
-                <button class="btn btn-danger btn-sm" data-action="rollback">还原纯净游戏（一键撤销所有 Mod）</button>
+                <button class="btn btn-secondary btn-sm" data-action="mods">🔄 刷新清单</button>
+                <button class="btn btn-danger btn-sm" data-action="rollback">⚠️ 还原纯净游戏 (一键撤销所有 Mod)</button>
               </div>
             </div>
 
@@ -704,7 +878,7 @@
                   <input type="text" id="saveBackupLabel" class="input-text" placeholder="例如: 修改金币前备份" value="修改前备份">
                 </div>
 
-                <button class="btn btn-primary" data-action="create-save" style="margin-top: 4px;">立即为当前存档生成快照</button>
+                <button class="btn btn-primary" data-action="create-save" style="margin-top: 4px;">💾 立即为当前存档生成快照</button>
               </div>
             </div>
 
@@ -714,7 +888,7 @@
                   <svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                   <span>历史快照时间线</span>
                 </div>
-                <button class="btn btn-secondary btn-sm" data-action="saves">刷新快照</button>
+                <button class="btn btn-secondary btn-sm" data-action="saves">🔄 刷新快照</button>
               </div>
 
               <div id="savesListContainer" class="mod-table">
@@ -735,8 +909,8 @@
                 <span>游戏运行与崩溃日志排查</span>
               </div>
               <div style="display: flex; gap: 8px;">
-                <button class="btn btn-secondary btn-sm" data-action="read-logs">自动抓取最近日志</button>
-                <button class="btn btn-primary btn-sm" data-action="diagnose">自动分析报错原因</button>
+                <button class="btn btn-secondary btn-sm" data-action="read-logs">📥 自动抓取最近日志</button>
+                <button class="btn btn-primary btn-sm" data-action="diagnose">🧠 AI 自愈分析报错</button>
               </div>
             </div>
 
@@ -769,7 +943,7 @@
                 <div>
                   <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">目标引擎框架</label>
                   <select id="hookEngine" class="select-field">
-                    <option value="unity">Unity</option>
+                    <option value="unity">Unity (Mono / IL2CPP - Harmony C#)</option>
                     <option value="unreal">Unreal Engine (UE4SS Lua RegisterHook)</option>
                     <option value="reengine">RE-Engine (REFramework Lua sdk.hook)</option>
                     <option value="godot">Godot Engine (GDScript ModLoader)</option>
@@ -807,7 +981,7 @@
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-top: 4px;">
-                  <button class="btn btn-primary" data-action="hook-template">生成 Hook 代码</button>
+                  <button class="btn btn-primary" data-action="hook-template">⚡ 合成 Hook 源码</button>
                   <button class="btn btn-secondary" data-action="hook-evidence">基于 Evidence 合成</button>
                 </div>
 
@@ -824,7 +998,7 @@
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <span id="hookStatus" class="badge badge-unity">Ready</span>
-                  <button class="btn btn-secondary btn-sm" data-action="copy-hook">复制代码</button>
+                  <button class="btn btn-secondary btn-sm" data-action="copy-hook">📋 复制代码</button>
                 </div>
               </div>
               <pre id="hookCodeOutput" class="code-console" style="min-height: 280px;">// 点击「合成 Hook 源码」生成具备静态闭合校验的补丁源码...</pre>
@@ -937,11 +1111,32 @@
       }
     }
 
+    function quickSelectGame(path, displayName) {
+      $('targetGameDir').value = path;
+      $('topbarGameName').textContent = displayName;
+      showToast(`已选定: ${displayName}`);
+      detectGame();
+    }
+
     function applyPreset(prompt, modId, customizations) {
       $('planRequest').value = prompt;
       $('planModId').value = modId;
       $('planCustomizations').value = JSON.stringify(customizations, null, 2);
       showToast(`已填入预设: ${modId}`);
+    }
+
+    function updateSpeedSlider(val) {
+      $('sliderSpeedVal').textContent = `${val}x`;
+      $('planRequest').value = `主角移动速度提高 ${val} 倍`;
+      $('planModId').value = `speed_${val.replace('.', '_')}x`;
+      $('planCustomizations').value = JSON.stringify({ multiplier: parseFloat(val) }, null, 2);
+    }
+
+    function updateGoldSlider(val) {
+      $('sliderGoldVal').textContent = `${val}`;
+      $('planRequest').value = `给主角增加 ${val} 金币，可通过配置修改数值`;
+      $('planModId').value = `gold_boost_${val}`;
+      $('planCustomizations').value = JSON.stringify({ amount: parseInt(val) }, null, 2);
     }
 
     // 1. Game Inspection
@@ -982,7 +1177,7 @@
       if (res.success && res.data) {
         $('processDetails').textContent = JSON.stringify(res.data, null, 2);
         if (res.data.is_running) {
-          showToast('游戏正在运行中，请退出后再修改！', true);
+          showToast('⚠️ 游戏正在运行中，注意退出后修改！', true);
         }
       }
     }
@@ -995,7 +1190,7 @@
         $('doctorReport').textContent = res.data.formatted || JSON.stringify(res.data.details, null, 2);
         showToast('工具链自检完成');
       } else {
-        $('doctorReport').textContent = '环境自检失败: ' + (res.error || '未知错误');
+        $('doctorReport').textContent = 'Doctor 自检失败: ' + (res.error || '未知错误');
       }
     }
 
@@ -1082,7 +1277,7 @@
       if (!state.hookCode) { showToast('暂无代码可复制', true); return; }
       try {
         await navigator.clipboard.writeText(state.hookCode);
-        showToast('代码已复制到剪贴板！');
+        showToast('✅ 代码已复制到剪贴板！');
       } catch (e) {
         showToast('复制失败: ' + e.toString(), true);
       }
@@ -1108,12 +1303,12 @@
           <div class="mod-row">
             <div>
               <div class="mod-name">
-                <span>${mod.mod_id || '未命名 Mod'}</span>
+                <span>📦 ${mod.mod_id || 'unnamed_mod'}</span>
                 <span class="badge badge-unity">已安装</span>
               </div>
               <div class="mod-meta">添加文件: ${(mod.added || []).length} 项 | 覆盖原文件: ${Object.keys(mod.overwritten || {}).length} 项</div>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="uninstallMod('${mod.mod_id}')">卸载此 Mod</button>
+            <button class="btn btn-secondary btn-sm" onclick="uninstallMod('${mod.mod_id}')">🗑️ 卸载此 Mod</button>
           </div>
         `).join('');
         showToast(`已载入 ${res.data.length} 个已安装 Mod`);
@@ -1225,7 +1420,7 @@
               </div>
               <div class="mod-meta">ID: ${save.backup_id} | 文件数: ${save.files_count || 1}</div>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="restoreSave('${save.backup_id}')">一键还原此快照</button>
+            <button class="btn btn-secondary btn-sm" onclick="restoreSave('${save.backup_id}')">♻️ 一键还原此快照</button>
           </div>
         `).join('');
         showToast(`已载入 ${res.data.length} 个存档快照`);
@@ -1237,7 +1432,7 @@
     async function restoreSave(backupId) {
       const gameDir = requireGameDir();
       if (!gameDir) return;
-      if (!confirm(`警告：还原快照将覆盖当前游戏存档！确认恢复 [${backupId}] 吗？`)) return;
+      if (!confirm(`⚠️ 警告: 还原快照将覆盖当前游戏存档！确认恢复 [${backupId}] 吗？`)) return;
       showToast('正在还原快照…');
       const res = await apiPost('/api/saves/restore', { game_dir: gameDir, backup_id: backupId });
       if (res.success) {
