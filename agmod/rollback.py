@@ -14,6 +14,7 @@ import hashlib
 import os
 import shutil
 import threading
+import time
 
 from .config import CACHE_ROOT
 from .paths import slugify, safe_join
@@ -70,7 +71,19 @@ def _save(game_dir: str, journal: dict) -> None:
         json.dump(journal, f, indent=2, ensure_ascii=False)
         f.flush()
         os.fsync(f.fileno())
-    os.replace(temp, path)
+    for attempt in range(5):
+        try:
+            os.replace(temp, path)
+            break
+        except PermissionError:
+            if attempt == 4:
+                try:
+                    if os.path.exists(path):
+                        os.remove(path)
+                    os.replace(temp, path)
+                except Exception:
+                    raise
+            time.sleep(0.05)
 
 
 def _sha256(path: str) -> str:
