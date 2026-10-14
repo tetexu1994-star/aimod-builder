@@ -16,7 +16,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable, Dict, Optional, Tuple
 
-from agmod import codegen, doctor, log_repair, logs, planning, process, registry, rollback, saves
+from agmod import codegen, doctor, llm, log_repair, logs, planning, process, registry, rollback, saves
 
 logger = logging.getLogger("agmod.ui")
 
@@ -132,6 +132,23 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 })
             return
 
+        if path == "/api/llm/config":
+            try:
+                cfg = llm.load_config()
+                self._send_json(HTTPStatus.OK, {
+                    "success": True,
+                    "data": {
+                        "config": cfg,
+                        "presets": llm.PRESETS,
+                    }
+                })
+            except Exception as e:
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {
+                    "success": False,
+                    "error": f"Failed to load LLM config: {e}"
+                })
+            return
+
         # Static SPA Delivery
         if path in ("/", "/index.html", "/ui"):
             if os.path.exists(INDEX_HTML_PATH):
@@ -182,6 +199,9 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             "/api/saves/restore": self._handle_saves_restore,
             "/api/logs/read": self._handle_logs_read,
             "/api/logs/diagnose": self._handle_logs_diagnose,
+            "/api/llm/config": self._handle_llm_config_save,
+            "/api/llm/test": self._handle_llm_test,
+            "/api/llm/chat": self._handle_llm_chat,
         }
 
         handler_fn = routes.get(path)
@@ -330,6 +350,28 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         log_text = body.get("log_text", "")
         res = log_repair.diagnose_runtime_error(log_text)
         return HTTPStatus.OK, {"success": True, "data": res}
+
+    def _handle_llm_config_save(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        try:
+            saved = llm.save_config(body)
+            return HTTPStatus.OK, {"success": True, "data": saved}
+        except Exception as e:
+            return HTTPStatus.INTERNAL_SERVER_ERROR, {"success": False, "error": str(e)}
+
+    def _handle_llm_test(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        result = llm.test_connection(body if body else None)
+        status_code = HTTPStatus.OK if result.get("success") else HTTPStatus.BAD_REQUEST
+        return status_code, result
+
+    def _handle_llm_chat(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        messages = body.get("messages", [])
+        if not messages:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "messages list is required"}
+        game_context = body.get("game_context")
+        config = body.get("config")
+        result = llm.chat_completion(messages=messages, game_context=game_context, config=config)
+        status_code = HTTPStatus.OK if result.get("success") else HTTPStatus.BAD_REQUEST
+        return status_code, result
 
 
 class ModUIServer:

@@ -18,9 +18,12 @@ def _get_free_port() -> int:
         return s.getsockname()[1]
 
 
+_no_proxy_opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
 def _http_get(url: str):
     req = urllib.request.Request(url)
-    with urllib.request.urlopen(req, timeout=5) as response:
+    with _no_proxy_opener.open(req, timeout=5) as response:
         return response.getcode(), response.read().decode("utf-8")
 
 
@@ -32,7 +35,7 @@ def _http_post(url: str, data: dict):
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=5) as response:
+    with _no_proxy_opener.open(req, timeout=5) as response:
         return response.getcode(), json.loads(response.read().decode("utf-8"))
 
 
@@ -186,17 +189,34 @@ System.NullReferenceException: Object reference not set to an instance of an obj
 
     def test_cors_safe_origin(self):
         req = urllib.request.Request(f"{self.base_url}/api/health", headers={"Origin": "http://localhost:8765"})
-        with urllib.request.urlopen(req, timeout=5) as response:
+        with _no_proxy_opener.open(req, timeout=5) as response:
             self.assertEqual(response.getcode(), 200)
             self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), "http://localhost:8765")
 
     def test_cors_reject_unauthorized_origin(self):
         req = urllib.request.Request(f"{self.base_url}/api/health", headers={"Origin": "https://malicious-site.com"})
         try:
-            with urllib.request.urlopen(req, timeout=5) as response:
+            with _no_proxy_opener.open(req, timeout=5) as response:
                 self.assertEqual(response.getcode(), 403)
         except urllib.error.HTTPError as e:
             self.assertEqual(e.code, 403)
+
+    def test_llm_endpoints(self):
+        code, body = _http_get(f"{self.base_url}/api/llm/config")
+        self.assertEqual(code, 200)
+        res = json.loads(body)
+        self.assertTrue(res["success"])
+        self.assertIn("config", res["data"])
+        self.assertIn("presets", res["data"])
+
+        code, save_res = _http_post(f"{self.base_url}/api/llm/config", {
+            "provider_name": "TestProvider",
+            "api_endpoint": "https://api.deepseek.com",
+            "model_name": "deepseek-chat",
+        })
+        self.assertEqual(code, 200)
+        self.assertTrue(save_res["success"])
+        self.assertEqual(save_res["data"]["provider_name"], "TestProvider")
 
     def test_launch_ui_function(self):
         port = _get_free_port()
