@@ -1999,11 +1999,11 @@
 
       let actionsHtml = '';
       if (role === 'assistant' && !bubbleId) {
-        const escapedContent = encodeURIComponent(content);
+        const safeContent = escapeHtml(content);
         actionsHtml = `
           <div class="chat-bubble-actions">
-            <button class="btn btn-secondary btn-sm" onclick="adoptAsModRequirement(decodeURIComponent('${escapedContent}'))">📥 采纳为 Mod 制作需求</button>
-            <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(decodeURIComponent('${escapedContent}')); showToast('已复制内容');">📋 复制回答</button>
+            <button class="btn btn-secondary btn-sm" data-adopt="${safeContent}">📥 采纳为 Mod 制作需求</button>
+            <button class="btn btn-secondary btn-sm" data-copy="${safeContent}">📋 复制回答</button>
           </div>
         `;
       }
@@ -2111,8 +2111,10 @@
 
     // Universal Event Delegation
     document.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-action], [data-tab]');
+      const btn = e.target.closest('[data-action], [data-tab], [data-adopt], [data-copy]');
       if (!btn) return;
+      if (btn.dataset.adopt) { adoptAsModRequirement(btn.dataset.adopt); return; }
+      if (btn.dataset.copy) { navigator.clipboard.writeText(btn.dataset.copy).then(() => showToast('已复制内容')).catch(() => showToast('复制失败', true)); return; }
       if (btn.dataset.tab) {
         switchTab(btn.dataset.tab);
         return;
