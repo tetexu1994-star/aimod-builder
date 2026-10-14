@@ -5,18 +5,27 @@
 ### Added
 
 - Added UI Architecture Specification (`UI_ARCHITECTURE.md`) documenting the design principles, six functional workspaces, REST API contracts, security guardrails, and data flows.
-- Added lightweight, zero-external-dependency local Web UI server and modern SPA dashboard (`agmod/ui/server.py`, `agmod/ui/index.html`, `agmod/ui/__main__.py`) serving:
+- Added lightweight, zero-heavy-runtime-dependency local Web UI server and SPA dashboard (`agmod/ui/server.py`, `agmod/ui/index.html`, `agmod/ui/__main__.py`) serving:
   1. **Game & Runtime Inspector**: Engine detection, process lock detection, Doctor environment report.
   2. **AI Mod Studio**: Natural language prompts to structured `mod-spec.json` and plan preview.
   3. **Symbol & Hook Code Lab**: Multi-engine code synthesis (Harmony C#, UE4SS Lua, REFramework, Godot) with live syntax verification.
   4. **Mod Manager & Safe Rollback**: Active mod cards, conflict radar, and one-click nuclear rollback.
-  5. **Live Logs & Self-Healing Analyzer**: Multi-framework log reading, crash line extraction, and AI fix suggestions.
+  5. **Live Logs & Runtime Diagnostics**: Multi-framework log reading, crash line extraction, and actionable fix suggestions.
   6. **Savegame Time Machine**: Save directory detection, pre-mod snapshots, and one-click restore.
 - Added `launch_ui` tool in `server.py` and CLI runner (`python -m agmod.ui`) for instant local browser dashboard launch.
 - Added UI unit test suite (`tests/test_ui.py`) covering HTTP server lifecycle, REST API endpoints, SPA static delivery, and error handling.
 - Added official support matrix documentation (`SUPPORT_MATRIX.md`) defining support tiers, loader mechanisms, hook styles, tools, and candidate verification games.
 - Added reverse engineering symbol-to-hook code generator (`agmod/codegen.py`, `generate_hook_template`) for synthesizing ready-to-use Harmony patches, UE4SS Lua `RegisterHook`, REFramework `sdk.hook`, and GodotModLoader GDScript wrappers from recovered symbols.
 - Added runtime crash log diagnostics (`agmod/log_repair.py`, `diagnose_runtime_error`) parsing stack traces, pinpointing file and line numbers, and suggesting actionable fixes for UE4SS, REFramework, BepInEx, and GodotModLoader. Automatic source rewriting and re-verification remain future work.
+
+### UI Refresh
+
+- Redesigned the dashboard as a restrained Mod Workbench / Field Console with a warm graphite palette, copper action color, Space Grotesk / Inter / IBM Plex Mono typography, and SVG line icons.
+- Replaced emoji tabs with an accessible sidebar tablist, URL hash navigation, visible keyboard focus, responsive mobile layout, reduced-motion handling, and semantic status updates.
+- Improved forms and feedback with inline validation, busy states, structured result rendering, clear empty states, clipboard feedback, and a native confirmation dialog for destructive rollback.
+- Added an Evidence JSON flow to Hook Lab using `generate_hook_from_evidence`, alongside the existing manual template generator.
+- Documented the visual system and GitHub references from Vortex, ModOrganizer2, shadcn-ui, Zed, tldraw, and Refine in `UI_ARCHITECTURE.md`.
+
 ### Hardened
 
 - Install journal keys now include a hash of the absolute game path, preventing same-named game directories from sharing rollback state.
@@ -29,7 +38,7 @@
 
 ### Verification
 
-- `pytest`: 69 tests passed in 1.28s.
+- `python -m unittest discover -s tests`: 74 tests passed.
 - `verify.py`: 45 tools wired and verified.
 
 ## 2026-10-13

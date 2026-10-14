@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
 import unicodedata
@@ -16,9 +17,13 @@ from .registry import detect_engine, get_adapter
 
 
 def _slug(value: str) -> str:
-    value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
-    value = re.sub(r"[^A-Za-z0-9]+", "-", value).strip("-").lower()
-    return value or "ai-mod"
+    source = str(value)
+    normalized = unicodedata.normalize("NFKD", source).encode("ascii", "ignore").decode()
+    normalized = re.sub(r"[^A-Za-z0-9]+", "-", normalized).strip("-").lower()
+    if normalized and not normalized.isdigit() and len(normalized) >= 3:
+        return normalized
+    digest = hashlib.sha256(source.encode("utf-8")).hexdigest()[:6]
+    return f"ai-mod-{digest}"
 
 
 _STOPWORDS = {

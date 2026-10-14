@@ -4,6 +4,24 @@
 > **面向对象**: 人类开发者、Codex / Claude 审查员、终端 Mod 创作者  
 > **核心定位**: 为 `game-mod-agent` 提供免编译、零重量级依赖、跨平台的现代 Web 交互工作台，实现 AI Agent 与终端用户的协同操作。
 
+## 0. 视觉系统 (2026-10-14 Refresh)
+
+视觉方向定位为 **本地 Mod 维修台 / Field Console**，不是通用 SaaS 仪表盘，也不是霓虹赛博 HUD。界面从 Mod 管理器、代码编辑器和内部运维工具中提取真实工作习惯：先锁定目标，再读证据，生成、验证，最后保留无损恢复路径。
+
+- **色彩**：暖石墨背景、纸张白正文、氧化铜主动作、薄荷绿安全状态、旧金黄待确认状态。避免蓝紫渐变和单一霓虹色。
+- **字体**：Space Grotesk 用于工作区标题，Inter 用于正文，IBM Plex Mono 用于路径、签名、日志和状态。Monospace 只承载代码与测量数据。
+- **布局**：固定工作区侧栏 + 目标目录命令条 + 非对称操作面板。主要任务保持宽阔输出区，安全与工具链状态放在侧栏，不把所有内容平均切成同尺寸卡片。
+- **交互**：Tab 使用原生 button、`role=tab`、`aria-selected` 和 URL hash；异步按钮有 busy 状态；结果状态使用 `role=status`；破坏性恢复使用 `<dialog>` 二次确认。
+- **视觉签名**：氧化铜色工作台标记、目标目录命令条、状态线和结构化证据输出共同构成“维修台”识别感。
+- **动效**：只保留状态切换和 Toast 的短反馈，遵守 `prefers-reduced-motion`，不使用装饰性视差或故障特效。
+
+### GitHub 参考
+
+- [Nexus-Mods/Vortex](https://github.com/Nexus-Mods/Vortex) 与 [ModOrganizer2/modorganizer](https://github.com/modorganizer2/modorganizer)：借鉴 Mod 管理器的文件清单、部署状态和恢复心智模型，不照搬桌面框架。
+- [shadcn-ui/ui](https://github.com/shadcn-ui/ui)：借鉴可访问组件语义、状态和可定制默认值，不直接使用其视觉皮肤。
+- [zed-industries/zed](https://github.com/zed-industries/zed) 与 [tldraw/tldraw](https://github.com/tldraw/tldraw)：借鉴开发工具中克制、连贯、像人手工打磨的交互细节。
+- [refinedev/refine](https://github.com/refinedev/refine)：借鉴内部工具的信息密度和任务导向布局，避免营销页式仪表盘。
+
 ---
 
 ## 1. 架构目标与设计哲学
@@ -91,10 +109,10 @@
 - **原子卸载 (Pruning Uninstall)**: 精准删除属于该 Mod 的已安装文件，并自动清理多余的空目录。
 - **一键核武级回滚 (Rollback Game)**: 出现坏档或游戏无法启动时，一键撤销所有 Mod 变更，将游戏还原至最原始纯净状态。
 
-### 3.5 运行日志流与自愈诊断器 (Live Logs & Self-Healing Analyzer)
+### 3.5 运行日志流与诊断器 (Live Logs & Runtime Diagnostics)
 - **实时日志捕捉**: 针对不同引擎自动定位日志源（BepInEx `LogOutput.log`、UE4SS `ue4ss.log`、REFramework 运行日志）。
 - **崩溃定位与堆栈解析**: 借助 `log_repair.diagnose_runtime_error` 提取崩溃行号、报错模块及缺失依赖。
-- **自愈修复建议**: AI 给出明确的补丁修改方案与一键应用修复建议。
+- **修复建议**: 根据崩溃位置给出明确的补丁方向；自动改写源码和重新验证仍需后续人工确认。
 
 ### 3.6 存档时光机 (Savegame Time Machine)
 - **多路径存档探测**: 自动扫描 Windows AppData (Local/Roaming/LocalLow)、Saved Games、Steam userdata 及游戏内存档目录。

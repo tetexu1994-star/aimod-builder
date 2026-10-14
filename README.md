@@ -123,12 +123,12 @@ python -m agmod.ui
 python -m agmod.ui --port 9000 --no-browser
 ```
 也可在 AI 对话中直接调用 `launch_ui` 工具启动。工作台具备 6 大功能空间：
-1. **🔍 运行巡检 (Inspector)**: 自动探测引擎、检查运行进程与写入锁、查看 Doctor 体检。
-2. **⚡ AI 需求工坊 (AI Studio)**: 自然语言输入需求并实时预览 `mod-spec.json` 与蓝图。
-3. **🧬 Hook 代码实验室 (Hook Lab)**: 逆向符号实时代码生成（Harmony C# / UE4SS Lua / REFramework / Godot）与静态语法校验。
-4. **🛡️ Mod 资产管理 (Manager)**: 冲突检测、安全卸载与一键核武级全量回滚。
-5. **📜 运行日志与自愈 (Logs & Self-Healing)**: 日志流读取、崩溃行提取与 AI 自愈修复建议。
-6. **⏳ 存档时光机 (Save Time Machine)**: 多目录存档探测、修改前自动快照、历史时间线与一键无损还原。
+1. **运行巡检 (Inspector)**: 自动探测引擎、检查运行进程与写入锁、查看 Doctor 体检。
+2. **AI 需求工坊 (AI Studio)**: 自然语言输入需求并实时预览 `mod-spec.json` 与蓝图。
+3. **Hook 代码实验室 (Hook Lab)**: 逆向符号实时代码生成（Harmony C# / UE4SS Lua / REFramework / Godot）与静态语法校验。
+4. **Mod 资产管理 (Manager)**: 冲突检测、安全卸载与一键恢复游戏目录。
+5. **运行日志诊断 (Logs & Diagnostics)**: 日志流读取、崩溃行提取与修复建议。
+6. **存档快照 (Save Snapshots)**: 多目录存档探测、修改前自动快照、历史时间线与一键还原。
 
 ## 核心工作流
 

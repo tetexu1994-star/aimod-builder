@@ -16,5 +16,6 @@ out/
 # Tooling
 node_modules/
 .DS_Store
+.playwright-cli/
 .codegraph/
 .pytest_cache/

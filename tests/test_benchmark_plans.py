@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agmod.codegen import generate_hook_from_evidence, generate_hook_template
 from agmod.log_repair import diagnose_runtime_error
-from agmod.planning import plan_mod
+from agmod.planning import _slug, plan_mod
 
 BENCHMARK_CASES = [
     # --- Unity (BepInEx / Harmony) ---
@@ -203,6 +203,15 @@ class TestBenchmarkEvaluation(unittest.TestCase):
         self.assertIn("int amount", result["code"])
         self.assertEqual(result["target"]["signature"], "System.Void AddGold(System.Int32)")
         self.assertEqual(result["evidence"]["source"], "rea_fast_search")
+
+    def test_chinese_plan_generates_non_numeric_mod_id(self):
+        self.assertNotEqual(_slug("增加金币"), _slug("增加经验"))
+        with tempfile.TemporaryDirectory() as game_dir, tempfile.TemporaryDirectory() as proj_dir:
+            os.makedirs(os.path.join(game_dir, "Game_Data", "Managed"), exist_ok=True)
+            open(os.path.join(game_dir, "Game_Data", "Managed", "Assembly-CSharp.dll"), "wb").close()
+            spec = plan_mod(game_dir, "增加金币", proj_dir)
+            self.assertFalse(spec["id"].isdigit())
+            self.assertTrue(spec["id"].startswith("ai-mod-"))
 
     def test_unity_static_method_omits_instance_and_keeps_params(self):
         result = generate_hook_from_evidence({
