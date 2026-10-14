@@ -1519,8 +1519,7 @@
     function quickSelectGame(path, displayName) {
       $('targetGameDir').value = path;
       $('topbarGameName').textContent = displayName;
-      showToast(`已选定: ${displayName}`);
-      detectGame();
+      showToast(`已填入示例路径：${displayName}，请改成你的实际游戏目录`);
     }
 
     function applyPreset(prompt, modId, customizations) {
@@ -1544,6 +1543,38 @@
       $('planCustomizations').value = JSON.stringify({ amount: parseInt(val) }, null, 2);
     }
 
+    function formatEngineInfo(data) {
+      const lines = [];
+      lines.push(`<strong>${escapeHtml(data.name || data.id || '未知引擎')}</strong>`);
+      if (data.mod_framework) lines.push(`前置 Mod 框架：${escapeHtml(data.mod_framework)}`);
+      if (data.structure) lines.push(`怎么做 Mod：${escapeHtml(data.structure)}`);
+      if (data.examples) lines.push(`参考：${escapeHtml(data.examples)}`);
+      return lines.join('<br>');
+    }
+
+    function formatProcessInfo(data) {
+      const lines = [];
+      lines.push(`游戏可执行文件：${escapeHtml((data.executables || []).join('、') || '未检测到')}`);
+      if (data.is_running) {
+        lines.push('<span style="color:var(--rose);">游戏正在运行，安装/卸载前请先退出游戏。</span>');
+      } else {
+        lines.push('<span style="color:var(--emerald);">游戏未运行，可以安全安装或卸载 Mod。</span>');
+      }
+      return lines.join('<br>');
+    }
+
+    function formatPlanSpec(spec) {
+      const lines = [];
+      lines.push(`<strong>${escapeHtml(spec.name || spec.id || '未命名 Mod')}</strong>（v${escapeHtml(spec.version || '1.0.0')}）`);
+      if (spec.engine && spec.engine.name) lines.push(`目标引擎：${escapeHtml(spec.engine.name)}`);
+      if (spec.route) lines.push(`制作路线：${escapeHtml(spec.route)}`);
+      if (spec.prerequisites && spec.prerequisites.length) lines.push(`需要准备：${escapeHtml(spec.prerequisites.join('、'))}`);
+      if (spec.candidate_symbols && spec.candidate_symbols.length) lines.push(`疑似相关符号：${escapeHtml(spec.candidate_symbols.slice(0, 5).join('、'))}`);
+      lines.push('');
+      lines.push('下一步：已按路线生成 Mod 项目骨架，可去「Hook 实验室」编辑，或直接在生成的文件里改，完成后回到「已装 Mod 管理」安装与验证。');
+      return lines.join('<br>');
+    }
+
     // 1. Game Inspection
     async function detectGame(btn) {
       const gameDir = requireGameDir();
@@ -1559,7 +1590,7 @@
         badge.textContent = res.data.name || res.data.id;
         badge.className = `badge badge-${res.data.id === 're-engine' ? 'reengine' : res.data.id}`;
         navBadge.textContent = res.data.id.toUpperCase();
-        $('engineDetails').textContent = JSON.stringify(res.data, null, 2);
+        $('engineDetails').innerHTML = formatEngineInfo(res.data);
         showToast(`识别成功: ${res.data.name}`);
         if ($('hookEngine')) {
           const map = { 'unity': 'unity', 'unreal': 'unreal', 're-engine': 'reengine', 'godot': 'godot' };
@@ -1580,7 +1611,7 @@
       const res = await apiPost('/api/process', { game_dir: gameDir });
       setBusy(btn, false);
       if (res.success && res.data) {
-        $('processDetails').textContent = JSON.stringify(res.data, null, 2);
+        $('processDetails').innerHTML = formatProcessInfo(res.data);
         if (res.data.is_running) {
           showToast('⚠️ 游戏正在运行中，注意退出后修改！', true);
         }
@@ -1621,7 +1652,7 @@
       });
       setBusy(btn, false);
       if (res.success && res.data) {
-        $('planSpecViewer').textContent = JSON.stringify(res.data, null, 2);
+        $('planSpecViewer').innerHTML = formatPlanSpec(res.data);
         showToast('Mod 蓝图生成成功！');
       } else {
         $('planSpecViewer').textContent = '规划生成失败: ' + (res.error || '未知错误');
@@ -2115,11 +2146,6 @@
       if (!btn) return;
       if (btn.dataset.adopt) { adoptAsModRequirement(btn.dataset.adopt); return; }
       if (btn.dataset.copy) { navigator.clipboard.writeText(btn.dataset.copy).then(() => showToast('已复制内容')).catch(() => showToast('复制失败', true)); return; }
-      if (btn.dataset.tab) {
-        switchTab(btn.dataset.tab);
-        return;
-      }
-      const act = btn.dataset.action;
       const actions = {
         detect: () => detectGame(btn),
         process: () => checkProcess(btn),
@@ -2136,6 +2162,13 @@
         'create-save': () => createSaveBackup(btn),
         saves: () => refreshSaves(btn)
       };
+      if (btn.dataset.tab) {
+        switchTab(btn.dataset.tab);
+        const navAction = btn.dataset.action;
+        if (navAction && actions[navAction]) actions[navAction]();
+        return;
+      }
+      const act = btn.dataset.action;
       if (actions[act]) actions[act]();
     });
 

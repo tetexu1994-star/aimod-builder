@@ -28,12 +28,12 @@ def adapters() -> list[BaseAdapter]:
 
 
 def detect_engine(game_dir: str) -> dict | None:
-    """Return {id, runtime, name} of the first adapter that claims `game_dir`."""
+    """Return the first adapter that claims `game_dir`, as its full describe() info."""
     if not os.path.isdir(game_dir):
         return None
     for a in _ADAPTERS:
         if a.detect(game_dir):
-            return {"id": a.id, "runtime": a.runtime, "name": a.name}
+            return a.describe()
     return None
 
 
