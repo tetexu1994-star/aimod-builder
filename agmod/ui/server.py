@@ -427,19 +427,32 @@ def get_or_start_server(host: str = "127.0.0.1", port: int = 8765) -> Tuple[ModU
         return _global_server, _global_server.url
 
 
+def _open_browser_safely(url: str) -> None:
+    """Safely open default browser with OS-specific fallback."""
+    try:
+        if sys.platform == "win32":
+            os.system(f'start "" "{url}"')
+        else:
+            webbrowser.open(url)
+    except Exception:
+        try:
+            webbrowser.open(url)
+        except Exception:
+            pass
+
+
 def launch_ui(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True) -> str:
     """Launch the Web UI dashboard and optionally open the default browser."""
     srv, url = get_or_start_server(host=host, port=port)
     if open_browser:
-        try:
-            webbrowser.open(url)
-        except Exception as e:
-            logger.warning(f"Failed to open browser automatically: {e}")
+        _open_browser_safely(url)
     return url
 
 
 def main() -> None:
     import argparse
+    import json
+    import urllib.request
 
     parser = argparse.ArgumentParser(description="AI Mod Builder Web Dashboard Server")
     parser.add_argument("--host", default="127.0.0.1", help="Binding host (default 127.0.0.1)")
@@ -447,20 +460,64 @@ def main() -> None:
     parser.add_argument("--no-browser", action="store_true", help="Do not open browser automatically")
     args = parser.parse_args()
 
-    srv = ModUIServer(host=args.host, port=args.port)
-    url = srv.start(blocking=False)
-    print(f"\n========================================================")
-    print(f"  AI Mod Builder Dashboard is running at:")
-    print(f"  --> {url}")
-    print(f"========================================================\n")
-    if not args.no_browser:
+    # Reconfigure stdout/stderr for clean utf-8 on Windows
+    if sys.platform == "win32":
         try:
-            webbrowser.open(url)
+            if hasattr(sys.stdout, "reconfigure"):
+                sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+            if hasattr(sys.stderr, "reconfigure"):
+                sys.stderr.reconfigure(encoding="utf-8", errors="replace")
         except Exception:
             pass
 
+    # 1. Check if an active server is already running on this port
+    target_port = args.port
+    is_already_running = False
     try:
-        # Keep main thread alive
+        req = urllib.request.Request(f"http://{args.host}:{target_port}/api/health")
+        with urllib.request.urlopen(req, timeout=0.8) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            if data.get("success") and data.get("data", {}).get("status") == "online":
+                is_already_running = True
+    except Exception:
+        pass
+
+    if is_already_running:
+        url = f"http://{args.host}:{target_port}"
+        print(f"\n========================================================")
+        print(f"  AI Mod Builder 服务已在后台运行中:")
+        print(f"  --> {url}")
+        print(f"========================================================\n")
+        if not args.no_browser:
+            print("正在唤起默认浏览器打开工作台...")
+            _open_browser_safely(url)
+        return
+
+    # 2. Start server, automatically trying next available port if port is occupied
+    srv = None
+    url = ""
+    for p in range(target_port, target_port + 20):
+        try:
+            candidate = ModUIServer(host=args.host, port=p)
+            url = candidate.start(blocking=False)
+            srv = candidate
+            break
+        except OSError:
+            srv = None
+            continue
+
+    if srv is None:
+        print(f"[错误] 无法在端口 {target_port} - {target_port + 20} 启动服务，所有候选端口均被占用。")
+        sys.exit(1)
+
+    print(f"\n========================================================")
+    print(f"  AI Mod Builder 工作台已启动:")
+    print(f"  --> {url}")
+    print(f"========================================================\n")
+    if not args.no_browser:
+        _open_browser_safely(url)
+
+    try:
         while True:
             threading.Event().wait(1.0)
     except KeyboardInterrupt:
