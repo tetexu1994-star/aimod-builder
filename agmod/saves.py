@@ -6,6 +6,7 @@ the game's save data protects players from save corruption.
 from __future__ import annotations
 
 import glob
+import hashlib
 import json
 import os
 import shutil
@@ -43,7 +44,9 @@ def detect_save_dirs(game_dir: str) -> list[str]:
 
 def _get_backup_dir(game_dir: str, cache_root: str = "") -> str:
     root = cache_root or CACHE_ROOT
-    game_id = slugify(os.path.basename(os.path.normpath(game_dir)) or "game")
+    norm = os.path.abspath(game_dir)
+    digest = hashlib.sha256(os.path.realpath(norm).encode("utf-8")).hexdigest()[:12]
+    game_id = f"{slugify(os.path.basename(norm) or 'game')}-{digest}"
     bdir = os.path.join(root, "backups", game_id)
     os.makedirs(bdir, exist_ok=True)
     return bdir

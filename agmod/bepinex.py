@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import tempfile
 import urllib.request
 import zipfile
 
@@ -25,6 +26,9 @@ _BASE_URL = "https://github.com/BepInEx/BepInEx/releases/download"
 
 def install_bepinex(game_dir: str, version: str = BEPINEX_VERSION) -> str:
     """Download + extract BepInEx into `game_dir`. Returns the BepInEx dir path."""
+    running, processes = rollback.is_game_running(game_dir)
+    if running:
+        raise RuntimeError(f"game is running; close it before installing BepInEx: {processes}")
     bepin = os.path.join(game_dir, "BepInEx")
     if os.path.isdir(os.path.join(bepin, "core")) and os.path.isdir(os.path.join(bepin, "plugins")):
         return "already-installed:" + bepin
@@ -32,13 +36,18 @@ def install_bepinex(game_dir: str, version: str = BEPINEX_VERSION) -> str:
     zip_path = os.path.join(game_dir, "_bepinex_tmp.zip")
     urllib.request.urlretrieve(url, zip_path)
     try:
-        with zipfile.ZipFile(zip_path) as zf:
-            names = zf.namelist()
-        targets = [os.path.join(game_dir, n) for n in names if not n.endswith("/")]
-        backups = rollback.backup_files(game_dir, targets)
-        safe_extract_zip(zip_path, game_dir)
-        added = [t for t in targets if os.path.isfile(t) and t not in backups]
-        rollback.record_install(game_dir, "bepinex", added, backups)
+        staging = tempfile.mkdtemp(prefix=".bepinex-stage-", dir=game_dir)
+        try:
+            safe_extract_zip(zip_path, staging)
+            pairs = []
+            for root, _, files in os.walk(staging):
+                for fn in files:
+                    src = os.path.join(root, fn)
+                    rel = os.path.relpath(src, staging)
+                    pairs.append((src, os.path.join(game_dir, rel)))
+            rollback.install_files(game_dir, "bepinex", pairs, check_running=False)
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
     finally:
         if os.path.exists(zip_path):
             os.remove(zip_path)
@@ -146,10 +155,10 @@ def build_plugin_with_diagnostics(project_dir: str, game_dir: str, auto_repair: 
                 for name in os.listdir(out_dir):
                     if name.endswith(".dll") and (not manifest.entry or name == manifest.entry):
                         targets.append(os.path.join(plugins, name))
-            backups = rollback.backup_files(game_dir, targets)
             installed = []
+            pairs = []
             for t in targets:
-                shutil.copy2(os.path.join(out_dir, os.path.basename(t)), t)
+                pairs.append((os.path.join(out_dir, os.path.basename(t)), t))
                 installed.append(os.path.basename(t))
             if not installed:
                 return {
@@ -157,8 +166,7 @@ def build_plugin_with_diagnostics(project_dir: str, game_dir: str, auto_repair: 
                     "error": f"manifest entry not found in build output: {manifest.entry or '*.dll'}",
                     "raw_output": res.stdout,
                 }
-            added = [t for t in targets if os.path.isfile(t) and t not in backups]
-            rollback.record_install(game_dir, manifest.id, added, backups)
+            rollback.install_files(game_dir, manifest.id, pairs)
             return {
                 "success": True,
                 "installed": ", ".join(installed),

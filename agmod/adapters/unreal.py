@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import glob
 import os
-import shutil
 
 from .. import rollback
 from ..manifest import ModManifest
@@ -163,16 +162,5 @@ print(string.format("[%s] Initialized successfully!", ModRef))
             else:
                 pairs.append((s, d))
 
-        backups = rollback.backup_files(game_dir, [d for _, d in pairs])
-
-        for item in os.listdir(project_dir):
-            s = os.path.join(project_dir, item)
-            d = os.path.join(mods_dir, item)
-            if os.path.isdir(s):
-                shutil.copytree(s, d, dirs_exist_ok=True)
-            else:
-                shutil.copy2(s, d)
-
-        added = [d for _, d in pairs if os.path.isfile(d) and d not in backups]
-        rollback.record_install(game_dir, mod_id, added, backups)
+        rollback.install_files(game_dir, mod_id, pairs)
         return mods_dir

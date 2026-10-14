@@ -48,24 +48,33 @@ def get_running_game_processes(game_dir: str) -> list[dict]:
     """Return active processes whose executable path or name matches game_dir."""
     if psutil is None:
         return []
-    game_dir_abs = os.path.abspath(game_dir)
-    target_exes = {e.lower() for e in find_game_executables(game_dir)}
-
+    game_dir_abs = os.path.realpath(game_dir)
     hits = []
-    for proc in psutil.process_iter(["pid", "name", "exe"]):
+    for proc in psutil.process_iter(["pid", "name", "exe", "cwd"]):
         try:
             info = proc.info
             p_name = (info.get("name") or "").lower()
             p_exe = info.get("exe") or ""
-            p_exe_abs = os.path.abspath(p_exe) if p_exe else ""
+            p_exe_abs = os.path.realpath(p_exe) if p_exe else ""
 
             matched = False
             # Check 1: Exe is inside game directory
-            if p_exe_abs and p_exe_abs.startswith(game_dir_abs + os.sep):
-                matched = True
-            # Check 2: Process name matches one of the detected game executables
-            elif target_exes and p_name in target_exes:
-                matched = True
+            if p_exe_abs:
+                try:
+                    matched = os.path.commonpath([game_dir_abs, p_exe_abs]) == game_dir_abs
+                except ValueError:
+                    matched = False
+            else:
+                cwd = info.get("cwd") or ""
+                try:
+                    cwd_abs = os.path.realpath(cwd) if cwd else ""
+                except OSError:
+                    cwd_abs = ""
+                if cwd_abs:
+                    try:
+                        matched = os.path.commonpath([game_dir_abs, cwd_abs]) == game_dir_abs
+                    except ValueError:
+                        matched = False
 
             if matched:
                 hits.append({

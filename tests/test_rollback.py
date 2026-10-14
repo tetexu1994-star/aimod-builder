@@ -5,6 +5,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -12,6 +13,59 @@ from agmod import rollback
 
 
 class TestRollback(unittest.TestCase):
+    def test_game_journals_are_isolated_by_absolute_path(self):
+        with tempfile.TemporaryDirectory() as cache, tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            game_one = os.path.join(one, "Game")
+            game_two = os.path.join(two, "Game")
+            os.makedirs(game_one)
+            os.makedirs(game_two)
+            mod_file = os.path.join(game_one, "mod.dll")
+            with open(mod_file, "w") as f:
+                f.write("x")
+            with mock.patch.object(rollback, "CACHE_ROOT", cache):
+                rollback.record_install(game_one, "mod-a", [mod_file], {})
+                self.assertEqual(len(rollback.list_installs(game_one)), 1)
+                self.assertEqual(rollback.list_installs(game_two), [])
+
+    def test_uninstall_preserves_user_modified_files(self):
+        with tempfile.TemporaryDirectory() as game_dir:
+            mod_file = os.path.join(game_dir, "Mods", "mod.lua")
+            os.makedirs(os.path.dirname(mod_file))
+            with open(mod_file, "w") as f:
+                f.write("installed")
+            rollback.record_install(game_dir, "mod", [mod_file], {})
+            with open(mod_file, "w") as f:
+                f.write("user changed this")
+            result = rollback.uninstall(game_dir, "mod")
+            self.assertFalse(result["success"])
+            self.assertTrue(os.path.isfile(mod_file))
+            self.assertEqual(len(rollback.list_installs(game_dir)), 1)
+
+    def test_install_files_rolls_back_partial_copy(self):
+        import shutil
+
+        with tempfile.TemporaryDirectory() as game_dir, tempfile.TemporaryDirectory() as src_dir:
+            src_a = os.path.join(src_dir, "a.lua")
+            src_b = os.path.join(src_dir, "b.lua")
+            with open(src_a, "w") as f:
+                f.write("a")
+            with open(src_b, "w") as f:
+                f.write("b")
+            dest_a = os.path.join(game_dir, "mods", "a.lua")
+            dest_b = os.path.join(game_dir, "mods", "b.lua")
+            real_copy = shutil.copy2
+
+            def failing_copy(src, dest, *args, **kwargs):
+                if os.path.basename(dest) == "b.lua":
+                    raise OSError("simulated copy failure")
+                return real_copy(src, dest, *args, **kwargs)
+
+            with mock.patch.object(rollback.shutil, "copy2", side_effect=failing_copy):
+                with self.assertRaises(OSError):
+                    rollback.install_files(game_dir, "partial", [(src_a, dest_a), (src_b, dest_b)])
+            self.assertFalse(os.path.exists(dest_a))
+            self.assertEqual(rollback.list_installs(game_dir), [])
+
     def test_uninstall_removes_added_and_restores_overwritten(self):
         with tempfile.TemporaryDirectory() as game_dir:
             existing = os.path.join(game_dir, "BepInEx", "plugins", "X.dll")

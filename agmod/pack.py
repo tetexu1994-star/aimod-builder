@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import stat
 import zipfile
 
 from .manifest import ModManifest
@@ -111,6 +112,24 @@ def validate_package(package_path: str) -> dict:
     try:
         with zipfile.ZipFile(package_path, "r") as z:
             names = z.namelist()
+            seen = set()
+            for info in z.infolist():
+                name = info.filename.replace("\\", "/")
+                normalized = name.rstrip("/")
+                if (
+                    not name
+                    or name.startswith("/")
+                    or re.match(r"^[A-Za-z]:", name)
+                    or ".." in normalized.split("/")
+                    or "\x00" in name
+                ):
+                    errors.append(f"unsafe archive path: {info.filename}")
+                if name in seen:
+                    errors.append(f"duplicate archive path: {name}")
+                seen.add(name)
+                mode = info.external_attr >> 16
+                if stat.S_ISLNK(mode):
+                    errors.append(f"symbolic links are not allowed: {name}")
             if "manifest.json" not in names:
                 errors.append("missing manifest.json")
             else:

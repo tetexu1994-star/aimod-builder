@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import glob
 import os
-import shutil
 
 from .. import rollback
 from ..manifest import ModManifest
@@ -55,7 +54,7 @@ class GodotAdapter(BaseAdapter):
         return out
 
     def detect(self, game_dir: str) -> bool:
-        return len(self._matched_files(game_dir)) > 0
+        return bool(glob.glob(os.path.join(game_dir, "*.pck")) or glob.glob(os.path.join(game_dir, "*.godot")))
 
     def fingerprint(self, game_dir: str) -> str:
         return fingerprint_files([p for p in self._matched_files(game_dir) if os.path.isfile(p)])
@@ -116,12 +115,14 @@ class GodotAdapter(BaseAdapter):
         os.makedirs(dest_mod_dir, exist_ok=True)
 
         pairs = []
-        for root, dirs, files in os.walk(project_dir):
-            dirs[:] = [d for d in dirs if d not in {"dist", "__pycache__", ".git"}]
+        for root, dirs, files in os.walk(project_dir, followlinks=False):
+            dirs[:] = [d for d in dirs if d not in {"out", "dist", "lib", "__pycache__", ".git", ".pytest_cache"}]
             for fn in files:
-                if fn in {"mod-spec.json", "request.md", "MODDING_PLAN.md"}:
+                if fn in {"mod-spec.json", "request.md", "MODDING_PLAN.md"} or fn.endswith(".pre-repair"):
                     continue
                 src = os.path.join(root, fn)
+                if os.path.islink(src):
+                    continue
                 rel = os.path.relpath(src, project_dir)
                 dest = os.path.join(dest_mod_dir, rel)
                 pairs.append((src, dest))
@@ -129,13 +130,5 @@ class GodotAdapter(BaseAdapter):
         if not pairs:
             raise ValueError("no files found in project to install")
 
-        target_paths = [d for _, d in pairs]
-        backups = rollback.backup_files(game_dir, target_paths)
-
-        for src, dest in pairs:
-            os.makedirs(os.path.dirname(dest), exist_ok=True)
-            shutil.copy2(src, dest)
-
-        added = [d for d in target_paths if os.path.isfile(d) and d not in backups]
-        rollback.record_install(game_dir, manifest.id, added, backups)
+        rollback.install_files(game_dir, manifest.id, pairs)
         return dest_mod_dir

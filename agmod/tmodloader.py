@@ -15,7 +15,6 @@ import os
 import re
 import subprocess
 
-import shutil
 
 from . import rollback
 from .manifest import ModManifest
@@ -132,19 +131,12 @@ def install_tmod_mod(project_dir: str, game_dir: str) -> dict:
     if not targets:
         raise ValueError("no built .dll or .tmod found in out/ directory")
 
-    backups = rollback.backup_files(game_dir, targets)
-    installed = []
-    for t in targets:
-        src = os.path.join(out_dir, os.path.basename(t))
-        shutil.copy2(src, t)
-        installed.append(os.path.basename(t))
-
-    added = [t for t in targets if os.path.isfile(t) and t not in backups]
-    rollback.record_install(game_dir, manifest.id, added, backups)
+    pairs = [(os.path.join(out_dir, os.path.basename(t)), t) for t in targets]
+    result = rollback.install_files(game_dir, manifest.id, pairs)
     return {
         "success": True,
         "mod_id": manifest.id,
-        "installed": installed,
+        "installed": [os.path.basename(t) for t in result["installed"]],
         "destination": mods_dir,
     }
 

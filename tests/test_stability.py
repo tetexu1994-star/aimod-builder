@@ -88,6 +88,18 @@ class TestStability(unittest.TestCase):
             with self.assertRaises(ValueError):
                 pack.package_mod(d)
 
+    def test_package_validation_rejects_traversal(self):
+        import zipfile
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "bad.zip")
+            with zipfile.ZipFile(path, "w") as z:
+                z.writestr("manifest.json", '{"name":"x","version_number":"1.0.0","description":"x","dependencies":[]}')
+                z.writestr("../evil.txt", "bad")
+                z.writestr("main.lua", "print(1)")
+            result = pack.validate_package(path)
+            self.assertFalse(result["valid"])
+            self.assertTrue(any("unsafe archive path" in e for e in result["errors"]))
+
     def test_package_includes_declared_dll(self):
         with tempfile.TemporaryDirectory() as d:
             Path(d, "mod.json").write_text('{"id":"x","name":"X","version":"1.0.0","engine":"unity","entry":"x.dll"}', encoding="utf-8")

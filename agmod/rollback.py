@@ -10,8 +10,10 @@ This is what makes modding safe: if a mod breaks the game, you can always get ba
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import shutil
+import threading
 
 from .config import CACHE_ROOT
 from .paths import slugify, safe_join
@@ -32,11 +34,13 @@ _PROTECTED_REL_DIRS = {
     "modloader",
     "modloader/mods",
 }
+_LOCK = threading.Lock()
 
 
 def _game_id(game_dir: str) -> str:
     norm = os.path.abspath(game_dir)
-    return slugify(os.path.basename(norm) or "game")
+    digest = hashlib.sha256(os.path.realpath(norm).encode("utf-8")).hexdigest()[:12]
+    return f"{slugify(os.path.basename(norm) or 'game')}-{digest}"
 
 
 def _base(game_dir: str) -> str:
@@ -61,8 +65,20 @@ def _load(game_dir: str) -> dict:
 def _save(game_dir: str, journal: dict) -> None:
     path = _journal_path(game_dir)
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
+    temp = path + ".tmp"
+    with open(temp, "w", encoding="utf-8") as f:
         json.dump(journal, f, indent=2, ensure_ascii=False)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(temp, path)
+
+
+def _sha256(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _cleanup_empty_dirs(game_dir: str, directory: str) -> None:
@@ -112,6 +128,11 @@ def backup_files(game_dir: str, paths: list[str]) -> dict[str, str]:
 def record_install(game_dir: str, mod_id: str, added_files: list[str], overwritten_backups: dict[str, str]) -> None:
     """Append one install entry to the journal."""
     game_dir = os.path.abspath(game_dir)
+    with _LOCK:
+        _record_install_locked(game_dir, mod_id, added_files, overwritten_backups)
+
+
+def _record_install_locked(game_dir: str, mod_id: str, added_files: list[str], overwritten_backups: dict[str, str]) -> None:
     journal = _load(game_dir)
     valid_added = []
     for f in added_files:
@@ -134,12 +155,100 @@ def record_install(game_dir: str, mod_id: str, added_files: list[str], overwritt
         except ValueError:
             pass
 
+    hashes = {}
+    for rel in valid_added + list(valid_overwritten):
+        try:
+            hashes[rel] = _sha256(safe_join(game_dir, rel))
+        except (OSError, ValueError):
+            pass
+
     journal["entries"].append({
         "mod_id": mod_id,
         "added": valid_added,
         "overwritten": valid_overwritten,
+        "installed_hashes": hashes,
+        "status": "installed",
     })
     _save(game_dir, journal)
+
+
+def install_files(game_dir: str, mod_id: str, files: list[tuple[str, str]], check_running: bool = True) -> dict:
+    """Install an explicit source/target file set as one reversible transaction."""
+    game_dir = os.path.abspath(game_dir)
+    if check_running:
+        running, processes = is_game_running(game_dir)
+        if running:
+            raise RuntimeError(f"game is running; close it before installing: {processes}")
+
+    prepared = []
+    seen = set()
+    for src, dest in files:
+        src_abs = os.path.abspath(src)
+        dest_abs = os.path.abspath(dest)
+        if not os.path.isfile(src_abs) or os.path.islink(src_abs):
+            raise ValueError(f"install source is not a regular file: {src}")
+        rel = os.path.relpath(dest_abs, game_dir).replace("\\", "/")
+        if rel.startswith("../") or rel == ".." or os.path.isabs(rel):
+            raise ValueError(f"install target escapes game directory: {dest}")
+        if rel in seen:
+            raise ValueError(f"duplicate install target: {rel}")
+        seen.add(rel)
+        prepared.append((src_abs, dest_abs, rel))
+
+    with _LOCK:
+        journal = _load(game_dir)
+        owners = {}
+        for entry in journal.get("entries", []):
+            for rel in entry.get("added", []):
+                owners[rel.replace("\\", "/").lower()] = entry.get("mod_id", "unknown")
+        conflicts = [
+            {"path": rel, "installed_by": owners.get(rel.lower())}
+            for _, _, rel in prepared
+            if owners.get(rel.lower()) not in (None, mod_id)
+        ]
+        if conflicts:
+            raise RuntimeError(f"install targets are owned by other mods: {conflicts}")
+
+        target_paths = [dest for _, dest, _ in prepared]
+        backups = backup_files(game_dir, target_paths)
+        entry = {
+            "mod_id": mod_id,
+            "added": [rel for _, _, rel in prepared if rel not in {os.path.relpath(p, game_dir).replace('\\', '/') for p in backups}],
+            "overwritten": {
+                os.path.relpath(path, game_dir).replace("\\", "/"): backup
+                for path, backup in backups.items()
+            },
+            "installed_hashes": {
+                rel: _sha256(src) for src, _, rel in prepared
+            },
+            "status": "pending",
+        }
+        journal["entries"].append(entry)
+        _save(game_dir, journal)
+        try:
+            for src, dest, rel in prepared:
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                shutil.copy2(src, dest)
+                if _sha256(dest) != entry["installed_hashes"][rel]:
+                    raise OSError(f"install verification failed for {rel}")
+            entry["status"] = "installed"
+            _save(game_dir, journal)
+        except Exception:
+            _, _, rollback_errors = _reverse_entry(game_dir, entry)
+            if rollback_errors:
+                entry["status"] = "rollback_failed"
+                entry["rollback_errors"] = rollback_errors
+            else:
+                journal["entries"] = [e for e in journal["entries"] if e is not entry]
+            _save(game_dir, journal)
+            raise
+
+    return {
+        "success": True,
+        "mod_id": mod_id,
+        "installed": [rel for _, _, rel in prepared],
+        "overwritten": list(entry["overwritten"]),
+    }
 
 
 def check_conflicts(game_dir: str, target_files: list[str]) -> dict:
@@ -166,6 +275,7 @@ def check_conflicts(game_dir: str, target_files: list[str]) -> dict:
         except ValueError:
             continue
         if rel.startswith(".."):
+            conflicts.append({"path": tf, "exists": False, "installed_by": None, "error": "path escapes game directory"})
             continue
         if os.path.exists(tf_abs):
             conflicts.append({
@@ -199,7 +309,11 @@ def _reverse_entry(game_dir: str, entry: dict) -> tuple[list[str], list[str], li
         except Exception as e:
             errors.append(f"invalid added path {rel}: {e}")
             continue
+        expected = entry.get("installed_hashes", {}).get(rel)
         if os.path.isfile(p):
+            if expected and _sha256(p) != expected:
+                errors.append(f"refusing to delete modified file {rel}")
+                continue
             try:
                 os.remove(p)
                 removed.append(rel)
@@ -214,10 +328,18 @@ def _reverse_entry(game_dir: str, entry: dict) -> tuple[list[str], list[str], li
             errors.append(f"invalid overwritten path {rel}: {e}")
             continue
         backup_abs = os.path.abspath(backup)
-        if not backup_abs.startswith(base_store):
+        try:
+            contained = os.path.commonpath([base_store, backup_abs]) == base_store
+        except ValueError:
+            contained = False
+        if not contained:
             errors.append(f"unauthorized backup path {backup}")
             continue
+        expected = entry.get("installed_hashes", {}).get(rel)
         if os.path.isfile(backup_abs):
+            if expected and os.path.isfile(p) and _sha256(p) != expected:
+                errors.append(f"refusing to overwrite modified file {rel}")
+                continue
             try:
                 os.makedirs(os.path.dirname(p), exist_ok=True)
                 shutil.copy2(backup_abs, p)
@@ -240,6 +362,16 @@ def uninstall(game_dir: str, mod_id: str) -> dict:
     removed: list[str] = []
     restored: list[str] = []
     errors: list[str] = []
+    with _LOCK:
+        return _uninstall_locked(game_dir, mod_id)
+
+
+def _uninstall_locked(game_dir: str, mod_id: str) -> dict:
+    game_dir = os.path.abspath(game_dir)
+    journal = _load(game_dir)
+    removed: list[str] = []
+    restored: list[str] = []
+    errors: list[str] = []
     matching_indices = [i for i, e in enumerate(journal["entries"]) if e.get("mod_id") == mod_id]
 
     if not matching_indices:
@@ -252,15 +384,17 @@ def uninstall(game_dir: str, mod_id: str) -> dict:
             "errors": [],
         }
 
-    # Reverse matching entries in reverse chronological order
+    successful_indices = []
     for idx in reversed(matching_indices):
         entry = journal["entries"][idx]
         r, s, errs = _reverse_entry(game_dir, entry)
         removed += r
         restored += s
         errors += errs
+        if not errs:
+            successful_indices.append(idx)
 
-    journal["entries"] = [e for i, e in enumerate(journal["entries"]) if i not in matching_indices]
+    journal["entries"] = [e for i, e in enumerate(journal["entries"]) if i not in successful_indices]
     _save(game_dir, journal)
     return {
         "success": len(errors) == 0,
@@ -273,17 +407,25 @@ def uninstall(game_dir: str, mod_id: str) -> dict:
 
 def rollback_all(game_dir: str) -> dict:
     """Reverse every recorded install, newest first, restoring the pre-mod state."""
+    with _LOCK:
+        return _rollback_all_locked(game_dir)
+
+
+def _rollback_all_locked(game_dir: str) -> dict:
     game_dir = os.path.abspath(game_dir)
     journal = _load(game_dir)
     removed: list[str] = []
     restored: list[str] = []
     errors: list[str] = []
+    remaining = []
     for entry in reversed(journal.get("entries", [])):
         r, s, errs = _reverse_entry(game_dir, entry)
         removed += r
         restored += s
         errors += errs
-    journal["entries"] = []
+        if errs:
+            remaining.append(entry)
+    journal["entries"] = list(reversed(remaining))
     _save(game_dir, journal)
     return {
         "success": len(errors) == 0,

@@ -113,16 +113,13 @@ def update_mod(game_dir: str, owner: str, repo: str, entry_dll: str) -> str:
     plugins = os.path.join(game_dir, "BepInEx", "plugins")
     os.makedirs(plugins, exist_ok=True)
     dest = safe_join(plugins, entry_dll)
-    backups = rollback.backup_files(game_dir, [dest])
     fd, temp_path = tempfile.mkstemp(prefix=entry_dll + ".", suffix=".part", dir=plugins)
     os.close(fd)
     try:
         urllib.request.urlretrieve(match["browser_download_url"], temp_path)
         _verify_digest(temp_path, match.get("digest"))
-        os.replace(temp_path, dest)
+        rollback.install_files(game_dir, entry_dll, [(temp_path, dest)], check_running=True)
     finally:
         if os.path.exists(temp_path):
             os.unlink(temp_path)
-    added = [dest] if dest not in backups else []
-    rollback.record_install(game_dir, entry_dll, added, backups)
     return dest

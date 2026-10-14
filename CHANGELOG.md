@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-10-14
+
+### Hardened
+
+- Install journal keys now include a hash of the absolute game path, preventing same-named game directories from sharing rollback state.
+- Added `rollback.install_files`, a transactional installer used by BepInEx, UE4SS, REFramework, Godot, tModLoader, and DLL updates. It blocks installs while the game is running, records pending state before copying, verifies installed hashes, and reverses partial copies on failure.
+- Uninstall and rollback now preserve user-modified files, retain incomplete journal entries after errors, use atomic journal writes, and validate backup paths with real containment checks.
+- Save backup keys also include the absolute game-path hash.
+- Package validation now rejects ZIP traversal paths, duplicate members, and symbolic links.
+- RE Engine detection no longer treats `dinput8.dll` alone as sufficient; Godot detection requires `.pck` or `.godot` evidence.
+- Game-process detection no longer matches unrelated executables by filename alone and uses path containment for executable/cwd evidence.
+
+### Verification
+
+- `python -m unittest discover -s tests`: 57 tests passed.
+
 ## 2026-10-13
 
 ### Added

@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import glob
 import os
-import shutil
 
 from .. import rollback
 from ..manifest import ModManifest
@@ -76,7 +75,11 @@ class ReEngineAdapter(BaseAdapter):
         return out
 
     def detect(self, game_dir: str) -> bool:
-        return len(self._matched_files(game_dir)) > 0
+        strong = [
+            p for p in self._matched_files(game_dir)
+            if os.path.basename(p).lower() != "dinput8.dll"
+        ]
+        return bool(strong)
 
     def fingerprint(self, game_dir: str) -> str:
         return fingerprint_files(self._matched_files(game_dir))
@@ -138,10 +141,14 @@ class ReEngineAdapter(BaseAdapter):
         autorun_src = os.path.join(project_dir, "autorun")
         pairs = []
         if os.path.isdir(autorun_src):
-            for item in os.listdir(autorun_src):
-                s = os.path.join(autorun_src, item)
-                d = os.path.join(dest_autorun, item)
-                pairs.append((s, d))
+            for root, dirs, files in os.walk(autorun_src, followlinks=False):
+                dirs[:] = [d for d in dirs if not os.path.islink(os.path.join(root, d))]
+                for fn in files:
+                    s = os.path.join(root, fn)
+                    if os.path.islink(s):
+                        continue
+                    rel = os.path.relpath(s, autorun_src)
+                    pairs.append((s, os.path.join(dest_autorun, rel)))
         elif manifest.entry and os.path.isfile(os.path.join(project_dir, manifest.entry)):
             s = os.path.join(project_dir, manifest.entry)
             d = os.path.join(dest_autorun, os.path.basename(s))
@@ -150,15 +157,5 @@ class ReEngineAdapter(BaseAdapter):
         if not pairs:
             raise ValueError("no autorun scripts found in project to install")
 
-        target_paths = [d for _, d in pairs]
-        backups = rollback.backup_files(game_dir, target_paths)
-
-        for s, d in pairs:
-            if os.path.isdir(s):
-                shutil.copytree(s, d, dirs_exist_ok=True)
-            else:
-                shutil.copy2(s, d)
-
-        added = [d for d in target_paths if os.path.isfile(d) and d not in backups]
-        rollback.record_install(game_dir, manifest.id, added, backups)
+        rollback.install_files(game_dir, manifest.id, pairs)
         return dest_autorun

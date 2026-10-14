@@ -159,6 +159,16 @@ class TestGodotAdapter(unittest.TestCase):
                 self.assertFalse(os.path.exists(dest))
                 self.assertEqual(rollback.list_installs(game_dir), [])
 
+    def test_detection_requires_real_engine_marker(self):
+        from agmod.adapters.godot import GodotAdapter
+        from agmod.adapters.reengine import ReEngineAdapter
+        with tempfile.TemporaryDirectory() as d:
+            os.mkdir(os.path.join(d, "mods-unpacked"))
+            with open(os.path.join(d, "dinput8.dll"), "wb") as f:
+                f.write(b"")
+            self.assertFalse(GodotAdapter().detect(d))
+            self.assertFalse(ReEngineAdapter().detect(d))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
