@@ -152,9 +152,10 @@
 ## 6. 安全防线与沙箱约束 (Security Guardrails)
 
 1. **Localhost 严格绑定**: 服务默认仅侦听 `127.0.0.1`，拒绝外网 IP 访问。
-2. **路径穿越防御 (`safe_path`)**: 对所有前端传入的 `game_dir`、`project_dir`、`backup_id` 做 `os.path.abspath` 和 `os.path.commonpath` 归一化校验，防止 `../` 越界读取主机系统敏感目录。
-3. **破坏性操作二次确认**: 涉及 `rollback_game`（清空已安装 mod）与 `restore_save_backup`（覆盖当前游戏存档）操作，前端强制弹出确认模态框，后端记录操作审计日志。
-4. **反作弊防护联动**: 内存扫描与进程挂钩时复用 `agmod.safety`，检测到 EasyAntiCheat / BattlEye / VAC 游戏时强制进入只读/阻止状态。
+2. **CORS 与 Origin 白名单机制 (CSRF 防御)**: 坚决废除 `Access-Control-Allow-Origin: *` 全开放策略。只允许 `127.0.0.1` 与 `localhost` 本地同源/安全来源，外站跨域探测（如恶意网页通过 JS 扫描本地 `127.0.0.1:8765`）一律返回 `403 Forbidden` 并剥离 CORS 响应头，彻底杜绝本地敏感信息泄漏与跨站命令伪造。
+3. **路径穿越防御 (`safe_path`)**: 对所有前端传入的 `game_dir`、`project_dir`、`backup_id` 做 `os.path.abspath` 和 `os.path.commonpath` 归一化校验，防止 `../` 越界读取主机系统敏感目录。
+4. **破坏性操作二次确认**: 涉及 `rollback_game`（清空已安装 mod）与 `restore_save_backup`（覆盖当前游戏存档）操作，前端强制弹出确认模态框，后端记录操作审计日志。
+5. **反作弊防护联动**: 内存扫描与进程挂钩时复用 `agmod.safety`，检测到 EasyAntiCheat / BattlEye / VAC 游戏时强制进入只读/阻止状态。
 
 ---
 

@@ -184,6 +184,20 @@ System.NullReferenceException: Object reference not set to an instance of an obj
             self.assertTrue(res["success"])
             self.assertTrue(res["data"]["found"])
 
+    def test_cors_safe_origin(self):
+        req = urllib.request.Request(f"{self.base_url}/api/health", headers={"Origin": "http://localhost:8765"})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            self.assertEqual(response.getcode(), 200)
+            self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), "http://localhost:8765")
+
+    def test_cors_reject_unauthorized_origin(self):
+        req = urllib.request.Request(f"{self.base_url}/api/health", headers={"Origin": "https://malicious-site.com"})
+        try:
+            with urllib.request.urlopen(req, timeout=5) as response:
+                self.assertEqual(response.getcode(), 403)
+        except urllib.error.HTTPError as e:
+            self.assertEqual(e.code, 403)
+
     def test_launch_ui_function(self):
         port = _get_free_port()
         url = launch_ui(host="127.0.0.1", port=port, open_browser=False)

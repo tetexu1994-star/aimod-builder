@@ -47,18 +47,30 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
     server_version = "AIModBuilderUI/1.0"
 
     def log_message(self, format: str, *args: Any) -> None:
-        # Keep test runs clean while logging if DEBUG
         if os.environ.get("AGMOD_DEBUG"):
             logger.info("%s - - [%s] %s\n" % (self.address_string(), self.log_date_time_string(), format % args))
+
+    def _is_safe_origin(self) -> bool:
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True
+        parsed = urllib.parse.urlparse(origin)
+        return parsed.hostname in ("127.0.0.1", "localhost")
+
+    def _apply_cors_headers(self) -> None:
+        origin = self.headers.get("Origin")
+        if origin and self._is_safe_origin():
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Vary", "Origin")
 
     def _send_json(self, status_code: int, data: Dict[str, Any]) -> None:
         payload = json.dumps(data, ensure_ascii=False).encode("utf-8")
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self._apply_cors_headers()
         self.end_headers()
         self.wfile.write(payload)
 
@@ -71,13 +83,22 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def do_OPTIONS(self) -> None:
+        if not self._is_safe_origin():
+            self.send_response(HTTPStatus.FORBIDDEN)
+            self.end_headers()
+            return
         self.send_response(HTTPStatus.NO_CONTENT)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self._apply_cors_headers()
         self.end_headers()
 
     def do_GET(self) -> None:
+        if not self._is_safe_origin():
+            self._send_json(HTTPStatus.FORBIDDEN, {
+                "success": False,
+                "error": "Cross-origin request rejected: origin is not authorized."
+            })
+            return
+
         parsed_url = urllib.parse.urlparse(self.path)
         path = parsed_url.path
 
@@ -130,6 +151,13 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND, "Page not found")
 
     def do_POST(self) -> None:
+        if not self._is_safe_origin():
+            self._send_json(HTTPStatus.FORBIDDEN, {
+                "success": False,
+                "error": "Cross-origin request rejected: origin is not authorized."
+            })
+            return
+
         parsed_url = urllib.parse.urlparse(self.path)
         path = parsed_url.path
 
