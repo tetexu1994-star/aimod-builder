@@ -7,22 +7,37 @@ echo   AI Mod Builder - 本机开发环境自检 (Doctor)
 echo ========================================================
 echo.
 
-where python >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [错误] 未检测到 Python，请先安装 Python 3.10+ 并勾选 "Add Python to PATH"
-    pause
-    exit /b 1
+set "PY_CMD="
+
+if exist "%~dp0runtime\python.exe" (
+    set "PY_CMD=%~dp0runtime\python.exe"
+    goto :FOUND_PYTHON
+)
+if exist "%~dp0python\python.exe" (
+    set "PY_CMD=%~dp0python\python.exe"
+    goto :FOUND_PYTHON
 )
 
+where python >nul 2>nul
+if %errorlevel% equ 0 (
+    set "PY_CMD=python"
+    goto :FOUND_PYTHON
+)
+
+echo [错误] 未检测到 Python，请先运行 run_ui.bat 自动配置或手动安装 Python 3.10+
+pause
+exit /b 1
+
+:FOUND_PYTHON
 echo [1/3] 检查并安装核心运行依赖 (mcp, psutil)...
-python -m pip install -r requirements.txt -q
+"%PY_CMD%" -m pip install -r requirements.txt -q
 
 echo.
 echo [2/3] 运行环境自检 (Doctor)...
-python -m agmod.doctor
+"%PY_CMD%" -m agmod.doctor
 
 echo.
 echo [3/3] 运行自动化验证套件 (verify.py)...
-python verify.py
+"%PY_CMD%" verify.py
 
 pause
