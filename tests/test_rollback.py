@@ -82,7 +82,7 @@ class TestRollback(unittest.TestCase):
             rollback.record_install(game_dir, "mymod", [newfile], backups)
 
             r = rollback.uninstall(game_dir, "mymod")
-            self.assertIn(os.path.relpath(newfile, game_dir), r["removed"])
+            self.assertIn(os.path.relpath(newfile, game_dir).replace("\\", "/"), r["removed"])
             self.assertFalse(os.path.exists(newfile))
             with open(existing) as f:
                 self.assertEqual(f.read(), "ORIGINAL")

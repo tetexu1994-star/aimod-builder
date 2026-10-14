@@ -97,6 +97,7 @@ class ReEngineAdapter(BaseAdapter):
     def scaffold_mod(self, project_dir: str, mod_id: str, mod_name: str, mod_version: str = "0.1.0", author: str = "") -> str:
         """Create a complete REFramework Lua mod project skeleton."""
         mod_id = safe_component(mod_id, "mod_id")
+        mod_name_lua = str(mod_name).replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
         autorun_dir = os.path.join(project_dir, "autorun")
         os.makedirs(autorun_dir, exist_ok=True)
 
@@ -104,7 +105,7 @@ class ReEngineAdapter(BaseAdapter):
         lua_path = os.path.join(project_dir, entry_rel)
         with open(lua_path, "w", encoding="utf-8") as f:
             f.write(_LUA_TEMPLATE.format(
-                mod_name=mod_name,
+                mod_name=mod_name_lua,
                 author=author or "unknown",
                 mod_version=mod_version,
             ))

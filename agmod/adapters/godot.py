@@ -10,7 +10,7 @@ import os
 
 from .. import rollback
 from ..manifest import ModManifest
-from ..paths import safe_component, safe_join
+from ..paths import safe_component, safe_join, slugify
 from ..structures import StructureTable, fingerprint_files
 from .base import BaseAdapter
 
@@ -72,7 +72,7 @@ class GodotAdapter(BaseAdapter):
     def scaffold_mod(self, project_dir: str, mod_id: str, mod_name: str, mod_version: str = "0.1.0", author: str = "") -> str:
         """Scaffold a GodotModLoader GDScript mod project."""
         mod_id = safe_component(mod_id, "mod_id")
-        author_name = safe_component(author or "Unknown", "author")
+        author_name = slugify(author or "Unknown")
         folder_name = f"{author_name}-{mod_id}"
 
         os.makedirs(project_dir, exist_ok=True)
@@ -109,7 +109,7 @@ class GodotAdapter(BaseAdapter):
             raise ValueError(f"no mod.json found in {project_dir}")
         manifest = ModManifest.load(manifest_path)
 
-        author_name = safe_component(manifest.author or "Unknown", "author")
+        author_name = slugify(manifest.author or "Unknown")
         folder_name = f"{author_name}-{manifest.id}"
         dest_mod_dir = os.path.join(game_dir, "mods-unpacked", folder_name)
         os.makedirs(dest_mod_dir, exist_ok=True)
