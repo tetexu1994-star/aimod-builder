@@ -9,13 +9,13 @@
     :root {
       --bg-root: #080b11;
       --bg-sidebar: #0d121c;
-      --bg-header: rgba(13, 18, 28, 0.85);
-      --bg-card: #131a29;
-      --bg-card-hover: #192336;
-      --bg-card-inner: #0b101b;
-      --bg-input: #090e18;
-      --border: #1f2a3e;
-      --border-hover: #2e3e5c;
+      --bg-header: rgba(13, 18, 28, 0.88);
+      --bg-card: #111726;
+      --bg-card-hover: #172033;
+      --bg-card-inner: #090e17;
+      --bg-input: #080d16;
+      --border: #1e293b;
+      --border-hover: #334155;
       --border-focus: #38bdf8;
       --primary: #38bdf8;
       --primary-hover: #0284c7;
@@ -29,14 +29,23 @@
       --rose: #f43f5e;
       --rose-bg: rgba(244, 63, 94, 0.12);
       --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --text-dim: #64748b;
+      --text-muted: #cbd5e1;
+      --text-dim: #94a3b8;
       --radius-sm: 6px;
       --radius: 10px;
       --radius-lg: 14px;
       --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "JetBrains Mono", monospace;
-      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+      --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.35);
+      --shadow-lg: 0 12px 28px -6px rgba(0, 0, 0, 0.65);
+      --z-dropdown: 20;
+      --z-sticky: 40;
+      --z-sidebar: 50;
+      --z-modal-backdrop: 80;
+      --z-modal: 90;
+      --z-toast: 100;
+      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -46,9 +55,23 @@
       background: var(--bg-root);
       color: var(--text-main);
       font-family: var(--sans);
-      line-height: 1.5;
+      line-height: 1.55;
       display: flex;
       flex-direction: column;
+    }
+
+    h1, h2, h3, .brand-title, .card-title {
+      letter-spacing: -0.02em;
+      text-wrap: balance;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
     }
 
     button, input, textarea, select { font: inherit; color: inherit; }
@@ -95,11 +118,15 @@
       margin-bottom: 16px;
     }
     .brand-icon {
-      width: 36px; height: 36px; border-radius: 9px;
-      background: var(--primary-gradient);
+      width: 38px; height: 38px; border-radius: 10px;
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
       display: grid; place-items: center;
-      color: #04101e; font-weight: 800; font-size: 17px;
-      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.35);
+      flex-shrink: 0;
+      transition: transform 140ms var(--ease-out);
+    }
+    .brand-icon:hover {
+      transform: scale(1.06) rotate(3deg);
     }
     .brand-title { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: -0.01em; }
     .brand-subtitle { font-size: 11px; color: var(--text-dim); }
@@ -118,16 +145,21 @@
       border-radius: var(--radius-sm);
       color: var(--text-muted);
       font-size: 13px; font-weight: 500;
-      transition: all 0.15s ease;
+      transition: background-color 140ms var(--ease-out), color 140ms var(--ease-out), border-color 140ms var(--ease-out), transform 120ms var(--ease-out);
+    }
+    .nav-item:active {
+      transform: scale(0.98);
     }
     .nav-item-left { display: flex; align-items: center; gap: 10px; }
     .nav-item:hover { background: var(--bg-card); color: var(--text-main); }
     .nav-item.active {
-      background: rgba(56, 189, 248, 0.14);
-      color: var(--primary);
+      background: rgba(56, 189, 248, 0.12);
+      color: #ffffff;
       font-weight: 600;
-      border-left: 3px solid var(--primary);
-      padding-left: 9px;
+      border: 1px solid rgba(56, 189, 248, 0.28);
+    }
+    .nav-item.active .icon {
+      color: var(--primary);
     }
     .nav-badge {
       font-size: 10px; font-family: var(--mono);
@@ -214,7 +246,7 @@
       border-radius: var(--radius-lg);
       padding: 18px 22px;
       margin-bottom: 22px;
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow-sm);
     }
     .picker-head {
       display: flex;
@@ -250,13 +282,16 @@
       color: var(--text-muted);
       font-size: 11px; font-weight: 500;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: background-color 140ms var(--ease-out), border-color 140ms var(--ease-out), color 140ms var(--ease-out), transform 120ms var(--ease-out);
     }
     .quick-game-chip:hover {
       background: var(--bg-card-hover);
       border-color: var(--border-focus);
       color: var(--text-main);
       transform: translateY(-1px);
+    }
+    .quick-game-chip:active {
+      transform: scale(0.96) translateY(0);
     }
 
     /* Form Controls */
@@ -269,7 +304,7 @@
       padding: 10px 14px;
       font-size: 13px;
       outline: none;
-      transition: all 0.15s ease;
+      transition: border-color 140ms var(--ease-out), background-color 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
     }
     .input-text:focus, .select-field:focus, .textarea-field:focus {
       border-color: var(--border-focus);
@@ -287,27 +322,43 @@
       padding: 9px 18px;
       border-radius: var(--radius-sm);
       font-size: 12px; font-weight: 600;
-      transition: all 0.15s ease;
+      transition: background-color 140ms var(--ease-out), border-color 140ms var(--ease-out), color 140ms var(--ease-out), transform 120ms var(--ease-out), box-shadow 140ms var(--ease-out);
       white-space: nowrap;
+      user-select: none;
+    }
+    .btn:active {
+      transform: scale(0.97) !important;
     }
     .btn-primary {
       background: var(--primary);
       color: #04101e;
       box-shadow: 0 2px 10px rgba(56, 189, 248, 0.35);
     }
-    .btn-primary:hover { background: #7dd3fc; transform: translateY(-1px); }
+    .btn-primary:hover {
+      background: #7dd3fc;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.45);
+    }
     .btn-secondary {
       background: var(--bg-card);
       color: var(--text-main);
       border: 1px solid var(--border);
     }
-    .btn-secondary:hover { background: var(--bg-card-hover); border-color: var(--border-hover); }
+    .btn-secondary:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-hover);
+      transform: translateY(-1px);
+    }
     .btn-danger {
       background: var(--rose-bg);
       color: var(--rose);
       border: 1px solid rgba(244, 63, 94, 0.3);
     }
-    .btn-danger:hover { background: var(--rose); color: #fff; }
+    .btn-danger:hover {
+      background: var(--rose);
+      color: #fff;
+      transform: translateY(-1px);
+    }
     .btn-sm { padding: 5px 12px; font-size: 11px; }
 
     /* Engine Badges */
@@ -343,7 +394,7 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow-sm);
     }
     .step-badge-row {
       display: flex;
@@ -371,7 +422,7 @@
       border-radius: var(--radius);
       padding: 20px;
       margin-bottom: 18px;
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow-sm);
     }
     .card-header {
       display: flex;
@@ -487,12 +538,15 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       padding: 11px 20px; border-radius: var(--radius);
-      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
-      display: none; z-index: 100; font-size: 13px;
+      box-shadow: var(--shadow-lg);
+      display: none; z-index: var(--z-toast); font-size: 13px;
       align-items: center; gap: 9px;
     }
-    #toast.show { display: flex; animation: slideUp 0.2s ease; }
-    @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    #toast.show { display: flex; animation: slideUp 180ms var(--ease-out); }
+    @keyframes slideUp {
+      from { transform: translateY(12px) scale(0.96); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
 
     /* Modal Dialog */
     dialog {
@@ -502,10 +556,27 @@
       border-radius: var(--radius-lg);
       padding: 24px;
       color: var(--text-main);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      box-shadow: var(--shadow-lg);
       max-width: 460px; width: 90%;
+      z-index: var(--z-modal);
     }
-    dialog::backdrop { background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); }
+    dialog[open] {
+      animation: dialogEnter 180ms var(--ease-out);
+    }
+    @keyframes dialogEnter {
+      from { opacity: 0; transform: scale(0.95) translateY(6px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    dialog::backdrop {
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(4px);
+      z-index: var(--z-modal-backdrop);
+      animation: backdropEnter 180ms var(--ease-out);
+    }
+    @keyframes backdropEnter {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
 
     /* Chat Bubbles & Layout */
     .chat-bubble-assistant {
@@ -639,12 +710,15 @@
       border: 1px solid var(--border);
       color: var(--text-muted);
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: background-color 140ms var(--ease-out), border-color 140ms var(--ease-out), color 140ms var(--ease-out), transform 120ms var(--ease-out);
     }
     .preset-pill:hover, .preset-pill.active {
       background: var(--bg-card-hover);
       border-color: var(--primary);
       color: var(--text-main);
+    }
+    .preset-pill:active {
+      transform: scale(0.96);
     }
 
     /* Responsive Media Queries */
@@ -681,9 +755,8 @@
         font-size: 12px;
       }
       .nav-item.active {
-        border-left: none;
-        border-bottom: 2px solid var(--primary);
-        padding-left: 12px;
+        background: rgba(56, 189, 248, 0.14);
+        border: 1px solid rgba(56, 189, 248, 0.35);
       }
       .sidebar-footer { display: none; }
       .topbar {
@@ -711,10 +784,22 @@
     <!-- Left Navigation Sidebar -->
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-icon">M</div>
+        <div class="brand-icon" title="Patchy (小补丁) · 你的 AI Mod 伴侣">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px; display: block;">
+            <path d="M32 4V11" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="32" cy="4" r="2.5" fill="#ffffff"/>
+            <polygon points="32 10 52 21 52 45 32 56 12 45 12 21" fill="#0284c7" stroke="#bae6fd" stroke-width="3" stroke-linejoin="round"/>
+            <rect x="20" y="24" width="24" height="13" rx="4" fill="#082f49" stroke="#7dd3fc" stroke-width="1.8"/>
+            <circle cx="26" cy="30.5" r="2.5" fill="#38bdf8"/>
+            <circle cx="38" cy="30.5" r="2.5" fill="#38bdf8"/>
+            <circle cx="27" cy="29.5" r="0.8" fill="#ffffff"/>
+            <circle cx="39" cy="29.5" r="0.8" fill="#ffffff"/>
+            <path d="M28 44Q32 48 36 44" stroke="#e0f2fe" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
         <div>
           <h1 class="brand-title">AI Mod Builder</h1>
-          <div class="brand-subtitle">游戏 Mod 安全制作台</div>
+          <div class="brand-subtitle">游戏 Mod 安全制作台 · <span style="color:var(--primary); font-weight:500;">Patchy 伴侣</span></div>
         </div>
       </div>
 
@@ -1166,9 +1251,21 @@
           <!-- Top Assistant Banner -->
           <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
             <div style="display: flex; align-items: center; gap: 12px;">
-              <div style="width: 38px; height: 38px; border-radius: 9px; background: linear-gradient(135deg, #0284c7, #38bdf8); display: grid; place-items: center; font-size: 20px; color: #fff;">💬</div>
+              <div style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #0284c7, #38bdf8); display: grid; place-items: center; box-shadow: 0 4px 12px rgba(56, 189, 248, 0.35); flex-shrink: 0;">
+                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 26px; height: 26px; display: block;">
+                  <path d="M32 4V11" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+                  <circle cx="32" cy="4" r="2.5" fill="#ffffff"/>
+                  <polygon points="32 10 52 21 52 45 32 56 12 45 12 21" fill="#0284c7" stroke="#bae6fd" stroke-width="3" stroke-linejoin="round"/>
+                  <rect x="20" y="24" width="24" height="13" rx="4" fill="#082f49" stroke="#7dd3fc" stroke-width="2"/>
+                  <circle cx="26" cy="30.5" r="2.5" fill="#38bdf8"/>
+                  <circle cx="38" cy="30.5" r="2.5" fill="#38bdf8"/>
+                  <circle cx="27" cy="29.5" r="0.8" fill="#ffffff"/>
+                  <circle cx="39" cy="29.5" r="0.8" fill="#ffffff"/>
+                  <path d="M28 44Q32 48 36 44" stroke="#e0f2fe" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </div>
               <div>
-                <div style="font-size: 14px; font-weight: 700; color: #fff;" id="chatAssistantTitle">AI 游戏 Mod 对话助手</div>
+                <div style="font-size: 14px; font-weight: 700; color: #fff;" id="chatAssistantTitle">AI 游戏 Mod 助手 · Patchy (小补丁)</div>
                 <div style="font-size: 11px; color: var(--text-dim);" id="chatAssistantSubtitle">单机游戏 Mod 制作 / 逆向分析 / 内存查找 / 代码生成</div>
               </div>
             </div>
@@ -1187,15 +1284,23 @@
             <!-- Welcome Message -->
             <div class="chat-bubble-assistant">
               <div class="chat-bubble-header">
-                <span class="chat-bubble-name">🤖 AI 游戏 Mod 助手</span>
+                <span class="chat-bubble-name">
+                  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 15px; height: 15px; vertical-align: -2px; display: inline-block;">
+                    <polygon points="32 10 52 21 52 45 32 56 12 45 12 21" fill="#0284c7" stroke="#7dd3fc" stroke-width="3"/>
+                    <circle cx="26" cy="30.5" r="3" fill="#fff"/>
+                    <circle cx="38" cy="30.5" r="3" fill="#fff"/>
+                  </svg>
+                  Patchy · AI Mod 伴侣
+                </span>
                 <span>就绪</span>
               </div>
-              <div class="chat-bubble-body">你好！我是你的单机游戏 Mod 制作助手。你可以直接用自然语言向我咨询任何 Mod 问题，例如：
-1. 分析特定引擎（Unity / Unreal / RE-Engine / Godot）的 Mod 制作方案。
+              <div class="chat-bubble-body">你好！我是你的专属 Mod 制作伴侣 Patchy（小补丁）。🛠️
+你可以随时向我咨询任何单机游戏 Mod 制作问题，例如：
+1. 分析特定引擎（Unity / Unreal / RE-Engine / Godot）的 Mod 架构与制作流程。
 2. 指导使用内存扫描查找金币、移速等数值地址并锁定。
 3. 编写 Harmony 切面、UE4SS Lua 钩子或 REFramework 插件源码。
 
-告诉我你想在游戏里实现什么功能吧！</div>
+直接输入你的需求，或者点击下方的快捷提示词开始吧！</div>
             </div>
           </div>
 
@@ -1889,7 +1994,8 @@
       div.className = role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant';
 
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const name = role === 'user' ? '你' : '🤖 ' + (currentLlmConfig.provider_name || 'AI Mod 助手');
+      const patchyIcon = `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 15px; height: 15px; vertical-align: -2px; display: inline-block;"><polygon points="32 10 52 21 52 45 32 56 12 45 12 21" fill="#0284c7" stroke="#7dd3fc" stroke-width="3"/><circle cx="26" cy="30.5" r="3" fill="#fff"/><circle cx="38" cy="30.5" r="3" fill="#fff"/></svg>`;
+      const name = role === 'user' ? '你' : `${patchyIcon} Patchy (${currentLlmConfig.provider_name || 'AI Mod 助手'})`;
 
       let actionsHtml = '';
       if (role === 'assistant' && !bubbleId) {
@@ -1987,7 +2093,14 @@
       container.innerHTML = `
         <div class="chat-bubble-assistant">
           <div class="chat-bubble-header">
-            <span class="chat-bubble-name">🤖 AI 游戏 Mod 助手</span>
+            <span class="chat-bubble-name">
+              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 15px; height: 15px; vertical-align: -2px; display: inline-block;">
+                <polygon points="32 10 52 21 52 45 32 56 12 45 12 21" fill="#0284c7" stroke="#7dd3fc" stroke-width="3"/>
+                <circle cx="26" cy="30.5" r="3" fill="#fff"/>
+                <circle cx="38" cy="30.5" r="3" fill="#fff"/>
+              </svg>
+              Patchy · AI Mod 伴侣
+            </span>
             <span>已清空</span>
           </div>
           <div class="chat-bubble-body">对话历史已清空。有什么可以帮你的？</div>
