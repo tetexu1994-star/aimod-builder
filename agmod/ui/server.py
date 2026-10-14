@@ -208,7 +208,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             mod_version=mod_version,
             customizations=customizations,
         )
-        return HTTPStatus.OK, {"success": True, "data": spec.to_dict()}
+        return HTTPStatus.OK, {"success": True, "data": spec}
 
     def _handle_codegen_template(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         engine = body.get("engine", "")
@@ -295,7 +295,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
     def _handle_logs_read(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
         lines = int(body.get("lines", 100))
-        res = logs.read_mod_logs(game_dir, lines=lines)
+        res = logs.read_mod_logs(game_dir, tail_lines=lines)
         return HTTPStatus.OK, {"success": True, "data": res}
 
     def _handle_logs_diagnose(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:

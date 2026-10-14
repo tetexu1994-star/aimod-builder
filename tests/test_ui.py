@@ -5,9 +5,9 @@ import json
 import os
 import socket
 import tempfile
+import unittest
 import urllib.error
 import urllib.request
-import pytest
 
 from agmod.ui.server import ModUIServer, launch_ui
 
@@ -16,15 +16,6 @@ def _get_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
         return s.getsockname()[1]
-
-
-@pytest.fixture(scope="module")
-def ui_server():
-    port = _get_free_port()
-    server = ModUIServer(host="127.0.0.1", port=port)
-    url = server.start(blocking=False)
-    yield server, url
-    server.stop()
 
 
 def _http_get(url: str):
@@ -39,145 +30,165 @@ def _http_post(url: str, data: dict):
         url,
         data=payload,
         headers={"Content-Type": "application/json"},
-        method="POST"
+        method="POST",
     )
     with urllib.request.urlopen(req, timeout=5) as response:
         return response.getcode(), json.loads(response.read().decode("utf-8"))
 
 
-def test_ui_health_and_index(ui_server):
-    _, base_url = ui_server
-    # Health endpoint
-    code, body = _http_get(f"{base_url}/api/health")
-    assert code == 200
-    data = json.loads(body)
-    assert data["success"] is True
-    assert data["data"]["status"] == "online"
+class TestUIServer(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.port = _get_free_port()
+        cls.server = ModUIServer(host="127.0.0.1", port=cls.port)
+        cls.base_url = cls.server.start(blocking=False)
 
-    # Static HTML SPA
-    code, html = _http_get(f"{base_url}/")
-    assert code == 200
-    assert "AI Mod Builder" in html
-    assert "game-mod-agent" in html
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.stop()
 
+    def test_health_and_index(self):
+        code, body = _http_get(f"{self.base_url}/api/health")
+        self.assertEqual(code, 200)
+        data = json.loads(body)
+        self.assertTrue(data["success"])
+        self.assertEqual(data["data"]["status"], "online")
 
-def test_ui_doctor_endpoint(ui_server):
-    _, base_url = ui_server
-    code, body = _http_get(f"{base_url}/api/doctor")
-    assert code == 200
-    res = json.loads(body)
-    assert res["success"] is True
-    assert "details" in res["data"]
+        code, html = _http_get(f"{self.base_url}/")
+        self.assertEqual(code, 200)
+        self.assertIn("AI Mod Builder", html)
+        self.assertIn("game-mod-agent", html)
 
+    def test_doctor_endpoint(self):
+        code, body = _http_get(f"{self.base_url}/api/doctor")
+        self.assertEqual(code, 200)
+        res = json.loads(body)
+        self.assertTrue(res["success"])
+        self.assertIn("details", res["data"])
 
-def test_ui_detect_and_process(ui_server):
-    _, base_url = ui_server
-    with tempfile.TemporaryDirectory() as tmp:
-        # Create dummy Unity structure with UnityPlayer.dll
-        with open(os.path.join(tmp, "UnityPlayer.dll"), "w") as f:
-            f.write("dummy")
+    def test_detect_and_process(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with open(os.path.join(tmp, "UnityPlayer.dll"), "w") as f:
+                f.write("dummy")
 
-        code, res = _http_post(f"{base_url}/api/detect", {"game_dir": tmp})
-        assert code == 200
-        assert res["success"] is True
-        assert res["data"]["id"] == "unity"
+            code, res = _http_post(f"{self.base_url}/api/detect", {"game_dir": tmp})
+            self.assertEqual(code, 200)
+            self.assertTrue(res["success"])
+            self.assertEqual(res["data"]["id"], "unity")
 
-        code, proc_res = _http_post(f"{base_url}/api/process", {"game_dir": tmp})
-        assert code == 200
-        assert proc_res["success"] is True
-        assert "is_running" in proc_res["data"]
+            code, proc_res = _http_post(f"{self.base_url}/api/process", {"game_dir": tmp})
+            self.assertEqual(code, 200)
+            self.assertTrue(proc_res["success"])
+            self.assertIn("is_running", proc_res["data"])
 
+    def test_codegen_endpoints(self):
+        code, res = _http_post(f"{self.base_url}/api/codegen/template", {
+            "engine": "unity",
+            "class_name": "HeroController",
+            "method_name": "TakeDamage",
+            "hook_type": "prefix",
+            "return_type": "void",
+            "parameters": [{"name": "damage", "type": "int", "by_ref": False}],
+        })
+        self.assertEqual(code, 200)
+        self.assertTrue(res["success"])
+        self.assertIn("[HarmonyPatch", res["data"]["code"])
+        self.assertTrue(res["data"]["validation"]["valid"])
 
-def test_ui_codegen_endpoints(ui_server):
-    _, base_url = ui_server
+        evidence = {
+            "engine": "unreal",
+            "target_symbol": "APawn.AddMovementInput",
+            "class_name": "APawn",
+            "method_name": "AddMovementInput",
+            "hook_type": "prefix",
+            "provenance": "test",
+            "confidence": 0.95,
+            "parameters": [{"name": "WorldDirection", "type": "FVector"}],
+        }
+        code, ev_res = _http_post(f"{self.base_url}/api/codegen/evidence", {"evidence": evidence})
+        self.assertEqual(code, 200)
+        self.assertTrue(ev_res["success"])
+        self.assertIn("RegisterHook", ev_res["data"]["code"])
+        self.assertTrue(ev_res["data"]["validation"]["valid"])
 
-    # Codegen template
-    code, res = _http_post(f"{base_url}/api/codegen/template", {
-        "engine": "unity",
-        "class_name": "HeroController",
-        "method_name": "TakeDamage",
-        "hook_type": "prefix",
-        "return_type": "void",
-        "parameters": [{"name": "damage", "type": "int", "by_ref": False}]
-    })
-    assert code == 200
-    assert res["success"] is True
-    assert "[HarmonyPatch" in res["data"]["code"]
-    assert res["data"]["validation"]["valid"] is True
-
-    # Codegen evidence
-    evidence = {
-        "engine": "unreal",
-        "target_symbol": "APawn.AddMovementInput",
-        "class_name": "APawn",
-        "method_name": "AddMovementInput",
-        "hook_type": "prefix",
-        "provenance": "test",
-        "confidence": 0.95,
-        "parameters": [{"name": "WorldDirection", "type": "FVector"}],
-    }
-    code, ev_res = _http_post(f"{base_url}/api/codegen/evidence", {"evidence": evidence})
-    assert code == 200
-    assert ev_res["success"] is True
-    assert "RegisterHook" in ev_res["data"]["code"]
-    assert ev_res["data"]["validation"]["valid"] is True
-
-
-def test_ui_log_diagnose(ui_server):
-    _, base_url = ui_server
-    log_sample = """
+    def test_log_diagnose(self):
+        log_sample = """
 System.NullReferenceException: Object reference not set to an instance of an object
   at HeroController.TakeDamage (System.Int32 damage) in D:\\Games\\Game\\Plugin.cs:line 45
 """
-    code, res = _http_post(f"{base_url}/api/logs/diagnose", {"log_text": log_sample})
-    assert code == 200
-    assert res["success"] is True
-    assert res["data"]["has_error"] is True
-    assert len(res["data"]["issues"]) > 0
-    assert "NullReferenceException" in res["data"]["issues"][0]["suggestion"] or "null" in res["data"]["issues"][0]["suggestion"]
+        code, res = _http_post(f"{self.base_url}/api/logs/diagnose", {"log_text": log_sample})
+        self.assertEqual(code, 200)
+        self.assertTrue(res["success"])
+        self.assertTrue(res["data"]["has_error"])
+        self.assertGreater(len(res["data"]["issues"]), 0)
+        self.assertTrue(
+            "NullReferenceException" in res["data"]["issues"][0]["suggestion"]
+            or "null" in res["data"]["issues"][0]["suggestion"]
+        )
+
+    def test_mods_and_saves(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, m_res = _http_post(f"{self.base_url}/api/mods/list", {"game_dir": tmp})
+            self.assertEqual(code, 200)
+            self.assertTrue(m_res["success"])
+            self.assertEqual(m_res["data"], [])
+
+            code, c_res = _http_post(f"{self.base_url}/api/mods/conflicts", {
+                "game_dir": tmp,
+                "incoming_files": ["mod.dll"],
+            })
+            self.assertEqual(code, 200)
+            self.assertTrue(c_res["success"])
+            self.assertFalse(c_res["data"]["has_conflicts"])
+
+            saves_dir = os.path.join(tmp, "saves")
+            os.makedirs(saves_dir, exist_ok=True)
+            with open(os.path.join(saves_dir, "slot1.sav"), "w") as f:
+                f.write("save data")
+
+            code, s_res = _http_post(f"{self.base_url}/api/saves/create", {
+                "game_dir": tmp,
+                "label": "ui_test",
+            })
+            self.assertEqual(code, 200)
+            self.assertTrue(s_res["success"])
+            self.assertIn("backup_id", s_res["data"])
+
+            code, l_res = _http_post(f"{self.base_url}/api/saves/list", {"game_dir": tmp})
+            self.assertEqual(code, 200)
+            self.assertTrue(l_res["success"])
+            self.assertIsInstance(l_res["data"], list)
+            self.assertGreaterEqual(len(l_res["data"]), 1)
+
+    def test_plan_endpoint(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with open(os.path.join(tmp, "UnityPlayer.dll"), "w") as f:
+                f.write("dummy")
+            code, res = _http_post(f"{self.base_url}/api/plan", {
+                "game_dir": tmp,
+                "request": "add 99999 gold",
+                "project_dir": os.path.join(tmp, "proj"),
+            })
+            self.assertEqual(code, 200)
+            self.assertTrue(res["success"])
+            self.assertEqual(res["data"]["engine"]["id"], "unity")
+
+    def test_logs_read_endpoint(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            log_dir = os.path.join(tmp, "BepInEx")
+            os.makedirs(log_dir, exist_ok=True)
+            with open(os.path.join(log_dir, "LogOutput.log"), "w") as f:
+                f.write("[Info] hello\n")
+            code, res = _http_post(f"{self.base_url}/api/logs/read", {"game_dir": tmp})
+            self.assertEqual(code, 200)
+            self.assertTrue(res["success"])
+            self.assertTrue(res["data"]["found"])
+
+    def test_launch_ui_function(self):
+        port = _get_free_port()
+        url = launch_ui(host="127.0.0.1", port=port, open_browser=False)
+        self.assertEqual(url, f"http://127.0.0.1:{port}")
 
 
-def test_ui_mods_and_saves(ui_server):
-    _, base_url = ui_server
-    with tempfile.TemporaryDirectory() as tmp:
-        # Check empty mods
-        code, m_res = _http_post(f"{base_url}/api/mods/list", {"game_dir": tmp})
-        assert code == 200
-        assert m_res["success"] is True
-        assert m_res["data"] == []
-
-        # Conflict check
-        code, c_res = _http_post(f"{base_url}/api/mods/conflicts", {
-            "game_dir": tmp,
-            "incoming_files": ["mod.dll"]
-        })
-        assert code == 200
-        assert c_res["success"] is True
-        assert c_res["data"]["has_conflicts"] is False
-
-        # Create save backup
-        saves_dir = os.path.join(tmp, "saves")
-        os.makedirs(saves_dir, exist_ok=True)
-        with open(os.path.join(saves_dir, "slot1.sav"), "w") as f:
-            f.write("save data")
-
-        code, s_res = _http_post(f"{base_url}/api/saves/create", {
-            "game_dir": tmp,
-            "label": "ui_test"
-        })
-        assert code == 200
-        assert s_res["success"] is True
-        assert "backup_id" in s_res["data"]
-
-        # List saves
-        code, l_res = _http_post(f"{base_url}/api/saves/list", {"game_dir": tmp})
-        assert code == 200
-        assert l_res["success"] is True
-        assert isinstance(l_res["data"], list)
-        assert len(l_res["data"]) >= 1
-
-
-def test_launch_ui_function():
-    port = _get_free_port()
-    url = launch_ui(host="127.0.0.1", port=port, open_browser=False)
-    assert url == f"http://127.0.0.1:{port}"
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
