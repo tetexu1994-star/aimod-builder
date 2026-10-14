@@ -60,10 +60,14 @@
 2. 在 `mod_main.gd` 中实现 `_init()` / `_ready()` 挂载节点与资源修改；
 3. `install_godot_mod(project_dir, game_dir)` —— 自动安装至 `<game_dir>/mods-unpacked/` 并记录回滚日志。
 
-### 路线 C：黑盒逆向与特征码扫描（morluto/rea + AOB Pattern）
-1. 若游戏更新导致偏移改变，使用 `pattern_scan(pid, aob_pattern)` 通过带通配符的机器码特征寻找函数入口；
-2. 使用 `rea_fast_search(dll_path, query)` 秒级过滤 .NET 类型；
-3. 使用 `rea_disassemble` 与 `rea_call_graph` 查看 Native 复杂逻辑与调用树（内部映射到 REA `function` / `xrefs`）。
+### 逆向符号向代码钩子转化
+当使用 `find_field`、`dump_structures` 或 `rea_fast_search` 获得目标类与方法后：
+- 调用 `generate_hook_template(engine, class_name, method_name, hook_type, return_type, parameters_json)`，直接生成目标引擎原生标准钩子（Harmony Prefix/Postfix、UE4SS RegisterHook、REFramework sdk.hook、GodotModLoader 包装），避免类型不符或签名错误。
+
+### 运行时异常诊断与自愈
+- 游戏运行期发生异常时，调用 `read_mod_logs(game_dir)` 获取框架日志；
+- 调用 `diagnose_runtime_error(log_text)`：自动定位报错源文件、行号（Lua 空指针 / C# NullReference / MissingMethod / GDScript 索引越界），并获得精准自愈修改建议；
+- 若问题严重导致无法进游戏，使用 `rollback_game(game_dir)` 一键撤销回到纯净状态。
 
 ### 发布前与冲突检测
 

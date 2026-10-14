@@ -2,6 +2,13 @@
 
 ## 2026-10-14
 
+### Added
+
+- Added official support matrix documentation (`SUPPORT_MATRIX.md`) defining Tier-1 engine boundaries (Unity, Unreal, RE Engine, Godot), loader mechanisms, hook styles, tools, and verified games.
+- Added reverse engineering symbol-to-hook code generator (`agmod/codegen.py`, `generate_hook_template`) for synthesizing ready-to-use Harmony patches, UE4SS Lua `RegisterHook`, REFramework `sdk.hook`, and GodotModLoader GDScript wrappers from recovered symbols.
+- Added runtime crash log diagnostics and error self-healing analyzer (`agmod/log_repair.py`, `diagnose_runtime_error`) parsing stack traces, pinpointing file and line numbers, and suggesting actionable fixes for UE4SS, REFramework, BepInEx, and GodotModLoader.
+- Added 16-case Prompt-to-Mod benchmark evaluation suite (`tests/test_benchmark_plans.py`) evaluating end-to-end plan generation, ModSpec schema consistency, and hook synthesis across all 4 core engines in both Chinese and English.
+
 ### Hardened
 
 - Install journal keys now include a hash of the absolute game path, preventing same-named game directories from sharing rollback state.
@@ -14,7 +21,8 @@
 
 ### Verification
 
-- `python -m unittest discover -s tests`: 57 tests passed.
+- `pytest`: 60 tests passed.
+- `verify.py`: 44 tools wired and verified.
 
 ## 2026-10-13
 

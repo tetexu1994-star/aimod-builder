@@ -61,13 +61,18 @@ game-mod-agent/
 | `rollback_game` | **一键全量回滚**：逆序撤销所有 Mod 安装，安全恢复原版纯净游戏 | 无 |
 | `rea_fast_search` | 秒级搜索 .NET 成员（免全量反编译） | morluto/rea |
 | `rea_disassemble` | 反汇编/反编译指定 Native 函数 | morluto/rea |
-| `read_mod_logs` | **运行时日志诊断**：查看 BepInEx/UE4SS/tModLoader 日志并自动检测异常 | 无 |
+| `generate_hook_template` | **逆向符号代码钩子生成器**：根据探测出的类名/方法名自动合成 Harmony / UE4SS / REFramework / Godot 钩子模板 | 无 |
+| `read_mod_logs` | **运行时日志查看**：查看 BepInEx/UE4SS/tModLoader 日志 | 无 |
+| `diagnose_runtime_error` | **运行时日志异常诊断器**：精准提取 Lua 空指针、C# NullRef、缺失方法及行号并提供修复策略 | 无 |
 | `create_save_backup` | **存档快照备份**：修改内存或安装 Mod 前一键安全备份游戏存档 | 无 |
 | `list_save_backups` | 列出该游戏的所有存档快照历史 | 无 |
 | `restore_save_backup` | **安全还原存档**：遭遇坏档时一键安全还原历史快照 | 无 |
 | `check_update` / `update_mod` | 检查并拉取 GitHub 最新版本 Mod DLL | 网络 |
 | `package_mod` | 打包 Mod 为 Thunderstore/Nexus 风格 ZIP；支持 Unity、Unreal、RE-Engine、Godot | 无 |
 | `validate_package` | **分发包完整性校验**：检查 ZIP 清单规范、README 与载荷有效性 | 无 |
+
+详细引擎技术细节、Loader 版本与支持清单请查阅 [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md)。
+
 
 **内存读写和连续值扫描今天就能用**（纯 ctypes）。终端执行 `python -m agmod.doctor` 可一键查看本机开发环境就绪度。
 

@@ -7,6 +7,8 @@ import re
 import unicodedata
 
 from . import bepinex, inspector, tmodloader
+from .adapters.godot import GodotAdapter
+from .adapters.reengine import ReEngineAdapter
 from .adapters.unreal import UnrealAdapter
 from .manifest import ModManifest
 from .paths import UnsafePathError, safe_component, safe_join
@@ -35,6 +37,10 @@ def _route(engine_id: str, adapter) -> tuple[str, list[str]]:
         return "BepInEx plugin + Harmony patch", ["BepInEx", ".NET SDK", "ilspycmd/Cpp2IL as needed"]
     if engine_id == "unreal":
         return "UE4SS Lua mod", ["UE4SS", "game-specific UProperty/UFunction evidence"]
+    if engine_id == "re-engine":
+        return "REFramework Lua mod", ["REFramework (dinput8.dll)", "REFramework ImGui / Lua API"]
+    if engine_id == "godot":
+        return "GodotModLoader GDScript mod", ["GodotModLoader", "res://mods-unpacked"]
     if engine_id == "dotnet-xna":
         return "game-specific managed loader (tModLoader/SMAPI)", ["loader reference assemblies", ".NET SDK"]
     return getattr(adapter, "mod_framework", "engine-specific mod framework"), []
@@ -119,9 +125,17 @@ def create_mod_plan(
         bepinex.scaffold_plugin(project_dir, game_dir, mod_id, name, mod_version)
     elif engine["id"] == "unreal":
         UnrealAdapter().scaffold_mod(project_dir, mod_id, name, mod_version)
+    elif engine["id"] == "re-engine":
+        ReEngineAdapter().scaffold_mod(project_dir, mod_id, name, mod_version)
+    elif engine["id"] == "godot":
+        GodotAdapter().scaffold_mod(project_dir, mod_id, name, mod_version)
     elif engine["id"] == "dotnet-xna":
         tmodloader.scaffold_tmod_mod(project_dir, mod_id, name, mod_version)
     return spec
+
+
+plan_mod = create_mod_plan
+
 
 
 def _plan_markdown(spec: dict) -> str:

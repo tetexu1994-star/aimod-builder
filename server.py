@@ -33,7 +33,7 @@ except ImportError:  # pragma: no cover
         def run(self):
             print(f"FastMCP '{self.name}' stub: mcp not installed. Install with `pip install mcp`")
 
-from agmod import bepinex, config, doctor, inspector, knowledge, logs, memory, pack, pattern, planning, process, rea, repair, rollback, safety, saves, tmodloader, updater
+from agmod import bepinex, codegen, config, doctor, inspector, knowledge, log_repair, logs, memory, pack, pattern, planning, process, rea, repair, rollback, safety, saves, tmodloader, updater
 from agmod.adapters.godot import GodotAdapter
 from agmod.adapters.reengine import ReEngineAdapter
 from agmod.adapters.unreal import UnrealAdapter
@@ -565,6 +565,41 @@ def install_godot_mod(project_dir: str, game_dir: str) -> str:
     adapter = GodotAdapter()
     dest = adapter.install_mod(project_dir, game_dir)
     return json.dumps({"installed": dest, "engine": "godot"})
+
+
+@mcp.tool()
+def generate_hook_template(
+    engine: str,
+    class_name: str,
+    method_name: str,
+    hook_type: str = "prefix",
+    return_type: str = "void",
+    parameters_json: str = "[]",
+) -> str:
+    """Generate engine-tailored hook code (Unity Harmony, UE4SS Lua, REFramework, Godot) from reverse engineered symbols."""
+    try:
+        params = json.loads(parameters_json) if parameters_json else []
+    except json.JSONDecodeError as e:
+        return json.dumps({"error": f"invalid parameters_json: {e}"})
+    try:
+        res = codegen.generate_hook_template(
+            engine=engine,
+            class_name=class_name,
+            method_name=method_name,
+            hook_type=hook_type,
+            return_type=return_type,
+            parameters=params,
+        )
+        return json.dumps(res, ensure_ascii=False, indent=2)
+    except ValueError as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def diagnose_runtime_error(log_text: str) -> str:
+    """Parse runtime game crash/mod error logs (BepInEx/UE4SS/REFramework/Godot), pinpoint lines, and suggest fixes."""
+    res = log_repair.diagnose_runtime_error(log_text)
+    return json.dumps(res, ensure_ascii=False, indent=2)
 
 
 def main() -> None:
