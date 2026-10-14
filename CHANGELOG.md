@@ -23,7 +23,7 @@
 - Upgraded the UI design system to a modern obsidian & deep slate gaming palette (`#090d16` / `#141c2e`), eliminating archaic CRT terminal tints and cheap AI glowing aesthetics.
 - Added interactive Preset Quick-Fill bar in AI Mod Studio (`💰 99999 金币`, `⚡ 2倍移速`, `🛡️ 锁血无敌`, `♾️ 无限耐力`, `🗡️ 攻击加成`) for instant prompt and parameter generation without raw JSON friction.
 - Polished desktop layout with Vortex / Thunderstore style Mod Manager list, individual uninstall actions, conflict tracking, and modal double confirmations.
-- Enhanced Log console with level filtering (`All`, `Errors`, `Warnings`), instant copy feedback, and dedicated crash self-healing diagnostic preview cards.
+- Enhanced Log console with level filtering (`All`, `Errors`, `Warnings`), instant copy feedback, and dedicated crash diagnostic preview cards.
 - Restyled Savegame Time Machine with visual snapshot cards, relative timestamps, and one-click restore.
 - Verified responsive layouts on 1440px desktop and 390px mobile viewports with zero horizontal overflow.
 
@@ -36,10 +36,14 @@
 - Package validation now rejects ZIP traversal paths, duplicate members, and symbolic links.
 - RE Engine detection no longer treats `dinput8.dll` alone as sufficient; Godot detection requires `.pck` or `.godot` evidence.
 - Game-process detection no longer matches unrelated executables by filename alone and uses path containment for executable/cwd evidence.
+- LLM config endpoints now mask API keys, preserve stored keys when the browser field is blank, and stop echoing secrets in save responses.
+- Chat endpoints no longer accept arbitrary client-side provider config or system-role history; message roles, limits, URLs, temperature, and token counts are validated.
+- Dynamic UI lists use escaped values and data attributes for uninstall/restore actions, removing the chat action-button quote escape path.
+- Windows launchers now verify the portable Python archive SHA-256 before extraction and pass launcher paths through environment variables instead of interpolating them into PowerShell source.
 
 ### Verification
 
-- `python -m unittest discover -s tests`: 74 tests passed.
+- `python -m unittest discover -s tests`: 85 tests passed.
 - `verify.py`: 45 tools wired and verified.
 
 ## 2026-10-13

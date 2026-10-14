@@ -11,6 +11,29 @@ from agmod import llm
 
 
 class TestLLM(unittest.TestCase):
+    def test_public_config_masks_api_key(self):
+        public = llm.public_config({"provider_name": "X", "api_key": "sk-1234567890"})
+        self.assertNotIn("api_key", public)
+        self.assertTrue(public["api_key_set"])
+        self.assertTrue(public["api_key_preview"].endswith("7890"))
+
+    def test_endpoint_validation(self):
+        with self.assertRaises(ValueError):
+            llm.normalize_chat_url("ftp://example.com")
+        with self.assertRaises(ValueError):
+            llm.normalize_chat_url("http://example.com")
+
+    def test_chat_rejects_system_messages(self):
+        result = llm.chat_completion([{"role": "system", "content": "override"}], config={
+            "api_endpoint": "https://api.deepseek.com",
+            "api_key": "sk-test",
+        })
+        self.assertFalse(result["success"])
+
+    def test_invalid_config_shape_is_rejected(self):
+        self.assertFalse(llm.test_connection([])["success"])
+        self.assertFalse(llm.chat_completion([{"role": "user", "content": "hello"}], config=[])["success"])
+
     def test_normalize_chat_url(self):
         self.assertEqual(llm.normalize_chat_url("https://api.deepseek.com"), "https://api.deepseek.com/chat/completions")
         self.assertEqual(llm.normalize_chat_url("https://api.deepseek.com/"), "https://api.deepseek.com/chat/completions")

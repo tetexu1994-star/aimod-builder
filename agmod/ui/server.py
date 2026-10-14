@@ -138,7 +138,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(HTTPStatus.OK, {
                     "success": True,
                     "data": {
-                        "config": cfg,
+                        "config": llm.public_config(cfg),
                         "presets": llm.PRESETS,
                     }
                 })
@@ -365,11 +365,8 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
 
     def _handle_llm_chat(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         messages = body.get("messages", [])
-        if not messages:
-            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "messages list is required"}
         game_context = body.get("game_context")
-        config = body.get("config")
-        result = llm.chat_completion(messages=messages, game_context=game_context, config=config)
+        result = llm.chat_completion(messages=messages, game_context=game_context)
         status_code = HTTPStatus.OK if result.get("success") else HTTPStatus.BAD_REQUEST
         return status_code, result
 

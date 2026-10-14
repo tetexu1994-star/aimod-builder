@@ -8,6 +8,7 @@ import tempfile
 import unittest
 import urllib.error
 import urllib.request
+from unittest.mock import patch
 
 from agmod.ui.server import ModUIServer, launch_ui
 
@@ -202,21 +203,26 @@ System.NullReferenceException: Object reference not set to an instance of an obj
             self.assertEqual(e.code, 403)
 
     def test_llm_endpoints(self):
-        code, body = _http_get(f"{self.base_url}/api/llm/config")
-        self.assertEqual(code, 200)
-        res = json.loads(body)
-        self.assertTrue(res["success"])
-        self.assertIn("config", res["data"])
-        self.assertIn("presets", res["data"])
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = os.path.join(tmp, "llm_config.json")
+            with patch.dict(os.environ, {"AGMOD_LLM_CONFIG_PATH": config_path}):
+                code, body = _http_get(f"{self.base_url}/api/llm/config")
+                self.assertEqual(code, 200)
+                res = json.loads(body)
+                self.assertTrue(res["success"])
+                self.assertIn("config", res["data"])
+                self.assertNotIn("api_key", res["data"]["config"])
+                self.assertIn("presets", res["data"])
 
-        code, save_res = _http_post(f"{self.base_url}/api/llm/config", {
-            "provider_name": "TestProvider",
-            "api_endpoint": "https://api.deepseek.com",
-            "model_name": "deepseek-chat",
-        })
-        self.assertEqual(code, 200)
-        self.assertTrue(save_res["success"])
-        self.assertEqual(save_res["data"]["provider_name"], "TestProvider")
+                code, save_res = _http_post(f"{self.base_url}/api/llm/config", {
+                    "provider_name": "TestProvider",
+                    "api_endpoint": "https://api.deepseek.com",
+                    "model_name": "deepseek-chat",
+                })
+                self.assertEqual(code, 200)
+                self.assertTrue(save_res["success"])
+                self.assertEqual(save_res["data"]["provider_name"], "TestProvider")
+                self.assertNotIn("api_key", save_res["data"])
 
     def test_launch_ui_function(self):
         port = _get_free_port()

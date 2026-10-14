@@ -55,7 +55,9 @@ set /p USER_CHOICE="输入 Y 自动下载便携版，直接按回车退出手动
 if /i "%USER_CHOICE%"=="Y" (
     echo.
     echo 正在自动下载 Python 便携版并解压至 runtime 目录，请稍候...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $url = 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip'; $zip = '%~dp0python_embed.zip'; Invoke-WebRequest -Uri $url -OutFile $zip; Expand-Archive -Path $zip -DestinationPath '%~dp0runtime' -Force; Remove-Item $zip -Force"
+    set "AGMOD_ROOT=%~dp0"
+    set "AGMOD_PY_ZIP=%~dp0python_embed.zip"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $url = 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip'; $zip = $env:AGMOD_PY_ZIP; $root = $env:AGMOD_ROOT; Invoke-WebRequest -Uri $url -OutFile $zip; $expected = '009d6bf7e3b2ddca3d784fa09f90fe54336d5b60f0e0f305c37f400bf83cfd3b'; if ((Get-FileHash -Path $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { Remove-Item $zip -Force; throw 'Python archive SHA-256 verification failed' }; Expand-Archive -Path $zip -DestinationPath (Join-Path $root 'runtime') -Force; Remove-Item $zip -Force"
     if exist "%~dp0runtime\python.exe" (
         set "PY_CMD=%~dp0runtime\python.exe"
         echo 自动配置便携版 Python 成功！

@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import ssl
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -89,6 +91,11 @@ PRESETS: Dict[str, Dict[str, Any]] = {
 
 
 def _get_config_path() -> str:
+    override = os.environ.get("AGMOD_LLM_CONFIG_PATH")
+    if override:
+        parent = os.path.dirname(os.path.abspath(override))
+        os.makedirs(parent, exist_ok=True)
+        return override
     home_dir = os.path.expanduser("~")
     target_dir = os.path.join(home_dir, ".agmod")
     try:
@@ -109,14 +116,60 @@ def load_config() -> Dict[str, Any]:
                 saved = json.load(f)
             merged = dict(DEFAULT_CONFIG)
             merged.update(saved)
-            return merged
+            return _validated_config(merged)
         except Exception as e:
             logger.warning("Failed to read llm_config.json: %s", e)
     return dict(DEFAULT_CONFIG)
 
 
+def _validate_url(value: Any, field: str, allow_http_loopback: bool = False) -> str:
+    url = str(value or "").strip()
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme not in {"https", "http"} or not parsed.hostname or parsed.username or parsed.password:
+        raise ValueError(f"{field} must be an http(s) URL")
+    if parsed.scheme == "http":
+        if not allow_http_loopback or parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
+            raise ValueError(f"{field} must use https outside localhost")
+    return url
+
+
+def _validated_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    result = dict(DEFAULT_CONFIG)
+    result.update(config or {})
+    result["provider_name"] = str(result.get("provider_name") or "Custom Provider")[:120]
+    result["note"] = str(result.get("note") or "")[:300]
+    result["website_url"] = _validate_url(result.get("website_url"), "website_url")
+    result["api_endpoint"] = _validate_url(result.get("api_endpoint"), "api_endpoint", allow_http_loopback=True)
+    result["api_protocol"] = str(result.get("api_protocol") or "OpenAI Chat Completions")[:120]
+    result["api_key"] = str(result.get("api_key") or "")
+    result["model_name"] = str(result.get("model_name") or "deepseek-chat")[:200]
+    try:
+        temperature = float(result.get("temperature", 0.7))
+        max_tokens = int(result.get("max_tokens", 2048))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("temperature and max_tokens must be numeric") from exc
+    if not math.isfinite(temperature) or not 0 <= temperature <= 2:
+        raise ValueError("temperature must be between 0 and 2")
+    if not 1 <= max_tokens <= 32768:
+        raise ValueError("max_tokens must be between 1 and 32768")
+    result["temperature"] = temperature
+    result["max_tokens"] = max_tokens
+    return result
+
+
+def public_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a browser-safe config without exposing the API key."""
+    result = dict(config)
+    key = str(result.pop("api_key", "") or "")
+    result["api_key_set"] = bool(key)
+    result["api_key_preview"] = ("*" * max(0, len(key) - 4) + key[-4:]) if key else ""
+    return result
+
+
 def save_config(new_config: Dict[str, Any]) -> Dict[str, Any]:
     """Validate and persist LLM configuration."""
+    if not isinstance(new_config, dict):
+        raise ValueError("config must be an object")
     current = load_config()
     for k in (
         "provider_name",
@@ -129,32 +182,68 @@ def save_config(new_config: Dict[str, Any]) -> Dict[str, Any]:
         "temperature",
         "max_tokens",
     ):
-        if k in new_config:
+        if k in new_config and (k != "api_key" or str(new_config[k] or "").strip()):
             current[k] = new_config[k]
 
+    current = _validated_config(current)
     config_path = _get_config_path()
     try:
-        with open(config_path, "w", encoding="utf-8") as f:
+        fd, temp_path = tempfile.mkstemp(prefix=".llm_config-", dir=os.path.dirname(config_path))
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(current, f, ensure_ascii=False, indent=2)
-        try:
-            os.chmod(config_path, 0o600)
-        except Exception:
-            pass
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp_path, config_path)
+        os.chmod(config_path, 0o600)
     except Exception as e:
+        if 'temp_path' in locals() and os.path.exists(temp_path):
+            os.unlink(temp_path)
         raise IOError(f"Failed to write config file: {e}")
-    return current
+    return public_config(current)
 
 
 def normalize_chat_url(endpoint: str) -> str:
     """Normalize user input base_url into full chat/completions URL."""
-    url = endpoint.strip().rstrip("/")
-    if url.endswith("/chat/completions"):
-        return url
-    if url.endswith("/v1"):
-        return f"{url}/chat/completions"
-    if "api.deepseek.com" in url:
-        return f"{url}/chat/completions"
-    return f"{url}/v1/chat/completions"
+    raw = str(endpoint or "").strip()
+    parsed = urllib.parse.urlsplit(raw)
+    if parsed.scheme not in {"https", "http"} or not parsed.hostname or parsed.username or parsed.password:
+        raise ValueError("api_endpoint must be an http(s) URL")
+    if parsed.scheme == "http" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
+        raise ValueError("http endpoints are only allowed for localhost")
+    path = parsed.path.rstrip("/")
+    if not path.endswith("/chat/completions"):
+        if path.endswith("/v1"):
+            path += "/chat/completions"
+        elif parsed.hostname == "api.deepseek.com":
+            path += "/chat/completions"
+        else:
+            path += "/v1/chat/completions"
+    return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, path, parsed.query, ""))
+
+
+def _prepare_config(config: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    current = load_config()
+    if config is not None and not isinstance(config, dict):
+        raise ValueError("config must be an object")
+    if config:
+        current.update(config)
+        if not str(current.get("api_key") or "").strip():
+            current["api_key"] = load_config().get("api_key", "")
+    return _validated_config(current)
+
+
+def _validate_messages(messages: Any) -> List[Dict[str, str]]:
+    if not isinstance(messages, list) or not 1 <= len(messages) <= 100:
+        raise ValueError("messages must be a non-empty list of at most 100 items")
+    normalized = []
+    for item in messages:
+        if not isinstance(item, dict) or item.get("role") not in {"user", "assistant"}:
+            raise ValueError("message roles must be user or assistant")
+        content = item.get("content")
+        if not isinstance(content, str) or not content.strip() or len(content) > 32000:
+            raise ValueError("message content must be a non-empty string up to 32000 characters")
+        normalized.append({"role": item["role"], "content": content})
+    return normalized
 
 
 def _build_system_prompt(game_context: Optional[Dict[str, Any]] = None) -> str:
@@ -185,7 +274,10 @@ def _build_system_prompt(game_context: Optional[Dict[str, Any]] = None) -> str:
 
 def test_connection(config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Test connection with the configured provider using a minimal ping request."""
-    cfg = config or load_config()
+    try:
+        cfg = _prepare_config(config)
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
     api_endpoint = cfg.get("api_endpoint", "").strip()
     api_key = cfg.get("api_key", "").strip()
     model = cfg.get("model_name", "deepseek-chat").strip() or "deepseek-chat"
@@ -193,7 +285,10 @@ def test_connection(config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     if not api_endpoint:
         return {"success": False, "error": "API 端点 (Endpoint) 不能为空"}
 
-    url = normalize_chat_url(api_endpoint)
+    try:
+        url = normalize_chat_url(api_endpoint)
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "AIModBuilder/1.0",
@@ -264,7 +359,13 @@ def chat_completion(
     config: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Execute chat completion with conversation history and game context."""
-    cfg = config or load_config()
+    try:
+        cfg = _prepare_config(config)
+        messages = _validate_messages(messages)
+        if game_context is not None and not isinstance(game_context, dict):
+            raise ValueError("game_context must be an object")
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
     api_endpoint = cfg.get("api_endpoint", "").strip()
     api_key = cfg.get("api_key", "").strip()
     model = cfg.get("model_name", "deepseek-chat").strip() or "deepseek-chat"
@@ -274,7 +375,10 @@ def chat_completion(
     if not api_endpoint:
         return {"success": False, "error": "请先在「模型设置」中配置 API 端点"}
 
-    url = normalize_chat_url(api_endpoint)
+    try:
+        url = normalize_chat_url(api_endpoint)
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "AIModBuilder/1.0",
@@ -285,9 +389,7 @@ def chat_completion(
     # Prepend system prompt
     system_prompt = _build_system_prompt(game_context)
     full_messages = [{"role": "system", "content": system_prompt}]
-    for m in messages:
-        if m.get("content"):
-            full_messages.append({"role": m.get("role", "user"), "content": m.get("content")})
+    full_messages.extend(messages)
 
     payload = {
         "model": model,

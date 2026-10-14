@@ -1,6 +1,8 @@
 # AI Mod Builder PowerShell Launcher
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 Set-Location $ScriptDir
+$PythonEmbedUrl = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
+$PythonEmbedSha256 = "009d6bf7e3b2ddca3d784fa09f90fe54336d5b60f0e0f305c37f400bf83cfd3b"
 
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host "  AI Mod Builder - 游戏 Mod 制作与安全工作台" -ForegroundColor Cyan
@@ -35,7 +37,12 @@ if (-not $PyCmd) {
         Write-Host "正在下载便携版 Python..." -ForegroundColor Cyan
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         $zipPath = "$ScriptDir\python_embed.zip"
-        Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip" -OutFile $zipPath
+        Invoke-WebRequest -Uri $PythonEmbedUrl -OutFile $zipPath
+        $actualHash = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($actualHash -ne $PythonEmbedSha256) {
+            Remove-Item $zipPath -Force
+            throw "Downloaded Python archive failed SHA-256 verification."
+        }
         Expand-Archive -Path $zipPath -DestinationPath "$ScriptDir\runtime" -Force
         Remove-Item $zipPath -Force
         if (Test-Path "$ScriptDir\runtime\python.exe") {
