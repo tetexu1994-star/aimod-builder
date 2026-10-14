@@ -18,13 +18,14 @@
 - Added reverse engineering symbol-to-hook code generator (`agmod/codegen.py`, `generate_hook_template`) for synthesizing ready-to-use Harmony patches, UE4SS Lua `RegisterHook`, REFramework `sdk.hook`, and GodotModLoader GDScript wrappers from recovered symbols.
 - Added runtime crash log diagnostics (`agmod/log_repair.py`, `diagnose_runtime_error`) parsing stack traces, pinpointing file and line numbers, and suggesting actionable fixes for UE4SS, REFramework, BepInEx, and GodotModLoader. Automatic source rewriting and re-verification remain future work.
 
-### UI Refresh
+### UI Refresh & Modernization
 
-- Redesigned the dashboard as a restrained Mod Workbench / Field Console with a warm graphite palette, copper action color, Space Grotesk / Inter / IBM Plex Mono typography, and SVG line icons.
-- Replaced emoji tabs with an accessible sidebar tablist, URL hash navigation, visible keyboard focus, responsive mobile layout, reduced-motion handling, and semantic status updates.
-- Improved forms and feedback with inline validation, busy states, structured result rendering, clear empty states, clipboard feedback, and a native confirmation dialog for destructive rollback.
-- Added an Evidence JSON flow to Hook Lab using `generate_hook_from_evidence`, alongside the existing manual template generator.
-- Documented the visual system and GitHub references from Vortex, ModOrganizer2, shadcn-ui, Zed, tldraw, and Refine in `UI_ARCHITECTURE.md`.
+- Upgraded the UI design system to a modern obsidian & deep slate gaming palette (`#090d16` / `#141c2e`), eliminating archaic CRT terminal tints and cheap AI glowing aesthetics.
+- Added interactive Preset Quick-Fill bar in AI Mod Studio (`💰 99999 金币`, `⚡ 2倍移速`, `🛡️ 锁血无敌`, `♾️ 无限耐力`, `🗡️ 攻击加成`) for instant prompt and parameter generation without raw JSON friction.
+- Polished desktop layout with Vortex / Thunderstore style Mod Manager list, individual uninstall actions, conflict tracking, and modal double confirmations.
+- Enhanced Log console with level filtering (`All`, `Errors`, `Warnings`), instant copy feedback, and dedicated crash self-healing diagnostic preview cards.
+- Restyled Savegame Time Machine with visual snapshot cards, relative timestamps, and one-click restore.
+- Verified responsive layouts on 1440px desktop and 390px mobile viewports with zero horizontal overflow.
 
 ### Hardened
 

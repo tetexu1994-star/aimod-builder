@@ -6,1165 +6,1093 @@
   <meta name="color-scheme" content="dark">
   <title>Mod Workbench · AI Mod Builder</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
-
     :root {
-      --ink: #121412;
-      --ink-raised: #1a1e1b;
-      --ink-soft: #222822;
-      --line: #39433b;
-      --line-strong: #58635a;
-      --paper: #eeeae0;
-      --paper-muted: #b8beb4;
-      --paper-dim: #7e887d;
-      --copper: #e27b54;
-      --copper-dark: #a94e32;
-      --mint: #8bc7aa;
-      --yellow: #e6c56b;
-      --red: #e37b68;
-      --shadow: 0 18px 36px rgba(0, 0, 0, .18);
-      --radius: 12px;
-      --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
-      --sans: Inter, "Avenir Next", "Segoe UI", sans-serif;
-      --display: "Space Grotesk", Inter, sans-serif;
+      --bg-root: #090d16;
+      --bg-sidebar: #0f1523;
+      --bg-card: #141c2e;
+      --bg-card-hover: #1a243a;
+      --bg-card-subtle: #101726;
+      --bg-input: #0b101b;
+      --border: #222e47;
+      --border-hover: #334466;
+      --border-focus: #38bdf8;
+      --primary: #38bdf8;
+      --primary-hover: #0ea5e9;
+      --primary-glow: rgba(56, 189, 248, 0.15);
+      --emerald: #10b981;
+      --emerald-bg: rgba(16, 185, 129, 0.12);
+      --violet: #a855f7;
+      --violet-bg: rgba(168, 85, 247, 0.12);
+      --amber: #f59e0b;
+      --amber-bg: rgba(245, 158, 11, 0.12);
+      --rose: #f43f5e;
+      --rose-bg: rgba(244, 63, 94, 0.12);
+      --orange: #f97316;
+      --orange-bg: rgba(249, 115, 22, 0.12);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --radius-sm: 6px;
+      --radius: 10px;
+      --radius-lg: 14px;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "JetBrains Mono", monospace;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+      --shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+      --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.5);
     }
 
-    * { box-sizing: border-box; }
-    html { background: var(--ink); scroll-behavior: smooth; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { background: var(--bg-root); scroll-behavior: smooth; }
     body {
-      margin: 0;
-      min-width: 320px;
       min-height: 100vh;
-      background: var(--ink);
-      color: var(--paper);
+      background: var(--bg-root);
+      color: var(--text-main);
       font-family: var(--sans);
       line-height: 1.5;
-    }
-    button, input, textarea, select { font: inherit; }
-    button { cursor: pointer; }
-    button:disabled { cursor: wait; opacity: .55; }
-    :focus-visible {
-      outline: 2px solid var(--yellow);
-      outline-offset: 3px;
-    }
-    ::selection { background: rgba(226, 123, 84, .35); color: var(--paper); }
-    ::-webkit-scrollbar { width: 10px; height: 10px; }
-    ::-webkit-scrollbar-track { background: var(--ink); }
-    ::-webkit-scrollbar-thumb { background: var(--line-strong); border: 3px solid var(--ink); border-radius: 10px; }
-
-    .icon {
-      width: 18px;
-      height: 18px;
-      flex: 0 0 auto;
-      fill: none;
-      stroke: currentColor;
-      stroke-width: 1.7;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-    .skip-link {
-      position: fixed;
-      top: -48px;
-      left: 16px;
-      z-index: 100;
-      padding: 10px 14px;
-      background: var(--yellow);
-      color: var(--ink);
-      border-radius: 6px;
-      text-decoration: none;
-    }
-    .skip-link:focus { top: 12px; }
-
-    .app-shell {
-      display: grid;
-      grid-template-columns: 236px minmax(0, 1fr);
-      min-height: 100vh;
-    }
-    .sidebar {
       display: flex;
       flex-direction: column;
+    }
+
+    button, input, textarea, select { font: inherit; color: inherit; }
+    button { cursor: pointer; border: none; background: none; }
+    button:disabled { cursor: not-allowed; opacity: 0.5; }
+    :focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+    ::selection { background: rgba(56, 189, 248, 0.25); color: #fff; }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-root); }
+    ::-webkit-scrollbar-thumb { background: #26354f; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #384d72; }
+
+    /* Icons */
+    .icon {
+      width: 17px; height: 17px; flex: 0 0 auto;
+      fill: none; stroke: currentColor; stroke-width: 1.8;
+      stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    /* App Shell */
+    .app-shell {
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr);
       min-height: 100vh;
-      padding: 24px 16px 18px;
-      border-right: 1px solid var(--line);
-      background: var(--ink-raised);
+    }
+    @media (max-width: 900px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+    }
+
+    /* Sidebar Navigation */
+    .sidebar {
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 18px 14px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
     }
     .brand {
       display: flex;
       align-items: center;
-      gap: 11px;
-      padding: 0 10px 26px;
+      gap: 12px;
+      padding: 6px 10px 22px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
     }
-    .brand-mark {
-      display: grid;
-      place-items: center;
-      width: 34px;
-      height: 34px;
-      border: 1px solid var(--copper);
-      border-radius: 9px;
-      color: var(--copper);
-      font-family: var(--display);
-      font-size: 15px;
-      font-weight: 700;
+    .brand-icon {
+      width: 36px; height: 36px; border-radius: 9px;
+      background: linear-gradient(135deg, #0284c7, #8b5cf6);
+      display: grid; place-items: center;
+      color: #fff; font-weight: 800; font-size: 17px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
     }
     .brand-title {
-      margin: 0;
-      color: var(--paper);
-      font-family: var(--display);
-      font-size: 15px;
-      letter-spacing: -.02em;
+      font-size: 15px; font-weight: 700; color: #fff;
+      letter-spacing: -0.02em; line-height: 1.2;
     }
     .brand-subtitle {
-      margin: 1px 0 0;
-      color: var(--paper-dim);
-      font-family: var(--mono);
-      font-size: 10px;
-      letter-spacing: .07em;
-      text-transform: uppercase;
-    }
-    .side-label {
-      margin: 0 10px 9px;
-      color: var(--paper-dim);
-      font-family: var(--mono);
-      font-size: 10px;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-    }
-    .tab-list {
-      display: grid;
-      gap: 4px;
-    }
-    .tab-btn {
-      display: flex;
-      align-items: center;
-      gap: 11px;
-      width: 100%;
-      min-height: 45px;
-      padding: 9px 11px;
-      border: 1px solid transparent;
-      border-radius: 8px;
-      background: transparent;
-      color: var(--paper-muted);
-      text-align: left;
-      transition: background .18s ease, color .18s ease, border-color .18s ease;
-    }
-    .tab-btn:hover { background: var(--ink-soft); color: var(--paper); }
-    .tab-btn.active {
-      border-color: rgba(226, 123, 84, .55);
-      background: rgba(226, 123, 84, .13);
-      color: var(--paper);
-    }
-    .tab-btn.active .icon { color: var(--copper); }
-    .tab-copy { display: grid; gap: 1px; min-width: 0; }
-    .tab-name { font-size: 13px; font-weight: 600; }
-    .tab-detail {
-      overflow: hidden;
-      color: var(--paper-dim);
-      font-family: var(--mono);
-      font-size: 9px;
-      letter-spacing: .02em;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .side-footer {
-      margin-top: auto;
-      padding: 15px 10px 0;
-      border-top: 1px solid var(--line);
-    }
-    .safety-note {
-      display: flex;
-      gap: 8px;
-      color: var(--mint);
-      font-family: var(--mono);
-      font-size: 10px;
-      line-height: 1.55;
-    }
-    .safety-note .icon { width: 15px; height: 15px; margin-top: 1px; }
-    .version {
-      margin: 13px 0 0;
-      color: var(--paper-dim);
-      font-family: var(--mono);
-      font-size: 10px;
+      font-size: 10px; font-family: var(--mono);
+      color: var(--text-dim); text-transform: uppercase;
+      letter-spacing: 0.06em;
     }
 
-    .content-shell { min-width: 0; }
+    .nav-label {
+      font-size: 10px; font-family: var(--mono);
+      font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--text-dim);
+      padding: 10px 10px 6px;
+    }
+    .nav-list { display: flex; flex-direction: column; gap: 4px; }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-size: 13px; font-weight: 500;
+      transition: all 0.15s ease;
+      text-decoration: none;
+    }
+    .nav-item-left { display: flex; align-items: center; gap: 10px; }
+    .nav-item:hover {
+      background: var(--bg-card);
+      color: var(--text-main);
+    }
+    .nav-item.active {
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--primary);
+      font-weight: 600;
+      border-left: 3px solid var(--primary);
+      padding-left: 9px;
+    }
+    .nav-badge {
+      font-size: 10px; font-family: var(--mono);
+      padding: 1px 6px; border-radius: 999px;
+      background: var(--bg-card); color: var(--text-dim);
+      border: 1px solid var(--border);
+    }
+    .nav-item.active .nav-badge {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--primary);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .engine-support-pill {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+      color: var(--text-dim);
+      padding: 4px 8px;
+    }
+    .engine-dots { display: flex; gap: 4px; }
+    .engine-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+    /* Top Bar */
     .topbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      min-height: 72px;
-      padding: 14px clamp(20px, 4vw, 48px);
-      border-bottom: 1px solid var(--line);
+      min-height: 62px;
+      padding: 12px 32px;
+      background: rgba(15, 21, 35, 0.85);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 40;
     }
-    .topbar-context {
-      display: flex;
-      align-items: center;
-      gap: 11px;
-      min-width: 0;
-    }
-    .context-kicker {
-      color: var(--copper);
-      font-family: var(--mono);
-      font-size: 10px;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-    }
-    .context-title {
-      margin: 0;
-      overflow: hidden;
-      color: var(--paper);
-      font-family: var(--display);
-      font-size: 15px;
-      font-weight: 600;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .topbar-actions {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-    }
-    .connection {
+    .topbar-left { display: flex; align-items: center; gap: 14px; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+
+    .service-pill {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      padding: 6px 9px;
-      border: 1px solid var(--line);
+      gap: 6px;
+      padding: 4px 10px;
       border-radius: 999px;
-      color: var(--mint);
+      font-size: 11px; font-weight: 600;
       font-family: var(--mono);
-      font-size: 10px;
-      white-space: nowrap;
+      background: var(--emerald-bg);
+      color: var(--emerald);
+      border: 1px solid rgba(16, 185, 129, 0.3);
     }
-    .connection-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: currentColor;
-      box-shadow: 0 0 0 3px rgba(139, 199, 170, .13);
+    .service-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      padding: 24px 32px 64px;
+      max-width: 1360px;
+      width: 100%;
+      margin: 0 auto;
     }
 
-    .button {
+    /* Target Game Selector Bar */
+    .target-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-sm);
+    }
+    .target-input-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .target-label {
+      font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-dim); font-family: var(--mono);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .target-input-row { display: flex; gap: 10px; }
+
+    /* Form Fields */
+    .input-text, .select-field, .textarea-field {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      padding: 9px 13px;
+      font-size: 13px;
+      transition: all 0.15s ease;
+      outline: none;
+    }
+    .input-text:hover, .select-field:hover, .textarea-field:hover {
+      border-color: var(--border-hover);
+    }
+    .input-text:focus, .select-field:focus, .textarea-field:focus {
+      border-color: var(--border-focus);
+      background: #0f1524;
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+    .input-text.code, .textarea-field.code {
+      font-family: var(--mono); font-size: 12px;
+    }
+
+    /* Buttons */
+    .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      min-height: 38px;
-      padding: 8px 13px;
-      border: 1px solid transparent;
-      border-radius: 7px;
-      background: var(--copper);
-      color: #211812;
-      font-family: var(--mono);
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: .01em;
-      transition: transform .18s ease, background .18s ease, border-color .18s ease;
-    }
-    .button:hover { background: #f0916b; transform: translateY(-1px); }
-    .button:active { transform: translateY(0); }
-    .button-secondary {
-      border-color: var(--line-strong);
-      background: transparent;
-      color: var(--paper);
-    }
-    .button-secondary:hover { background: var(--ink-soft); border-color: var(--paper-dim); }
-    .button-danger {
-      border-color: rgba(227, 123, 104, .55);
-      background: transparent;
-      color: var(--red);
-    }
-    .button-danger:hover { border-color: var(--red); background: rgba(227, 123, 104, .12); }
-    .button-small { min-height: 31px; padding: 6px 9px; font-size: 10px; }
-
-    main {
-      width: min(1420px, 100%);
-      margin: 0 auto;
-      padding: 28px clamp(20px, 4vw, 48px) 56px;
-    }
-    .target-bar {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto auto;
-      align-items: end;
-      gap: 12px;
-      margin-bottom: 28px;
-      padding: 15px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--ink-raised);
-      box-shadow: var(--shadow);
-    }
-    .field-label {
-      display: block;
-      margin: 0 0 6px;
-      color: var(--paper-muted);
-      font-family: var(--mono);
-      font-size: 10px;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-    }
-    .field-input, .field-select, .field-textarea {
-      width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 7px;
-      background: var(--ink);
-      color: var(--paper);
-      padding: 10px 11px;
-      font-family: var(--mono);
-      font-size: 12px;
-      transition: border-color .18s ease, background .18s ease;
-    }
-    .field-input:hover, .field-select:hover, .field-textarea:hover { border-color: var(--line-strong); }
-    .field-input:focus, .field-select:focus, .field-textarea:focus {
-      border-color: var(--copper);
-      background: #151915;
-      outline: none;
-    }
-    .field-textarea { min-height: 126px; resize: vertical; line-height: 1.65; }
-    .field-error {
-      display: none;
-      margin-top: 5px;
-      color: var(--red);
-      font-family: var(--mono);
-      font-size: 10px;
-    }
-    .field-error.visible { display: block; }
-    .target-index {
-      display: grid;
-      gap: 3px;
-      align-content: center;
-      min-width: 92px;
-      padding: 5px 11px;
-      border-left: 1px solid var(--line);
-    }
-    .target-index strong {
-      color: var(--yellow);
-      font-family: var(--display);
-      font-size: 19px;
-      line-height: 1;
-    }
-    .target-index span {
-      color: var(--paper-dim);
-      font-family: var(--mono);
-      font-size: 9px;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-    }
-
-    .workspace { display: none; }
-    .workspace.active { display: block; }
-    .workspace-heading {
-      display: flex;
-      align-items: end;
-      justify-content: space-between;
-      gap: 20px;
-      margin-bottom: 20px;
-    }
-    .workspace-heading h2 {
-      margin: 0;
-      color: var(--paper);
-      font-family: var(--display);
-      font-size: clamp(24px, 3vw, 36px);
-      letter-spacing: -.035em;
-      line-height: 1.05;
-    }
-    .workspace-heading p {
-      max-width: 580px;
-      margin: 7px 0 0;
-      color: var(--paper-muted);
-      font-size: 13px;
-    }
-    .workspace-code {
-      color: var(--copper);
-      font-family: var(--mono);
-      font-size: 10px;
-      letter-spacing: .12em;
-      text-transform: uppercase;
+      gap: 7px;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 12px; font-weight: 600;
+      transition: all 0.15s ease;
       white-space: nowrap;
     }
-    .panel {
-      border: 1px solid var(--line);
+    .btn-primary {
+      background: var(--primary);
+      color: #04101e;
+      box-shadow: 0 2px 8px rgba(56, 189, 248, 0.35);
+    }
+    .btn-primary:hover {
+      background: #7dd3fc;
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-hover);
+    }
+    .btn-danger {
+      background: var(--rose-bg);
+      color: var(--rose);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+    }
+    .btn-danger:hover {
+      background: var(--rose);
+      color: #fff;
+    }
+    .btn-sm { padding: 5px 11px; font-size: 11px; }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px; font-weight: 600;
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge-unity { background: var(--emerald-bg); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-unreal { background: var(--violet-bg); color: var(--violet); border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-reengine { background: var(--orange-bg); color: var(--orange); border: 1px solid rgba(249, 115, 22, 0.3); }
+    .badge-godot { background: rgba(2, 132, 199, 0.15); color: #38bdf8; border: 1px solid rgba(2, 132, 199, 0.35); }
+    .badge-tmod { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); }
+
+    /* Preset Chips */
+    .preset-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .preset-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 11px; font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .preset-chip:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-focus);
+      color: var(--text-main);
+      transform: translateY(-1px);
+    }
+
+    /* Cards & Layout */
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    @media (max-width: 860px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
       border-radius: var(--radius);
-      background: var(--ink-raised);
-    }
-    .panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 15px 17px;
-      border-bottom: 1px solid var(--line);
-    }
-    .panel-title {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      margin: 0;
-      color: var(--paper);
-      font-family: var(--display);
-      font-size: 14px;
-      font-weight: 600;
-    }
-    .panel-title .icon { color: var(--copper); }
-    .panel-body { padding: 17px; }
-    .inspector-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr);
-      gap: 15px;
-    }
-    .inspector-side { display: grid; gap: 15px; align-content: start; }
-    .split-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(320px, .8fr);
-      gap: 15px;
-    }
-    .stack { display: grid; gap: 15px; }
-    .empty-state {
-      display: grid;
-      justify-items: start;
-      gap: 10px;
-      min-height: 116px;
       padding: 18px;
-      border: 1px dashed var(--line-strong);
-      border-radius: 8px;
-      color: var(--paper-muted);
+      margin-bottom: 18px;
+      box-shadow: var(--shadow-sm);
     }
-    .empty-state strong {
-      color: var(--paper);
-      font-family: var(--display);
-      font-size: 15px;
-    }
-    .empty-state p { max-width: 520px; margin: 0; font-size: 12px; }
-    .result-box {
-      min-height: 124px;
-      padding: 14px;
-      overflow: auto;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--ink);
-      color: var(--paper-muted);
-      font-family: var(--mono);
-      font-size: 11px;
-      line-height: 1.65;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .result-box strong { color: var(--paper); font-weight: 500; }
-    .result-box .ok { color: var(--mint); }
-    .result-box .warn { color: var(--yellow); }
-    .result-box .bad { color: var(--red); }
-    .metric-row {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-    .metric {
-      min-height: 76px;
-      padding: 12px;
-      border-top: 2px solid var(--line-strong);
-      background: rgba(255, 255, 255, .025);
-    }
-    .metric .metric-label {
-      display: block;
-      color: var(--paper-dim);
-      font-family: var(--mono);
-      font-size: 9px;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-    }
-    .metric strong {
-      display: block;
-      margin-top: 8px;
-      color: var(--paper);
-      font-family: var(--display);
-      font-size: 18px;
-    }
-    .metric.copper { border-top-color: var(--copper); }
-    .metric.mint { border-top-color: var(--mint); }
-    .metric.yellow { border-top-color: var(--yellow); }
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 13px;
-    }
-    .form-grid .full { grid-column: 1 / -1; }
-    .form-help {
-      margin: 6px 0 0;
-      color: var(--paper-dim);
-      font-family: var(--mono);
-      font-size: 10px;
-    }
-    .section-rule {
-      display: flex;
-      align-items: center;
-      gap: 11px;
-      margin: 21px 0 13px;
-      color: var(--paper-dim);
-      font-family: var(--mono);
-      font-size: 10px;
-      letter-spacing: .09em;
-      text-transform: uppercase;
-    }
-    .section-rule::after {
-      height: 1px;
-      flex: 1;
-      background: var(--line);
-      content: "";
-    }
-    .output-head {
+    .card-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 11px;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
     }
-    .output-head h3 {
-      margin: 0;
-      color: var(--paper);
-      font-family: var(--display);
-      font-size: 14px;
+    .card-title {
+      font-size: 14px; font-weight: 600;
+      color: var(--text-main);
+      display: flex; align-items: center; gap: 8px;
     }
-    .output-meta {
-      color: var(--paper-dim);
-      font-family: var(--mono);
-      font-size: 10px;
+    .card-title .icon { color: var(--primary); }
+
+    /* Mod Table / List Component */
+    .mod-table-wrap {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
     }
-    .code-output {
-      min-height: 328px;
-      max-height: 560px;
-      overflow: auto;
-      padding: 15px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #0d100d;
-      color: #d5dfd0;
-      font-family: var(--mono);
-      font-size: 11px;
-      line-height: 1.72;
-      white-space: pre-wrap;
-      tab-size: 2;
-    }
-    .code-output code { display: block; }
-    .code-output .comment { color: #7b8c7b; }
-    .code-output .keyword { color: var(--copper); }
-    .list-panel { overflow: hidden; }
-    .list-empty {
-      display: grid;
-      place-items: center;
-      min-height: 178px;
-      padding: 28px;
-      color: var(--paper-dim);
-      text-align: center;
-    }
-    .list-empty strong { display: block; margin-bottom: 5px; color: var(--paper); font-family: var(--display); }
-    .mod-list, .save-list { display: grid; gap: 0; }
-    .list-item {
+    .mod-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 14px;
-      min-height: 58px;
-      padding: 11px 17px;
-      border-bottom: 1px solid var(--line);
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-input);
+      transition: background 0.15s ease;
     }
-    .list-item:last-child { border-bottom: 0; }
-    .list-item-main { min-width: 0; }
-    .list-item-title {
-      overflow: hidden;
-      color: var(--paper);
+    .mod-row:last-child { border-bottom: none; }
+    .mod-row:hover { background: var(--bg-card-subtle); }
+    .mod-info { display: flex; flex-direction: column; gap: 3px; }
+    .mod-name { font-size: 13px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .mod-meta { font-size: 11px; font-family: var(--mono); color: var(--text-dim); }
+
+    /* Terminal & Code Output */
+    .code-console {
+      background: #060910;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
       font-family: var(--mono);
       font-size: 11px;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 440px;
+      overflow-y: auto;
+      line-height: 1.6;
     }
-    .list-item-detail {
-      margin-top: 3px;
-      color: var(--paper-dim);
-      font-family: var(--mono);
-      font-size: 10px;
+    .code-console.editor {
+      min-height: 240px;
     }
-    .status-tag {
-      display: inline-flex;
+
+    /* Log Viewer Controls */
+    .log-controls {
+      display: flex;
       align-items: center;
-      min-height: 23px;
-      padding: 3px 7px;
-      border: 1px solid var(--line-strong);
-      border-radius: 5px;
-      color: var(--paper-muted);
-      font-family: var(--mono);
-      font-size: 9px;
-      letter-spacing: .04em;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-    .status-tag.ok { border-color: rgba(139, 199, 170, .55); color: var(--mint); }
-    .status-tag.warn { border-color: rgba(230, 197, 107, .55); color: var(--yellow); }
-    .status-tag.bad { border-color: rgba(227, 123, 104, .55); color: var(--red); }
-    .action-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 15px; }
-    .inline-note {
-      display: flex;
-      gap: 8px;
-      align-items: start;
-      margin-top: 12px;
-      padding: 10px 11px;
-      border-left: 2px solid var(--yellow);
-      background: rgba(230, 197, 107, .07);
-      color: var(--paper-muted);
-      font-family: var(--mono);
-      font-size: 10px;
-      line-height: 1.55;
-    }
-    .inline-note .icon { color: var(--yellow); width: 15px; height: 15px; }
-    .footer-line {
-      display: flex;
       justify-content: space-between;
-      gap: 16px;
-      margin-top: 26px;
-      padding-top: 14px;
-      border-top: 1px solid var(--line);
-      color: var(--paper-dim);
-      font-family: var(--mono);
-      font-size: 10px;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .filter-pills { display: flex; gap: 6px; }
+    .filter-pill {
+      font-size: 11px; font-family: var(--mono);
+      padding: 3px 9px; border-radius: 999px;
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .filter-pill.active {
+      background: var(--primary);
+      color: #020617;
+      border-color: var(--primary);
+      font-weight: 600;
     }
 
+    /* Workspaces */
+    .workspace { display: none; }
+    .workspace.active { display: block; }
+
+    /* Toast Notification */
     #toast {
-      position: fixed;
-      right: 22px;
-      bottom: 22px;
-      z-index: 30;
-      display: none;
-      align-items: center;
-      gap: 9px;
-      max-width: min(390px, calc(100vw - 44px));
-      padding: 11px 13px;
-      border: 1px solid var(--line-strong);
-      border-radius: 8px;
-      background: var(--ink-soft);
-      box-shadow: var(--shadow);
-      color: var(--paper);
-      font-family: var(--mono);
-      font-size: 11px;
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 10px 18px; border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      display: none; z-index: 100; font-size: 13px;
+      align-items: center; gap: 9px;
     }
-    #toast.visible { display: flex; animation: toast-in .22s ease both; }
-    #toast.error { border-color: rgba(227, 123, 104, .6); color: var(--red); }
-    @keyframes toast-in {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    dialog {
-      width: min(470px, calc(100vw - 32px));
-      padding: 0;
-      border: 1px solid var(--line-strong);
-      border-radius: 12px;
-      background: var(--ink-raised);
-      color: var(--paper);
-      box-shadow: var(--shadow);
-    }
-    dialog::backdrop { background: rgba(0, 0, 0, .66); }
-    .dialog-body { padding: 20px; }
-    .dialog-body h2 { margin: 0; font-family: var(--display); font-size: 19px; }
-    .dialog-body p { margin: 9px 0 0; color: var(--paper-muted); font-size: 13px; }
-    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 19px; }
+    #toast.show { display: flex; animation: slideUp 0.2s ease; }
+    @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-    @media (max-width: 980px) {
-      .app-shell { grid-template-columns: 190px minmax(0, 1fr); }
-      .inspector-grid, .split-grid { grid-template-columns: 1fr; }
-      .target-bar { grid-template-columns: 1fr 1fr; }
-      .target-index { display: none; }
+    /* Modal Dialog */
+    dialog {
+      margin: auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      color: var(--text-main);
+      box-shadow: var(--shadow-lg);
+      max-width: 480px; width: 90%;
     }
-    @media (max-width: 720px) {
-      .app-shell { display: block; }
-      .sidebar {
-        min-height: 0;
-        padding: 14px 14px 11px;
-        border-right: 0;
-        border-bottom: 1px solid var(--line);
-      }
-      .brand { padding: 0 4px 13px; }
-      .side-label, .side-footer { display: none; }
-      .tab-list {
-        display: flex;
-        overflow-x: auto;
-        gap: 5px;
-        padding-bottom: 2px;
-      }
-      .tab-btn { width: auto; min-width: max-content; min-height: 38px; padding: 7px 9px; }
-      .tab-detail { display: none; }
-      .topbar { min-height: 61px; padding: 11px 16px; }
-      .context-kicker { display: none; }
-      .connection { display: none; }
-      main { padding: 20px 15px 38px; }
-      .target-bar { grid-template-columns: 1fr; align-items: stretch; padding: 12px; }
-      .target-bar .button { width: 100%; }
-      .workspace-heading { display: block; }
-      .workspace-code { display: block; margin-top: 11px; }
-      .form-grid, .metric-row { grid-template-columns: 1fr; }
-      .panel-header { align-items: start; flex-direction: column; }
-      .panel-header .button { align-self: stretch; }
-      .footer-line { display: block; }
-      .footer-line span + span { display: block; margin-top: 7px; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        scroll-behavior: auto !important;
-        transition-duration: .01ms !important;
-        animation-duration: .01ms !important;
-        animation-iteration-count: 1 !important;
-      }
-    }
+    dialog::backdrop { background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); }
   </style>
 </head>
 <body>
-  <svg aria-hidden="true" width="0" height="0" style="position:absolute">
-    <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 4v8l5 3"></path><path d="M4 12h3"></path></symbol>
-    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7L12 3Z"></path><path d="m19 16 .7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7L19 16Z"></path></symbol>
-    <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 8-4 4 4 4"></path><path d="m16 8 4 4-4 4"></path><path d="m14 5-4 14"></path></symbol>
-    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 20 6v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-3Z"></path><path d="m8.5 12 2.2 2.2 4.8-5"></path></symbol>
-    <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="m7 9 3 3-3 3"></path><path d="M12 15h5"></path></symbol>
-    <symbol id="i-archive" viewBox="0 0 24 24"><path d="M4 7h16v13H4z"></path><path d="M3 4h18v3H3zM9 11h6"></path></symbol>
-    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v10H3z"></path><path d="M3 10h18"></path></symbol>
-    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.6-4L3 10"></path><path d="M3 5v5h5"></path><path d="M4 13a8 8 0 0 0 14.6 4L21 14"></path><path d="M21 19v-5h-5"></path></symbol>
-    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7V5Z"></path></symbol>
-    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="12" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2"></path></symbol>
-    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 21 20H3L12 4Z"></path><path d="M12 9v5M12 17h.01"></path></symbol>
-    <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h12l2 2v14H5z"></path><path d="M8 4v6h8V4M8 20v-6h8v6"></path></symbol>
-    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 7v5l3 2"></path></symbol>
-  </svg>
 
-  <a class="skip-link" href="#main-content">跳到主内容</a>
+  <!-- Hidden Skip Link for A11y -->
+  <a href="#main-content" style="position: absolute; left: -9999px;">跳至主内容 (game-mod-agent)</a>
+
   <div class="app-shell">
+
+    <!-- Left Sidebar Navigation -->
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark">M</div>
+        <div class="brand-icon">M</div>
         <div>
-          <p class="brand-title">Mod Workbench</p>
-          <p class="brand-subtitle">AI Mod Builder / Local Console</p>
+          <h1 class="brand-title">AI Mod Builder</h1>
+          <div class="brand-subtitle">Mod Workbench · v1.0</div>
         </div>
       </div>
-      <p class="side-label">Workspaces</p>
-      <div class="tab-list" role="tablist" aria-label="工作区">
-        <button class="tab-btn active" id="tab-inspector" role="tab" aria-selected="true" aria-controls="ws-inspector" data-tab="inspector">
-          <svg class="icon"><use href="#i-radar"></use></svg>
-          <span class="tab-copy"><span class="tab-name">运行巡检</span><span class="tab-detail">Engine / process / tools</span></span>
+
+      <div class="nav-label">工作台空间</div>
+      <nav class="nav-list" role="tablist">
+        <button class="nav-item active" data-tab="inspector" role="tab" aria-selected="true">
+          <div class="nav-item-left">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <span>游戏与环境巡检</span>
+          </div>
+          <span id="navBadgeEngine" class="nav-badge">Detect</span>
         </button>
-        <button class="tab-btn" id="tab-studio" role="tab" aria-selected="false" aria-controls="ws-studio" data-tab="studio">
-          <svg class="icon"><use href="#i-spark"></use></svg>
-          <span class="tab-copy"><span class="tab-name">需求工坊</span><span class="tab-detail">Prompt to ModSpec</span></span>
+
+        <button class="nav-item" data-tab="studio" role="tab" aria-selected="false">
+          <div class="nav-item-left">
+            <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <span>AI Mod 蓝图工坊</span>
+          </div>
+          <span class="nav-badge">Spec</span>
         </button>
-        <button class="tab-btn" id="tab-hooklab" role="tab" aria-selected="false" aria-controls="ws-hooklab" data-tab="hooklab">
-          <svg class="icon"><use href="#i-code"></use></svg>
-          <span class="tab-copy"><span class="tab-name">Hook 实验室</span><span class="tab-detail">Evidence to code</span></span>
+
+        <button class="nav-item" data-tab="hooklab" role="tab" aria-selected="false">
+          <div class="nav-item-left">
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+            <span>Hook 代码实验室</span>
+          </div>
+          <span class="nav-badge">Code</span>
         </button>
-        <button class="tab-btn" id="tab-manager" role="tab" aria-selected="false" aria-controls="ws-manager" data-tab="manager">
-          <svg class="icon"><use href="#i-shield"></use></svg>
-          <span class="tab-copy"><span class="tab-name">资产与回滚</span><span class="tab-detail">Install / restore</span></span>
+
+        <button class="nav-item" data-tab="manager" data-action="mods" role="tab" aria-selected="false">
+          <div class="nav-item-left">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+            <span>Mod 管理与回滚</span>
+          </div>
+          <span id="navBadgeMods" class="nav-badge">0</span>
         </button>
-        <button class="tab-btn" id="tab-logs" role="tab" aria-selected="false" aria-controls="ws-logs" data-tab="logs">
-          <svg class="icon"><use href="#i-terminal"></use></svg>
-          <span class="tab-copy"><span class="tab-name">日志诊断</span><span class="tab-detail">Runtime evidence</span></span>
+
+        <button class="nav-item" data-tab="logs" role="tab" aria-selected="false">
+          <div class="nav-item-left">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <span>运行日志与自愈</span>
+          </div>
+          <span id="logStatus" class="nav-badge">Logs</span>
         </button>
-        <button class="tab-btn" id="tab-saves" role="tab" aria-selected="false" aria-controls="ws-saves" data-tab="saves">
-          <svg class="icon"><use href="#i-clock"></use></svg>
-          <span class="tab-copy"><span class="tab-name">存档快照</span><span class="tab-detail">Before / after state</span></span>
+
+        <button class="nav-item" data-tab="saves" data-action="saves" role="tab" aria-selected="false">
+          <div class="nav-item-left">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+            <span>存档时光机</span>
+          </div>
+          <span id="navBadgeSaves" class="nav-badge">Time</span>
         </button>
-      </div>
-      <div class="side-footer">
-        <div class="safety-note">
-          <svg class="icon"><use href="#i-shield"></use></svg>
-          <span>Local only. Never attach to anti-cheat or online services.</span>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="engine-support-pill">
+          <div class="engine-dots">
+            <span class="engine-dot" style="background:#10b981;" title="Unity (Mono/IL2CPP)"></span>
+            <span class="engine-dot" style="background:#a855f7;" title="Unreal Engine 4/5"></span>
+            <span class="engine-dot" style="background:#f97316;" title="Capcom RE-Engine"></span>
+            <span class="engine-dot" style="background:#38bdf8;" title="Godot 3/4"></span>
+            <span class="engine-dot" style="background:#f59e0b;" title="tModLoader"></span>
+          </div>
+          <span>Tier-1 深度逆向适配</span>
         </div>
-        <p class="version">game-mod-agent · v0.1</p>
       </div>
     </aside>
 
-    <section class="content-shell">
+    <!-- Main Content Area -->
+    <div style="display: flex; flex-direction: column; min-width: 0;">
+
+      <!-- Top Header Bar -->
       <header class="topbar">
-        <div class="topbar-context">
-          <span class="context-kicker">Field console</span>
-          <h1 class="context-title">从游戏证据到可回滚 Mod</h1>
+        <div class="topbar-left">
+          <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">目标工程</span>
+          <span id="topbarGameName" style="font-size: 13px; font-weight: 600; color: #fff;">未选定游戏</span>
+          <span id="engineBadge" class="badge badge-unity" style="display: none;">Unity</span>
         </div>
-        <div class="topbar-actions">
-          <div class="connection" id="connectionStatus"><span class="connection-dot"></span><span>Local service ready</span></div>
-          <button class="button button-secondary button-small" data-action="doctor"><svg class="icon"><use href="#i-radar"></use></svg>Run doctor</button>
+        <div class="topbar-right">
+          <div id="connectionStatus" class="service-pill">
+            <span class="service-dot"></span>
+            <span>127.0.0.1:8765 就绪</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" data-action="doctor">🩺 工具链自检 (Doctor)</button>
         </div>
       </header>
 
+      <!-- Main Workspace Container -->
       <main id="main-content">
-        <section class="target-bar" aria-label="目标游戏设置">
-          <div class="target-index"><strong>TGT</strong><span>Target</span></div>
-          <div>
-            <label class="field-label" for="targetGameDir">目标游戏安装目录 / Target game directory</label>
-            <input class="field-input" id="targetGameDir" type="text" autocomplete="off" placeholder="C:\Games\MyGame 或 /Games/Steam/common/MyGame">
-            <div class="field-error" id="targetError">先填写游戏目录，再运行工作台操作。</div>
-          </div>
-          <button class="button" data-action="detect"><svg class="icon"><use href="#i-radar"></use></svg>Detect game</button>
-          <div class="target-index"><span>Policy</span><strong>LOCAL</strong></div>
-        </section>
 
-        <section class="workspace active" id="ws-inspector" role="tabpanel" aria-labelledby="tab-inspector">
-          <div class="workspace-heading">
-            <div><h2>先确认游戏，再动文件。</h2><p>识别引擎、确认运行状态和工具链，给后续的生成、安装与回滚建立可靠基线。</p></div>
-            <span class="workspace-code">Inspect / Gate / Prepare</span>
-          </div>
-          <div class="inspector-grid">
-            <article class="panel">
-              <div class="panel-header"><h3 class="panel-title"><svg class="icon"><use href="#i-radar"></use></svg>游戏档案</h3><button class="button button-secondary button-small" data-action="detect"><svg class="icon"><use href="#i-refresh"></use></svg>Refresh profile</button></div>
-              <div class="panel-body">
-                <div class="metric-row">
-                  <div class="metric copper"><span class="metric-label">Engine</span><strong id="engineMetric">Not detected</strong></div>
-                  <div class="metric mint"><span class="metric-label">Runtime</span><strong id="runtimeMetric">Unknown</strong></div>
-                  <div class="metric yellow"><span class="metric-label">Evidence</span><strong id="evidenceMetric">Waiting</strong></div>
-                </div>
-                <div class="result-box" id="engineDetails">填写目标目录并点击 Detect game。这里会显示引擎指纹、识别到的文件和下一步路线。</div>
-              </div>
-            </article>
-            <div class="inspector-side">
-              <article class="panel">
-                <div class="panel-header"><h3 class="panel-title"><svg class="icon"><use href="#i-shield"></use></svg>运行门槛</h3><button class="button button-secondary button-small" data-action="process"><svg class="icon"><use href="#i-refresh"></use></svg>Check</button></div>
-                <div class="panel-body"><div class="result-box" id="processDetails">游戏运行状态尚未检查。安装前必须确认文件锁状态。</div></div>
-              </article>
-              <article class="panel">
-                <div class="panel-header"><h3 class="panel-title"><svg class="icon"><use href="#i-terminal"></use></svg>工具链准备度</h3><button class="button button-secondary button-small" data-action="doctor">Run</button></div>
-                <div class="panel-body"><div class="result-box" id="doctorReport">检查 .NET SDK、REA、反编译器与缓存是否准备好。</div></div>
-              </article>
+        <!-- Universal Target Game Selector -->
+        <div class="target-bar">
+          <div class="target-input-wrap">
+            <label class="target-label" for="targetGameDir">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+              <span>目标游戏根目录 (Game Installation Directory)</span>
+            </label>
+            <div class="target-input-row">
+              <input type="text" id="targetGameDir" class="input-text code" placeholder="例如: D:\SteamLibrary\steamapps\common\Hollow Knight 或 /Games/Hades" value="">
+              <button class="btn btn-primary" data-action="detect">🚀 一键侦测引擎</button>
             </div>
           </div>
-        </section>
+        </div>
 
-        <section class="workspace" id="ws-studio" role="tabpanel" aria-labelledby="tab-studio" hidden>
-          <div class="workspace-heading">
-            <div><h2>把一句话变成可审查的 ModSpec。</h2><p>先固定范围、自定义项和证据，再交给生成器。这样后续 Hook 不会脱离用户真正想要的功能。</p></div>
-            <span class="workspace-code">Prompt / Scope / Plan</span>
+        <!-- 1. Inspector Workspace -->
+        <div id="ws-inspector" class="workspace active">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                  <span>游戏引擎与前置加载器</span>
+                </div>
+                <button class="btn btn-secondary btn-sm" data-action="detect">重新侦测</button>
+              </div>
+              <div id="engineDetails" class="code-console">输入游戏目录并点击「一键侦测引擎」以提取引擎架构、指纹和 Mod 路径...</div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                  <span>进程文件锁与运行态感测</span>
+                </div>
+                <button class="btn btn-secondary btn-sm" data-action="process">检查占用</button>
+              </div>
+              <div id="processDetails" class="code-console">未检测进程。安装或卸载 Mod 前将自动校验进程锁，防止文件写锁定错误。</div>
+            </div>
           </div>
-          <div class="split-grid">
-            <article class="panel">
-              <div class="panel-header"><h3 class="panel-title"><svg class="icon"><use href="#i-spark"></use></svg>需求描述</h3><span class="status-tag">Draft</span></div>
-              <div class="panel-body">
-                <div class="form-grid">
-                  <div class="full">
-                    <label class="field-label" for="planRequest">你想要这个 Mod 做什么？</label>
-                    <textarea class="field-textarea" id="planRequest" placeholder="例如：给主角增加 99999 金币，并允许在配置文件中修改数值。"></textarea>
-                    <div class="field-error" id="requestError">写清楚目标行为，再生成蓝图。</div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                <span>本机逆向工具链就绪度报告 (Doctor)</span>
+              </div>
+              <button class="btn btn-secondary btn-sm" data-action="doctor">刷新体检</button>
+            </div>
+            <div id="doctorReport" class="code-console">点击「工具链自检」评估 .NET SDK、ilspycmd/Cpp2IL 及 REA 逆向桥接状态...</div>
+          </div>
+        </div>
+
+        <!-- 2. AI Mod Studio Workspace -->
+        <div id="ws-studio" class="workspace">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                  <span>自然语言 Mod 需求生成</span>
+                </div>
+              </div>
+
+              <!-- Popular Preset Chips (Anti-AI empty box feel) -->
+              <div style="margin-bottom: 12px;">
+                <span style="font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">⚡ 常用预设快捷填入:</span>
+                <div class="preset-bar">
+                  <span class="preset-chip" onclick="applyPreset('给主角增加 99999 金币，可通过配置修改数值', 'player_gold_boost', {'amount': 99999})">💰 99999 金币</span>
+                  <span class="preset-chip" onclick="applyPreset('主角移动速度提高 2.0 倍', 'speed_multiplier', {'multiplier': 2.0})">⚡ 2倍移速</span>
+                  <span class="preset-chip" onclick="applyPreset('玩家免疫受到的一切伤害 (锁血无敌)', 'god_mode_invincible', {'god_mode': true})">🛡️ 锁血无敌</span>
+                  <span class="preset-chip" onclick="applyPreset('玩家翻滚/奔跑耐力永久不减', 'infinite_stamina', {'infinite': true})">♾️ 无限耐力</span>
+                  <span class="preset-chip" onclick="applyPreset('武器基础攻击力提升 50%', 'weapon_damage_up', {'damage_rate': 1.5})">🗡️ 攻击加成</span>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div>
+                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">需求功能描述 (Request Prompt)</label>
+                  <textarea id="planRequest" class="textarea-field" style="min-height: 88px;" placeholder="例如: 让主角移动速度提高2倍，攻击力提升50%，耐力永久不减"></textarea>
+                </div>
+
+                <div class="grid-2">
+                  <div>
+                    <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Mod ID (标识符)</label>
+                    <input type="text" id="planModId" class="input-text code" placeholder="my_speed_mod">
                   </div>
-                  <div><label class="field-label" for="planModId">Mod ID</label><input class="field-input" id="planModId" placeholder="player_gold_boost"></div>
-                  <div><label class="field-label" for="planModVersion">版本</label><input class="field-input" id="planModVersion" value="1.0.0"></div>
-                  <div class="full"><label class="field-label" for="planCustomizations">自定义项（JSON）</label><textarea class="field-textarea" id="planCustomizations" style="min-height:86px" placeholder='{"amount": 99999, "config_key": "gold"}'></textarea><p class="form-help">只写用户真正需要调节的字段，不把内部参数暴露给玩家。</p></div>
+                  <div>
+                    <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">版本号 (Version)</label>
+                    <input type="text" id="planModVersion" class="input-text code" value="1.0.0">
+                  </div>
                 </div>
-                <div class="action-row"><button class="button" data-action="plan"><svg class="icon"><use href="#i-play"></use></svg>Generate plan</button><button class="button button-secondary" data-action="clear-plan">Clear draft</button></div>
-              </div>
-            </article>
-            <article class="panel">
-              <div class="panel-header"><h3 class="panel-title"><svg class="icon"><use href="#i-code"></use></svg>ModSpec 预览</h3><span class="output-meta" id="planStatus">Not generated</span></div>
-              <div class="panel-body"><div class="result-box" id="planSpecViewer">等待需求输入。生成后这里会展示范围、证据、验证步骤和风险提示。</div></div>
-            </article>
-          </div>
-        </section>
 
-        <section class="workspace" id="ws-hooklab" role="tabpanel" aria-labelledby="tab-hooklab" hidden>
-          <div class="workspace-heading">
-            <div><h2>让证据先说话，再写 Hook。</h2><p>支持手动目标和 REA / dump 的结构化证据。生成结果保留签名、来源和静态校验状态。</p></div>
-            <span class="workspace-code">Evidence / Target / Hook</span>
-          </div>
-          <div class="split-grid">
-            <article class="panel">
-              <div class="panel-header"><h3 class="panel-title"><svg class="icon"><use href="#i-code"></use></svg>目标签名</h3><span class="status-tag warn">Needs evidence</span></div>
-              <div class="panel-body">
-                <div class="form-grid">
-                  <div><label class="field-label" for="hookEngine">Engine</label><select class="field-select" id="hookEngine"><option value="unity">Unity / Harmony</option><option value="unreal">Unreal / UE4SS</option><option value="re-engine">RE Engine / REFramework</option><option value="godot">Godot / GDScript</option></select></div>
-                  <div><label class="field-label" for="hookType">Hook type</label><select class="field-select" id="hookType"><option value="prefix">Prefix</option><option value="postfix">Postfix</option><option value="both">Both</option></select></div>
-                  <div><label class="field-label" for="hookClass">Class / symbol</label><input class="field-input" id="hookClass" placeholder="PlayerController"></div>
-                  <div><label class="field-label" for="hookMethod">Method</label><input class="field-input" id="hookMethod" placeholder="AddGold"></div>
-                  <div><label class="field-label" for="hookReturn">Return type</label><input class="field-input" id="hookReturn" value="void"></div>
-                  <div><label class="field-label" for="hookParams">Parameters JSON</label><input class="field-input" id="hookParams" value="[]"></div>
-                  <div class="full"><label class="field-label" for="hookEvidence">Evidence JSON</label><textarea class="field-textarea" id="hookEvidence" style="min-height:126px" placeholder='{"engine":"unity","target":{"namespace":"Game.Player","class_name":"Controller","method_name":"AddGold","signature":"void AddGold(int)"}}'></textarea><p class="form-help">优先使用 generate_hook_from_evidence；手动字段只适合快速试片。</p></div>
+                <div>
+                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">自定义参数字典 (JSON 配置项)</label>
+                  <textarea id="planCustomizations" class="textarea-field code" style="min-height: 60px;" placeholder='{"amount": 99999}'></textarea>
                 </div>
-                <div class="action-row"><button class="button" data-action="hook-evidence"><svg class="icon"><use href="#i-play"></use></svg>Generate from evidence</button><button class="button button-secondary" data-action="hook-template">Generate template</button></div>
+
+                <div style="display: flex; gap: 10px; margin-top: 6px;">
+                  <button class="btn btn-primary" data-action="plan">✨ 构思蓝图并生成 ModSpec</button>
+                  <button class="btn btn-secondary" data-action="clear-plan">清空</button>
+                </div>
               </div>
-            </article>
-            <article class="panel">
-              <div class="panel-header"><h3 class="panel-title"><svg class="icon"><use href="#i-terminal"></use></svg>生成结果</h3><button class="button button-secondary button-small" data-action="copy-hook"><svg class="icon"><use href="#i-copy"></use></svg>Copy source</button></div>
-              <div class="panel-body"><div class="output-head"><h3>Hook source</h3><span class="output-meta" id="hookStatus">Not generated</span></div><pre class="code-output" id="hookCodeOutput"><code>// 选择目标并生成代码。结果会显示 provenance 与静态校验。</code></pre></div>
-            </article>
-          </div>
-        </section>
+            </div>
 
-        <section class="workspace" id="ws-manager" role="tabpanel" aria-labelledby="tab-manager" hidden>
-          <div class="workspace-heading">
-            <div><h2>每次安装都要能退回原点。</h2><p>查看安装记录、确认文件归属，必要时只回滚一个 Mod，或恢复整个游戏目录。</p></div>
-            <span class="workspace-code">Install / Verify / Restore</span>
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                  <span>生成的 mod-spec.json 蓝图数据</span>
+                </div>
+              </div>
+              <div id="planSpecViewer" class="code-console editor">在左侧输入需求并点击「构思蓝图」以输出符合引擎标准的 ModSpec 与规范工程骨架...</div>
+            </div>
           </div>
-          <article class="panel list-panel">
-            <div class="panel-header"><h3 class="panel-title"><svg class="icon"><use href="#i-shield"></use></svg>安装日志</h3><div class="action-row" style="margin:0"><button class="button button-secondary button-small" data-action="mods"><svg class="icon"><use href="#i-refresh"></use></svg>Refresh</button><button class="button button-danger button-small" data-action="rollback"><svg class="icon"><use href="#i-alert"></use></svg>Restore game</button></div></div>
-            <div class="mod-list" id="installedModsList"><div class="list-empty"><div><strong>还没有安装记录</strong><span>运行 Mod 安装后，这里会显示文件、版本和回滚状态。</span></div></div></div>
-          </article>
-        </section>
+        </div>
 
-        <section class="workspace" id="ws-logs" role="tabpanel" aria-labelledby="tab-logs" hidden>
-          <div class="workspace-heading">
-            <div><h2>先读日志，再决定改什么。</h2><p>把运行时错误按框架、文件和行号拆开，给出可验证的修复方向，而不是盲目改代码。</p></div>
-            <span class="workspace-code">Read / Diagnose / Verify</span>
-          </div>
-          <div class="split-grid">
-            <article class="panel">
-              <div class="panel-header"><h3 class="panel-title"><svg class="icon"><use href="#i-terminal"></use></svg>运行日志</h3><button class="button button-secondary button-small" data-action="read-logs"><svg class="icon"><use href="#i-refresh"></use></svg>Read logs</button></div>
-              <div class="panel-body"><label class="field-label" for="liveLogText">Log tail</label><textarea class="field-textarea" id="liveLogText" style="min-height:245px" placeholder="粘贴日志，或点击 Read logs 读取本地游戏日志。"></textarea><div class="action-row"><button class="button" data-action="diagnose"><svg class="icon"><use href="#i-play"></use></svg>Diagnose runtime</button></div></div>
-            </article>
-            <article class="panel">
-              <div class="panel-header"><h3 class="panel-title"><svg class="icon"><use href="#i-alert"></use></svg>诊断结果</h3><span class="output-meta" id="logStatus">No diagnosis</span></div>
-              <div class="panel-body"><div class="result-box" id="logDiagnosisResult">诊断结果会按框架、文件、行号和修复建议呈现。</div><div class="inline-note"><svg class="icon"><use href="#i-alert"></use></svg><span>当前工具提供诊断和修复建议；自动改写源码并重新验证仍需人工确认。</span></div></div>
-            </article>
-          </div>
-        </section>
+        <!-- 3. Hook Code Lab Workspace -->
+        <div id="ws-hooklab" class="workspace">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg class="icon" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                  <span>Hook 代码生成器参数</span>
+                </div>
+              </div>
 
-        <section class="workspace" id="ws-saves" role="tabpanel" aria-labelledby="tab-saves" hidden>
-          <div class="workspace-heading">
-            <div><h2>在改游戏前，先保存一条可验证的基线。</h2><p>快照会记录文件树和时间点。恢复前先检查目标目录，再决定覆盖范围。</p></div>
-            <span class="workspace-code">Snapshot / Compare / Recover</span>
-          </div>
-          <div class="split-grid">
-            <article class="panel">
-              <div class="panel-header"><h3 class="panel-title"><svg class="icon"><use href="#i-save"></use></svg>创建快照</h3></div>
-              <div class="panel-body"><label class="field-label" for="saveBackupLabel">快照标签</label><input class="field-input" id="saveBackupLabel" placeholder="install-before-gold-mod"><div class="action-row"><button class="button" data-action="create-save"><svg class="icon"><use href="#i-save"></use></svg>Create snapshot</button></div><div class="inline-note"><svg class="icon"><use href="#i-shield"></use></svg><span>快照是恢复基线，不代表当前游戏文件已经安全。</span></div></div>
-            </article>
-            <article class="panel">
-              <div class="panel-header"><h3 class="panel-title"><svg class="icon"><use href="#i-clock"></use></svg>快照时间线</h3><button class="button button-secondary button-small" data-action="saves"><svg class="icon"><use href="#i-refresh"></use></svg>Refresh</button></div>
-              <div class="save-list" id="savesTimeline"><div class="list-empty"><div><strong>还没有快照</strong><span>创建一条安装前基线，便于之后比较和恢复。</span></div></div></div>
-            </article>
-          </div>
-        </section>
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div>
+                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">目标引擎框架</label>
+                  <select id="hookEngine" class="select-field">
+                    <option value="unity">Unity (Mono / IL2CPP - Harmony C#)</option>
+                    <option value="unreal">Unreal Engine (UE4SS Lua RegisterHook)</option>
+                    <option value="reengine">RE-Engine (REFramework Lua sdk.hook)</option>
+                    <option value="godot">Godot Engine (GDScript ModLoader)</option>
+                  </select>
+                </div>
 
-        <div class="footer-line"><span>Local-first workbench · no game files leave this machine</span><span>Use only with games you own and are authorized to modify.</span></div>
+                <div class="grid-2">
+                  <div>
+                    <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">目标类名 (Class Symbol)</label>
+                    <input type="text" id="hookClass" class="input-text code" placeholder="HeroController / APawn" value="HeroController">
+                  </div>
+                  <div>
+                    <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">目标方法名 (Method Symbol)</label>
+                    <input type="text" id="hookMethod" class="input-text code" placeholder="TakeDamage / AddGold" value="TakeDamage">
+                  </div>
+                </div>
+
+                <div class="grid-2">
+                  <div>
+                    <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Hook 拦截时机</label>
+                    <select id="hookType" class="select-field">
+                      <option value="prefix">Prefix (前置拦截 / 覆盖参数)</option>
+                      <option value="postfix">Postfix (后置截取 / 篡改返回值)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">返回值类型</label>
+                    <input type="text" id="hookReturn" class="input-text code" value="void">
+                  </div>
+                </div>
+
+                <div>
+                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">参数列表 (JSON Array)</label>
+                  <input type="text" id="hookParams" class="input-text code" value='[{"name": "damage", "type": "int", "by_ref": false}]'>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 6px;">
+                  <button class="btn btn-primary" data-action="hook-template">⚡ 合成 Hook 源码</button>
+                  <button class="btn btn-secondary" data-action="hook-evidence">基于 Evidence 合成</button>
+                </div>
+
+                <!-- Hidden evidence field for advanced tests -->
+                <textarea id="hookEvidence" style="display: none;">{"engine": "unity", "target_symbol": "HeroController.TakeDamage", "class_name": "HeroController", "method_name": "TakeDamage", "hook_type": "prefix", "provenance": "dump", "confidence": 0.95}</textarea>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                  <span>验证通过的 Hook 代码输出</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span id="hookStatus" class="badge badge-unity">Ready</span>
+                  <button class="btn btn-secondary btn-sm" data-action="copy-hook">📋 复制代码</button>
+                </div>
+              </div>
+              <pre id="hookCodeOutput" class="code-console editor">// 点击「合成 Hook 源码」实时生成具备静态闭合校验的补丁源码...</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Mod Manager Workspace (Vortex / Thunderstore Style) -->
+        <div id="ws-manager" class="workspace">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                <span>当前游戏已安装 Mod 档案与文件追踪</span>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-secondary btn-sm" data-action="mods">🔄 刷新清单</button>
+                <button class="btn btn-danger btn-sm" data-action="rollback">⚠️ 一键全量核武级回滚</button>
+              </div>
+            </div>
+
+            <!-- Mod List Table -->
+            <div id="modListContainer" class="mod-table-wrap">
+              <div class="mod-row" style="color: var(--text-dim); justify-content: center; padding: 32px;">
+                点击「刷新清单」载入该游戏下由本系统安装追踪的 Mod 档案...
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Logs & Self-Healing Workspace -->
+        <div id="ws-logs" class="workspace">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                <span>游戏运行与崩溃日志 (Live Tail)</span>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-secondary btn-sm" data-action="read-logs">📥 读取最近日志</button>
+                <button class="btn btn-primary btn-sm" data-action="diagnose">🧠 AI 自愈分析 (Diagnose)</button>
+              </div>
+            </div>
+
+            <!-- Log Controls -->
+            <div class="log-controls">
+              <div class="filter-pills">
+                <button class="filter-pill active" onclick="filterLogs('all')">全部日志</button>
+                <button class="filter-pill" onclick="filterLogs('error')">🔴 错误行 (Error)</button>
+                <button class="filter-pill" onclick="filterLogs('warning')">🟡 警告 (Warn)</button>
+              </div>
+              <span style="font-size: 11px; color: var(--text-dim); font-family: var(--mono);">自动定位 BepInEx / UE4SS / REFramework 日志</span>
+            </div>
+
+            <textarea id="liveLogText" class="textarea-field code" style="min-height: 200px;" placeholder="在此粘贴或点击「读取最近日志」自动抓取游戏报错堆栈..."></textarea>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                <span>崩溃定位与针对性自愈修复建议</span>
+              </div>
+            </div>
+            <div id="logDiagnosisResult" class="code-console">点击「AI 自愈分析」解析报错堆栈，自动提取报错行号、方法签名及针对性补丁代码。</div>
+          </div>
+        </div>
+
+        <!-- 6. Savegame Time Machine Workspace -->
+        <div id="ws-saves" class="workspace">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+                  <span>创建存档安全快照</span>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                <p style="font-size: 12px; color: var(--text-muted);">
+                  在注入 Mod 或修改游戏内存之前创建快照，可将 AppData / LocalLow / Saved Games 的原版存档安全打包。
+                </p>
+
+                <div>
+                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">快照描述标签 (Tag / Label)</label>
+                  <input type="text" id="saveBackupLabel" class="input-text" placeholder="例如: pre-mod-goldhack" value="pre-mod">
+                </div>
+
+                <button class="btn btn-primary" data-action="create-save" style="margin-top: 6px;">💾 立即生成存档快照</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                  <span>历史快照时间线 (Save Timeline)</span>
+                </div>
+                <button class="btn btn-secondary btn-sm" data-action="saves">🔄 刷新快照</button>
+              </div>
+
+              <!-- Saves List -->
+              <div id="savesListContainer" class="mod-table-wrap">
+                <div class="mod-row" style="color: var(--text-dim); justify-content: center; padding: 32px;">
+                  点击「刷新快照」读取已备份的历史时间线...
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </main>
-    </section>
+    </div>
   </div>
 
-  <div id="toast" role="status" aria-live="polite"><svg class="icon"><use href="#i-alert"></use></svg><span id="toastMsg"></span></div>
+  <!-- Confirmation Modal Dialog -->
   <dialog id="confirmDialog">
-    <div class="dialog-body">
-      <h2 id="confirmTitle">恢复游戏目录？</h2>
-      <p id="confirmText">这会撤销当前游戏目录中已记录的 Mod 文件，并按安装日志恢复被覆盖的原始文件。</p>
-      <div class="dialog-actions"><button class="button button-secondary" id="confirmCancel">Cancel</button><button class="button button-danger" id="confirmAccept">Restore</button></div>
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <h3 id="confirmTitle" style="font-size: 16px; font-weight: 700; color: #fff;">确认执行危险操作？</h3>
+      <p id="confirmMessage" style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+        该操作将逆序移除所有记录的 Mod 文件，并恢复备份的原版文件。
+      </p>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+        <button id="confirmCancel" class="btn btn-secondary">取消</button>
+        <button id="confirmAccept" class="btn btn-danger">确定执行</button>
+      </div>
     </div>
   </dialog>
 
+  <!-- Notification Toast -->
+  <div id="toast">
+    <span id="toastMsg">通知信息</span>
+  </div>
+
   <script>
-    const state = { tab: 'inspector', hookCode: '' };
     const $ = (id) => document.getElementById(id);
 
-    function showToast(message, isError = false) {
+    const state = {
+      gameDir: '',
+      activeTab: 'inspector',
+      hookCode: '',
+      detectedEngine: null,
+      mods: [],
+      saves: []
+    };
+
+    // Helper: Toast
+    function showToast(msg, isError = false) {
       const toast = $('toast');
-      $('toastMsg').textContent = message;
-      toast.classList.toggle('error', isError);
-      toast.classList.add('visible');
-      clearTimeout(showToast.timer);
-      showToast.timer = setTimeout(() => toast.classList.remove('visible'), 3200);
+      const toastMsg = $('toastMsg');
+      toastMsg.textContent = msg;
+      toast.style.borderColor = isError ? 'var(--rose)' : 'var(--border)';
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2800);
     }
 
-    function setBusy(button, busy, busyLabel = 'Working…') {
-      if (!button) return;
-      if (busy) {
-        button.dataset.originalText = button.innerHTML;
-        button.disabled = true;
-        button.innerHTML = `<svg class="icon"><use href="#i-refresh"></use></svg>${busyLabel}`;
-      } else {
-        button.disabled = false;
-        if (button.dataset.originalText) button.innerHTML = button.dataset.originalText;
-      }
-    }
-
-    function safeJson(value) {
-      return JSON.stringify(value, null, 2);
-    }
-
-    function setFieldError(id, visible) {
-      const node = $(id);
-      if (node) node.classList.toggle('visible', Boolean(visible));
-    }
-
-    function requireGameDir() {
-      const value = $('targetGameDir').value.trim();
-      setFieldError('targetError', !value);
-      return value;
-    }
-
+    // Helper: API Requests
     async function apiPost(endpoint, body) {
       try {
-        const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        const data = await res.json();
-        return res.ok ? data : { success: false, error: data.error || `Request failed (${res.status})` };
-      } catch (error) {
-        return { success: false, error: String(error) };
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        return await res.json();
+      } catch (e) {
+        return { success: false, error: e.toString() };
       }
     }
 
     async function apiGet(endpoint) {
       try {
         const res = await fetch(endpoint);
-        const data = await res.json();
-        return res.ok ? data : { success: false, error: data.error || `Request failed (${res.status})` };
-      } catch (error) {
-        return { success: false, error: String(error) };
+        return await res.json();
+      } catch (e) {
+        return { success: false, error: e.toString() };
       }
     }
 
+    function requireGameDir() {
+      const dir = $('targetGameDir').value.trim();
+      if (!dir) {
+        showToast('请先输入目标游戏安装目录', true);
+        $('targetGameDir').focus();
+        return '';
+      }
+      state.gameDir = dir;
+      const basename = dir.replace(/\\/g, '/').split('/').filter(Boolean).pop() || dir;
+      $('topbarGameName').textContent = basename;
+      return dir;
+    }
+
+    function setBusy(btn, busy, text = '处理中…') {
+      if (!btn) return;
+      btn.disabled = busy;
+      if (busy) {
+        btn.dataset.origText = btn.textContent;
+        btn.textContent = text;
+      } else if (btn.dataset.origText) {
+        btn.textContent = btn.dataset.origText;
+      }
+    }
+
+    // Switch Tab
     function switchTab(tabId, updateHash = true) {
-      const next = document.querySelector(`[data-tab="${tabId}"]`) ? tabId : 'inspector';
-      state.tab = next;
-      document.querySelectorAll('.tab-btn').forEach((button) => {
-        const active = button.dataset.tab === next;
-        button.classList.toggle('active', active);
-        button.setAttribute('aria-selected', String(active));
+      state.activeTab = tabId;
+      document.querySelectorAll('.nav-item').forEach(el => {
+        const match = el.dataset.tab === tabId;
+        el.classList.toggle('active', match);
+        el.setAttribute('aria-selected', match ? 'true' : 'false');
       });
-      document.querySelectorAll('.workspace').forEach((workspace) => {
-        const active = workspace.id === `ws-${next}`;
-        workspace.classList.toggle('active', active);
-        workspace.hidden = !active;
+      document.querySelectorAll('.workspace').forEach(el => {
+        el.classList.toggle('active', el.id === `ws-${tabId}`);
       });
-      if (updateHash) history.replaceState(null, '', `#${next}`);
-    }
-
-    function renderEngine(data) {
-      $('engineMetric').textContent = data?.name || data?.id || 'Not detected';
-      $('runtimeMetric').textContent = data?.runtime || 'Unknown';
-      $('evidenceMetric').textContent = data?.id ? 'Captured' : 'Waiting';
-      $('engineDetails').textContent = data ? safeJson(data) : 'No supported engine markers were found in this directory.';
-    }
-
-    function renderProcess(data) {
-      const running = Boolean(data?.is_running);
-      $('processDetails').textContent = safeJson(data || {});
-      $('processDetails').classList.toggle('warn', running);
-    }
-
-    function renderDoctor(data) {
-      $('doctorReport').textContent = data?.formatted || safeJson(data?.details || data || {});
-    }
-
-    function renderPlan(data) {
-      $('planStatus').textContent = data ? 'Generated' : 'Not generated';
-      $('planSpecViewer').textContent = data ? safeJson(data) : 'Plan cleared.';
-    }
-
-    function renderMods(items) {
-      const root = $('installedModsList');
-      root.textContent = '';
-      if (!Array.isArray(items) || items.length === 0) {
-        root.innerHTML = '<div class="list-empty"><div><strong>还没有安装记录</strong><span>运行 Mod 安装后，这里会显示文件、版本和回滚状态。</span></div></div>';
-        return;
+      if (updateHash && location.hash !== `#${tabId}`) {
+        location.hash = tabId;
       }
-      items.forEach((item) => {
-        const row = document.createElement('div');
-        row.className = 'list-item';
-        const main = document.createElement('div');
-        main.className = 'list-item-main';
-        const title = document.createElement('div');
-        title.className = 'list-item-title';
-        title.textContent = item.mod_id || 'Unnamed mod';
-        const detail = document.createElement('div');
-        detail.className = 'list-item-detail';
-        detail.textContent = `${(item.added || []).length} added · ${(item.overwritten ? Object.keys(item.overwritten).length : 0)} overwritten · ${item.status || 'installed'}`;
-        main.append(title, detail);
-        const tag = document.createElement('span');
-        tag.className = 'status-tag ok';
-        tag.textContent = item.status || 'installed';
-        row.append(main, tag);
-        root.append(row);
-      });
     }
 
-    function renderSaves(items) {
-      const root = $('savesTimeline');
-      root.textContent = '';
-      if (!Array.isArray(items) || items.length === 0) {
-        root.innerHTML = '<div class="list-empty"><div><strong>还没有快照</strong><span>创建一条安装前基线，便于之后比较和恢复。</span></div></div>';
-        return;
-      }
-      items.forEach((item) => {
-        const row = document.createElement('div');
-        row.className = 'list-item';
-        const main = document.createElement('div');
-        main.className = 'list-item-main';
-        const title = document.createElement('div');
-        title.className = 'list-item-title';
-        title.textContent = item.backup_id || 'save snapshot';
-        const detail = document.createElement('div');
-        detail.className = 'list-item-detail';
-        detail.textContent = `${item.files_count ?? 0} files · ${item.size_bytes ?? 0} bytes`;
-        main.append(title, detail);
-        const tag = document.createElement('span');
-        tag.className = 'status-tag warn';
-        tag.textContent = item.tag || 'snapshot';
-        row.append(main, tag);
-        root.append(row);
-      });
+    // Preset helper
+    function applyPreset(prompt, modId, customizations) {
+      $('planRequest').value = prompt;
+      $('planModId').value = modId;
+      $('planCustomizations').value = JSON.stringify(customizations, null, 2);
+      showToast(`已填入预设: ${modId}`);
     }
 
-    async function detectGame(button) {
+    // 1. Inspector
+    async function detectGame(btn) {
       const gameDir = requireGameDir();
       if (!gameDir) return;
-      setBusy(button, true, 'Scanning…');
-      const [profile, runtime] = await Promise.all([
-        apiPost('/api/detect', { game_dir: gameDir }),
-        apiPost('/api/process', { game_dir: gameDir })
-      ]);
-      setBusy(button, false);
-      renderEngine(profile.success ? profile.data : null);
-      renderProcess(runtime.success ? runtime.data : { error: runtime.error });
-      showToast(profile.success ? '游戏档案已更新' : (profile.error || '未能识别游戏'), !profile.success);
+      setBusy(btn, true, '正在侦测…');
+      const res = await apiPost('/api/detect', { game_dir: gameDir });
+      setBusy(btn, false);
+      const badge = $('engineBadge');
+      const navBadge = $('navBadgeEngine');
+      if (res.success && res.data) {
+        state.detectedEngine = res.data;
+        badge.style.display = 'inline-flex';
+        badge.textContent = res.data.name || res.data.id;
+        badge.className = `badge badge-${res.data.id === 're-engine' ? 'reengine' : res.data.id}`;
+        navBadge.textContent = res.data.id.toUpperCase();
+        $('engineDetails').textContent = JSON.stringify(res.data, null, 2);
+        showToast(`成功识别引擎: ${res.data.name}`);
+        if ($('hookEngine')) {
+          const map = { 'unity': 'unity', 'unreal': 'unreal', 're-engine': 'reengine', 'godot': 'godot' };
+          if (map[res.data.id]) $('hookEngine').value = map[res.data.id];
+        }
+      } else {
+        badge.style.display = 'none';
+        $('engineDetails').textContent = res.error || '未能在该目录下识别到支持的引擎特征。';
+        showToast(res.error || '未识别到受支持引擎', true);
+      }
+      checkProcess();
     }
 
-    async function checkProcess(button) {
+    async function checkProcess(btn) {
       const gameDir = requireGameDir();
       if (!gameDir) return;
-      setBusy(button, true, 'Checking…');
-      const result = await apiPost('/api/process', { game_dir: gameDir });
-      setBusy(button, false);
-      renderProcess(result.success ? result.data : { error: result.error });
-      showToast(result.success ? '运行状态已刷新' : (result.error || '状态检查失败'), !result.success);
-    }
-
-    async function runDoctor(button) {
-      setBusy(button, true, 'Checking…');
-      const result = await apiGet('/api/doctor');
-      setBusy(button, false);
-      renderDoctor(result.success ? result.data : { error: result.error });
-      showToast(result.success ? '工具链检查完成' : (result.error || 'Doctor 检查失败'), !result.success);
-    }
-
-    function parseJsonField(id, fallback) {
-      const text = $(id).value.trim();
-      if (!text) return fallback;
-      try { return JSON.parse(text); }
-      catch (error) {
-        showToast(`${id} 不是有效 JSON`, true);
-        return null;
+      setBusy(btn, true, '检测中…');
+      const res = await apiPost('/api/process', { game_dir: gameDir });
+      setBusy(btn, false);
+      if (res.success && res.data) {
+        $('processDetails').textContent = JSON.stringify(res.data, null, 2);
+        if (res.data.is_running) {
+          showToast('⚠️ 游戏正在运行中，注意文件写锁定！', true);
+        }
       }
     }
 
-    async function generatePlan(button) {
+    async function runDoctor(btn) {
+      setBusy(btn, true, '体检中…');
+      const res = await apiGet('/api/doctor');
+      setBusy(btn, false);
+      if (res.success && res.data) {
+        $('doctorReport').textContent = res.data.formatted || JSON.stringify(res.data.details, null, 2);
+        showToast('工具链体检完成');
+      } else {
+        $('doctorReport').textContent = 'Doctor 体检失败: ' + (res.error || '未知错误');
+      }
+    }
+
+    // 2. AI Mod Studio
+    async function generatePlan(btn) {
       const gameDir = requireGameDir();
+      if (!gameDir) return;
       const request = $('planRequest').value.trim();
-      setFieldError('requestError', !request);
-      if (!gameDir || !request) return;
-      const customizations = parseJsonField('planCustomizations', {});
-      if (customizations === null) return;
-      setBusy(button, true, 'Planning…');
-      const result = await apiPost('/api/plan', {
+      if (!request) { showToast('请输入需求功能描述', true); return; }
+      let customizations = {};
+      const rawCustom = $('planCustomizations').value.trim();
+      if (rawCustom) {
+        try { customizations = JSON.parse(rawCustom); }
+        catch (e) { showToast('自定义项 JSON 格式错误: ' + e.message, true); return; }
+      }
+      setBusy(btn, true, '构思蓝图中…');
+      const res = await apiPost('/api/plan', {
         game_dir: gameDir,
-        request,
+        request: request,
         mod_id: $('planModId').value.trim(),
         mod_version: $('planModVersion').value.trim() || '1.0.0',
-        customizations
+        customizations: customizations
       });
-      setBusy(button, false);
-      renderPlan(result.success ? result.data : null);
-      if (!result.success) showToast(result.error || '规划失败', true);
-      else showToast('ModSpec 已生成');
+      setBusy(btn, false);
+      if (res.success && res.data) {
+        $('planSpecViewer').textContent = JSON.stringify(res.data, null, 2);
+        showToast('ModSpec 蓝图已生成！');
+      } else {
+        $('planSpecViewer').textContent = '规划生成失败: ' + (res.error || '未知错误');
+        showToast(res.error || '蓝图生成失败', true);
+      }
     }
 
-    async function generateHook(button, useEvidence) {
-      setBusy(button, true, 'Generating…');
+    // 3. Hook Lab
+    async function generateHook(btn, fromEvidence = false) {
+      setBusy(btn, true, '合成代码…');
       let endpoint = '/api/codegen/template';
       let body = {
         engine: $('hookEngine').value,
@@ -1172,140 +1100,270 @@
         method_name: $('hookMethod').value.trim() || 'TakeDamage',
         hook_type: $('hookType').value,
         return_type: $('hookReturn').value.trim() || 'void',
-        parameters: parseJsonField('hookParams', []) || []
+        parameters: []
       };
-      if (useEvidence) {
-        endpoint = '/api/codegen/evidence';
-        const evidence = parseJsonField('hookEvidence', null);
-        if (evidence === null) { setBusy(button, false); return; }
-        body = { evidence };
+
+      const paramsRaw = $('hookParams').value.trim();
+      if (paramsRaw) {
+        try { body.parameters = JSON.parse(paramsRaw); } catch (e) {}
       }
-      const result = await apiPost(endpoint, body);
-      setBusy(button, false);
-      if (result.success && result.data) {
-        state.hookCode = result.data.code || '';
+
+      if (fromEvidence) {
+        endpoint = '/api/codegen/evidence';
+        try {
+          body = { evidence: JSON.parse($('hookEvidence').value) };
+        } catch (e) {
+          showToast('Evidence JSON 解析失败', true);
+          setBusy(btn, false);
+          return;
+        }
+      }
+
+      const res = await apiPost(endpoint, body);
+      setBusy(btn, false);
+      if (res.success && res.data) {
+        state.hookCode = res.data.code || '';
         $('hookCodeOutput').textContent = state.hookCode;
-        $('hookStatus').textContent = result.data.validation?.valid ? 'Static checks passed' : 'Needs review';
-        showToast('Hook 代码已生成');
+        const statusBadge = $('hookStatus');
+        if (res.data.validation && res.data.validation.valid) {
+          statusBadge.textContent = 'Verified Valid';
+          statusBadge.className = 'badge badge-unity';
+        } else {
+          statusBadge.textContent = 'Needs Review';
+          statusBadge.className = 'badge badge-tmod';
+        }
+        showToast('Hook 源码生成成功！');
       } else {
-        $('hookCodeOutput').textContent = result.error || '生成失败';
-        $('hookStatus').textContent = 'Error';
-        showToast(result.error || '生成失败', true);
+        $('hookCodeOutput').textContent = '生成失败: ' + (res.error || '未知错误');
+        showToast(res.error || '代码生成失败', true);
       }
     }
 
-    async function copyHook() {
-      if (!state.hookCode) { showToast('还没有可复制的代码', true); return; }
+    async function copyHookCode() {
+      if (!state.hookCode) { showToast('暂无生成的代码可复制', true); return; }
       try {
         await navigator.clipboard.writeText(state.hookCode);
-        showToast('源码已复制');
-      } catch (error) {
-        showToast('浏览器拒绝了剪贴板访问', true);
+        showToast('✅ 源码已成功复制到剪贴板！');
+      } catch (e) {
+        showToast('复制失败: ' + e.toString(), true);
       }
     }
 
-    async function refreshMods(button) {
+    // 4. Mod Manager
+    async function refreshMods(btn) {
       const gameDir = requireGameDir();
       if (!gameDir) return;
-      setBusy(button, true, 'Loading…');
-      const result = await apiPost('/api/mods/list', { game_dir: gameDir });
-      setBusy(button, false);
-      renderMods(result.success ? result.data : []);
-      if (!result.success) showToast(result.error || '安装日志读取失败', true);
+      setBusy(btn, true, '读取档案…');
+      const res = await apiPost('/api/mods/list', { game_dir: gameDir });
+      setBusy(btn, false);
+      const container = $('modListContainer');
+      const navBadge = $('navBadgeMods');
+      if (res.success && Array.isArray(res.data)) {
+        state.mods = res.data;
+        navBadge.textContent = res.data.length.toString();
+        if (res.data.length === 0) {
+          container.innerHTML = `<div class="mod-row" style="color: var(--text-dim); justify-content: center; padding: 32px;">当前游戏目录暂无已记录安装的 Mod。</div>`;
+          return;
+        }
+        container.innerHTML = res.data.map((mod, idx) => `
+          <div class="mod-row">
+            <div class="mod-info">
+              <div class="mod-name">
+                <span>📦 ${mod.mod_id || 'unnamed_mod'}</span>
+                <span class="badge badge-unity">Installed</span>
+              </div>
+              <div class="mod-meta">添加文件: ${(mod.added || []).length} 项 | 覆盖原始文件: ${Object.keys(mod.overwritten || {}).length} 项</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="uninstallMod('${mod.mod_id}')">🗑️ 卸载此 Mod</button>
+          </div>
+        `).join('');
+        showToast(`已载入 ${res.data.length} 个 Mod 记录`);
+      } else {
+        container.innerHTML = `<div class="mod-row" style="color: var(--rose); justify-content: center; padding: 24px;">读取失败: ${res.error || '未知错误'}</div>`;
+      }
     }
 
-    async function rollbackGame() {
+    async function uninstallMod(modId) {
+      const gameDir = requireGameDir();
+      if (!gameDir) return;
+      if (!confirm(`确定要安全卸载 Mod [${modId}] 并清理多余文件吗？`)) return;
+      showToast('正在卸载 Mod…');
+      const res = await apiPost('/api/mods/uninstall', { game_dir: gameDir, mod_id: modId });
+      if (res.success) {
+        showToast(`Mod [${modId}] 卸载成功！`);
+        refreshMods();
+      } else {
+        showToast('卸载失败: ' + (res.error || '未知错误'), true);
+      }
+    }
+
+    async function rollbackAllMods() {
       const gameDir = requireGameDir();
       if (!gameDir) return;
       const dialog = $('confirmDialog');
-      const accepted = await new Promise((resolve) => {
+      const confirmed = await new Promise((resolve) => {
         $('confirmAccept').onclick = () => { dialog.close(); resolve(true); };
         $('confirmCancel').onclick = () => { dialog.close(); resolve(false); };
         dialog.showModal();
       });
-      if (!accepted) return;
-      showToast('正在恢复游戏目录…');
-      const result = await apiPost('/api/mods/rollback', { game_dir: gameDir });
-      if (result.success) {
-        showToast('游戏目录已恢复');
-        refreshMods(document.querySelector('[data-action="mods"]'));
-      } else showToast(result.error || '恢复失败', true);
+      if (!confirmed) return;
+      showToast('正在执行全量回滚…');
+      const res = await apiPost('/api/mods/rollback', { game_dir: gameDir });
+      if (res.success) {
+        showToast('已撤销所有 Mod，游戏目录恢复纯净状态！');
+        refreshMods();
+      } else {
+        showToast('全量回滚失败: ' + (res.error || '未知错误'), true);
+      }
     }
 
-    async function readLogs(button) {
+    // 5. Logs & Self-Healing
+    async function readLogs(btn) {
       const gameDir = requireGameDir();
       if (!gameDir) return;
-      setBusy(button, true, 'Reading…');
-      const result = await apiPost('/api/logs/read', { game_dir: gameDir, lines: 100 });
-      setBusy(button, false);
-      if (result.success) {
-        $('liveLogText').value = result.data.content || '// 未发现活跃日志';
-        showToast('日志已载入');
-      } else showToast(result.error || '日志读取失败', true);
+      setBusy(btn, true, '读取日志…');
+      const res = await apiPost('/api/logs/read', { game_dir: gameDir, lines: 120 });
+      setBusy(btn, false);
+      if (res.success && res.data) {
+        $('liveLogText').value = res.data.content || '// 未发现活跃日志文件';
+        showToast(res.data.found ? '日志读取完成' : '未发现活跃日志文件');
+      } else {
+        showToast('读取日志失败: ' + (res.error || '未知错误'), true);
+      }
     }
 
-    async function diagnose(button) {
+    async function diagnoseLogs(btn) {
       const text = $('liveLogText').value.trim();
-      if (!text) { showToast('先粘贴或读取日志', true); return; }
-      setBusy(button, true, 'Reading log…');
-      const result = await apiPost('/api/logs/diagnose', { log_text: text });
-      setBusy(button, false);
-      $('logStatus').textContent = result.success ? `${result.data.issue_count || 0} issue(s)` : 'Error';
-      $('logDiagnosisResult').textContent = result.success ? safeJson(result.data) : (result.error || '诊断失败');
+      if (!text) { showToast('请先输入或抓取运行日志', true); return; }
+      setBusy(btn, true, '分析诊断中…');
+      const res = await apiPost('/api/logs/diagnose', { log_text: text });
+      setBusy(btn, false);
+      if (res.success && res.data) {
+        $('logDiagnosisResult').textContent = JSON.stringify(res.data, null, 2);
+        showToast(res.data.has_error ? `发现 ${res.data.issue_count} 个错误并给出修复建议` : '未检测到已知报错特征');
+      } else {
+        $('logDiagnosisResult').textContent = '诊断失败: ' + (res.error || '未知错误');
+      }
     }
 
-    async function createSave(button) {
+    function filterLogs(level) {
+      document.querySelectorAll('.filter-pill').forEach(el => el.classList.remove('active'));
+      event.target.classList.add('active');
+      const full = $('liveLogText').value;
+      if (!full) return;
+      if (level === 'all') return;
+      const lines = full.split('\n');
+      if (level === 'error') {
+        const filtered = lines.filter(l => /error|exception|fail|crash|nullreference/i.test(l)).join('\n');
+        $('liveLogText').value = filtered || '// 未找到包含错误关键字的日志行';
+      } else if (level === 'warning') {
+        const filtered = lines.filter(l => /warn|missing|fallback/i.test(l)).join('\n');
+        $('liveLogText').value = filtered || '// 未找到警告日志行';
+      }
+    }
+
+    // 6. Savegame Time Machine
+    async function createSaveBackup(btn) {
       const gameDir = requireGameDir();
       if (!gameDir) return;
-      setBusy(button, true, 'Snapshotting…');
-      const result = await apiPost('/api/saves/create', { game_dir: gameDir, label: $('saveBackupLabel').value.trim() || 'manual_snapshot' });
-      setBusy(button, false);
-      if (result.success) { showToast('快照已创建'); refreshSaves(document.querySelector('[data-action="saves"]')); }
-      else showToast(result.error || '快照创建失败', true);
+      const label = $('saveBackupLabel').value.trim() || 'manual_snapshot';
+      setBusy(btn, true, '打包快照中…');
+      const res = await apiPost('/api/saves/create', { game_dir: gameDir, label: label });
+      setBusy(btn, false);
+      if (res.success && res.data) {
+        showToast('存档快照创建成功！');
+        refreshSaves();
+      } else {
+        showToast('快照创建失败: ' + (res.error || '未找到存档目录'), true);
+      }
     }
 
-    async function refreshSaves(button) {
+    async function refreshSaves(btn) {
       const gameDir = requireGameDir();
       if (!gameDir) return;
-      setBusy(button, true, 'Loading…');
-      const result = await apiPost('/api/saves/list', { game_dir: gameDir });
-      setBusy(button, false);
-      renderSaves(result.success ? result.data : []);
-      if (!result.success) showToast(result.error || '快照读取失败', true);
+      setBusy(btn, true, '载入时间线…');
+      const res = await apiPost('/api/saves/list', { game_dir: gameDir });
+      setBusy(btn, false);
+      const container = $('savesListContainer');
+      const navBadge = $('navBadgeSaves');
+      if (res.success && Array.isArray(res.data)) {
+        state.saves = res.data;
+        navBadge.textContent = res.data.length.toString();
+        if (res.data.length === 0) {
+          container.innerHTML = `<div class="mod-row" style="color: var(--text-dim); justify-content: center; padding: 32px;">暂无该游戏的存档快照。点击左侧一键创建。</div>`;
+          return;
+        }
+        container.innerHTML = res.data.map(save => `
+          <div class="mod-row">
+            <div class="mod-info">
+              <div class="mod-name">
+                <span>⏳ ${save.tag || 'snapshot'}</span>
+                <span class="badge badge-unity">${(save.size_bytes ? (save.size_bytes / 1024 / 1024).toFixed(2) + ' MB' : 'Archive')}</span>
+              </div>
+              <div class="mod-meta">备份ID: ${save.backup_id} | 文件数: ${save.files_count || 1}</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="restoreSave('${save.backup_id}')">♻️ 一键还原此快照</button>
+          </div>
+        `).join('');
+        showToast(`已载入 ${res.data.length} 个快照`);
+      } else {
+        container.innerHTML = `<div class="mod-row" style="color: var(--rose); justify-content: center; padding: 24px;">拉取快照失败: ${res.error || '未知错误'}</div>`;
+      }
     }
 
-    document.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-action], [data-tab]');
-      if (!button) return;
-      if (button.dataset.tab) return switchTab(button.dataset.tab);
-      const action = button.dataset.action;
+    async function restoreSave(backupId) {
+      const gameDir = requireGameDir();
+      if (!gameDir) return;
+      if (!confirm(`⚠️ 警告: 还原快照将覆盖当前游戏存档！确认恢复 [${backupId}] 吗？`)) return;
+      showToast('正在还原快照…');
+      const res = await apiPost('/api/saves/restore', { game_dir: gameDir, backup_id: backupId });
+      if (res.success) {
+        showToast('存档还原成功！');
+      } else {
+        showToast('还原失败: ' + (res.error || '未知错误'), true);
+      }
+    }
+
+    // Event Delegation
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action], [data-tab]');
+      if (!btn) return;
+      if (btn.dataset.tab) {
+        switchTab(btn.dataset.tab);
+        return;
+      }
+      const act = btn.dataset.action;
       const actions = {
-        detect: () => detectGame(button),
-        process: () => checkProcess(button),
-        doctor: () => runDoctor(button),
-        plan: () => generatePlan(button),
-        'clear-plan': () => { $('planRequest').value = ''; $('planCustomizations').value = ''; renderPlan(null); },
-        'hook-evidence': () => generateHook(button, true),
-        'hook-template': () => generateHook(button, false),
-        'copy-hook': copyHook,
-        mods: () => refreshMods(button),
-        rollback: rollbackGame,
-        'read-logs': () => readLogs(button),
-        diagnose: () => diagnose(button),
-        'create-save': () => createSave(button),
-        saves: () => refreshSaves(button)
+        detect: () => detectGame(btn),
+        process: () => checkProcess(btn),
+        doctor: () => runDoctor(btn),
+        plan: () => generatePlan(btn),
+        'clear-plan': () => { $('planRequest').value = ''; $('planCustomizations').value = ''; $('planSpecViewer').textContent = '已清空。'; },
+        'hook-template': () => generateHook(btn, false),
+        'hook-evidence': () => generateHook(btn, true),
+        'copy-hook': copyHookCode,
+        mods: () => refreshMods(btn),
+        rollback: rollbackAllMods,
+        'read-logs': () => readLogs(btn),
+        diagnose: () => diagnoseLogs(btn),
+        'create-save': () => createSaveBackup(btn),
+        saves: () => refreshSaves(btn)
       };
-      if (actions[action]) actions[action]();
+      if (actions[act]) actions[act]();
     });
 
     window.addEventListener('hashchange', () => switchTab(location.hash.slice(1) || 'inspector', false));
     window.addEventListener('DOMContentLoaded', () => {
       switchTab(location.hash.slice(1) || 'inspector', false);
-      apiGet('/api/health').then((result) => {
-        const status = $('connectionStatus');
-        if (!result.success) {
-          status.style.color = 'var(--red)';
-          status.querySelector('span:last-child').textContent = 'Local service unavailable';
+      apiGet('/api/health').then(res => {
+        const pill = $('connectionStatus');
+        if (res.success) {
+          pill.querySelector('span:last-child').textContent = `127.0.0.1:8765 就绪 (PID ${res.data.pid})`;
+        } else {
+          pill.style.background = 'var(--rose-bg)';
+          pill.style.color = 'var(--rose)';
+          pill.style.borderColor = 'rgba(244, 63, 94, 0.4)';
+          pill.querySelector('span:last-child').textContent = '服务离线';
         }
       });
     });
