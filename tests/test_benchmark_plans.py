@@ -1,4 +1,4 @@
-"""Benchmark evaluation suite: test plan generation and hook synthesis across 16 real-world scenarios."""
+"""Synthetic regression suite: plan generation and hook synthesis across 16 scenarios."""
 from __future__ import annotations
 
 import json
@@ -9,7 +9,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agmod.codegen import generate_hook_template
+from agmod.codegen import generate_hook_from_evidence, generate_hook_template
 from agmod.log_repair import diagnose_runtime_error
 from agmod.planning import plan_mod
 
@@ -182,6 +182,26 @@ BENCHMARK_CASES = [
 
 
 class TestBenchmarkEvaluation(unittest.TestCase):
+    def test_evidence_codegen_preserves_target_provenance(self):
+        result = generate_hook_from_evidence({
+            "engine": "unity",
+            "target": {
+                "namespace": "Game.Player",
+                "class_name": "Controller",
+                "method_name": "AddGold",
+                "signature": "System.Void AddGold(System.Int32)",
+                "overload_key": "AddGold(int)",
+                "is_static": False,
+                "return_type": "void",
+                "parameters": [{"type": "int", "name": "amount"}],
+            },
+            "evidence": {"source": "rea_fast_search", "confidence": 0.91},
+        })
+        self.assertTrue(result["validation"]["valid"])
+        self.assertIn("Game.Player", result["code"])
+        self.assertEqual(result["target"]["signature"], "System.Void AddGold(System.Int32)")
+        self.assertEqual(result["evidence"]["source"], "rea_fast_search")
+
     def test_plan_generation_all_16_cases(self):
         """Verify plan_mod generates complete ModSpec, MODDING_PLAN, and engine project across all 16 cases."""
         for case in BENCHMARK_CASES:

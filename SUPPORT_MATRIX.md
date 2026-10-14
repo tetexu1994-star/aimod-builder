@@ -8,12 +8,12 @@
 
 | 引擎分类 | 架构与运行时 | 前置 Mod 框架 | 脚本/开发语言 | Hook 与修改机制 | 典型验证游戏 | 支持层级 |
 |---|---|---|---|---|---|---|
-| **Unity (Mono)** | .NET Framework 4.x / .NET Standard | BepInEx 5.x | C# (Harmony) | Harmony Prefix/Postfix/Transpiler 方法切面 | 戴森球计划, 雾锁王国, 极乐迪斯科 | **Tier-1** |
-| **Unity (IL2CPP)** | Native C++ + AOT 编译 | BepInEx 6.x (Bleeding Edge) | C# (Harmony) | Cpp2IL 还原符号 + Harmony IL2CPP 注入 | 鹅鸭杀(离线), 碳酸危机 | **Tier-1** |
-| **Unreal Engine 4** | UE4 Native (x64) | UE4SS / RE-UE4SS | Lua (免编译) | UFunction Hook (`RegisterHook`), StaticFindObject | 霍格沃茨之遗, 铁拳8, 幻兽帕鲁 | **Tier-1** |
-| **Unreal Engine 5** | UE5 Native (x64) | UE4SS (v3.0+) + repak | Lua / PAK 资源覆写 | UFunction Hook + PAK Chunk 资源替换 | 黑色神话(离线测试), 铁拳8 | **Tier-1** |
-| **Capcom RE Engine** | RE Engine Native (x64) | REFramework (`dinput8.dll`) | Lua / C++ DLL | `sdk.hook` 函数拦截, `re.on_draw_ui` ImGui, 内存修改 | 怪物猎人崛起/荒野, 生化危机2/3/4重制, 鬼泣5, 龙之信条2 | **Tier-1** |
-| **Godot (3.x / 4.x)** | Godot Native + GDScript | GodotModLoader | GDScript (免编译) | `mods-unpacked/`, `_init` / `_ready` 节点注入, 资源覆盖 | 土豆兄弟 (Brotato), 磁带怪兽, 穹顶守护者, 恶魔轮盘赌 | **Tier-1** |
+| **Unity (Mono)** | .NET Framework 4.x / .NET Standard | BepInEx 5.x | C# (Harmony) | Harmony Prefix/Postfix/Transpiler 方法切面 | 戴森球计划, 雾锁王国, 极乐迪斯科 | **Scaffolded / Runtime-pending** |
+| **Unity (IL2CPP)** | Native C++ + AOT 编译 | BepInEx 6.x (Bleeding Edge) | C# (Harmony) | Cpp2IL 还原符号 + Harmony IL2CPP 注入 | 鹅鸭杀(离线), 碳酸危机 | **Experimental** |
+| **Unreal Engine 4** | UE4 Native (x64) | UE4SS / RE-UE4SS | Lua (免编译) | UFunction Hook (`RegisterHook`), StaticFindObject | 霍格沃茨之遗, 铁拳8, 幻兽帕鲁 | **Scaffolded / Runtime-pending** |
+| **Unreal Engine 5** | UE5 Native (x64) | UE4SS (v3.0+) + repak | Lua / PAK 资源覆写 | UFunction Hook + PAK Chunk 资源替换 | 黑色神话(离线测试), 铁拳8 | **Experimental** |
+| **Capcom RE Engine** | RE Engine Native (x64) | REFramework (`dinput8.dll`) | Lua / C++ DLL | `sdk.hook` 函数拦截, `re.on_draw_ui` ImGui, 内存修改 | 怪物猎人崛起/荒野, 生化危机2/3/4重制, 鬼泣5, 龙之信条2 | **Scaffolded / Runtime-pending** |
+| **Godot (3.x / 4.x)** | Godot Native + GDScript | GodotModLoader | GDScript (免编译) | `mods-unpacked/`, `_init` / `_ready` 节点注入, 资源覆盖 | 土豆兄弟 (Brotato), 磁带怪兽, 穹顶守护者, 恶魔轮盘赌 | **Scaffolded / Runtime-pending** |
 | **Terraria** | .NET 6 / 8 (x64) | tModLoader | C# (.NET SDK) | Subclass `Mod`, `ModPlayer`, `GlobalItem` | 泰拉瑞亚 (Terraria) | **Tier-2** |
 | **.NET / XNA** | MonoGame / XNA | MonoMod / BepInEx | C# | IL Hook / MonoMod 切面 | 星露谷物语 (SMAPI), 蔚蓝 (Celeste) | **Tier-2** |
 | **Bethesda CE** | Creation Engine (x64) | SKSE64 / F4SE / SFSE | Papyrus / C++ DLL | 脚本拓展插件 + ESP/ESM 插件 | 上古卷轴5天际, 辐射4, 星空 | **Tier-2** |
@@ -21,7 +21,16 @@
 
 ---
 
-## Tier-1 核心引擎规范详解
+## 支持层级定义
+
+- **Scaffolded**：能识别并生成工程骨架。
+- **Build-verified**：生成物已经通过真实编译器构建。
+- **Runtime-verified**：已经在指定游戏版本运行并验证行为。
+- **Tier-1**：至少两个游戏版本完成编译、安装、运行和无损回滚验证。
+
+当前表格中的 Runtime-pending 不能解读为 Tier-1；真实 Windows 游戏验收完成后再升级。
+
+## 核心引擎规范详解
 
 ### 1. Unity 引擎（Unity Mono / IL2CPP）
 

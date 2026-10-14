@@ -596,6 +596,19 @@ def generate_hook_template(
 
 
 @mcp.tool()
+def generate_hook_from_evidence(evidence_json: str) -> str:
+    """Generate validated hook code from normalized REA/dump symbol evidence JSON."""
+    try:
+        evidence = json.loads(evidence_json)
+    except json.JSONDecodeError as e:
+        return json.dumps({"error": f"invalid evidence_json: {e}"})
+    try:
+        return json.dumps(codegen.generate_hook_from_evidence(evidence), ensure_ascii=False, indent=2)
+    except (TypeError, ValueError) as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
 def diagnose_runtime_error(log_text: str) -> str:
     """Parse runtime game crash/mod error logs (BepInEx/UE4SS/REFramework/Godot), pinpoint lines, and suggest fixes."""
     res = log_repair.diagnose_runtime_error(log_text)

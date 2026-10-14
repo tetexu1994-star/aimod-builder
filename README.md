@@ -62,6 +62,7 @@ game-mod-agent/
 | `rea_fast_search` | 秒级搜索 .NET 成员（免全量反编译） | morluto/rea |
 | `rea_disassemble` | 反汇编/反编译指定 Native 函数 | morluto/rea |
 | `generate_hook_template` | **逆向符号代码钩子生成器**：根据探测出的类名/方法名自动合成 Harmony / UE4SS / REFramework / Godot 钩子模板 | 无 |
+| `generate_hook_from_evidence` | 从 REA/dump 的规范化符号证据生成带目标 provenance 和静态校验结果的 Hook | morluto/rea / 结构 dump |
 | `read_mod_logs` | **运行时日志查看**：查看 BepInEx/UE4SS/tModLoader 日志 | 无 |
 | `diagnose_runtime_error` | **运行时日志异常诊断器**：精准提取 Lua 空指针、C# NullRef、缺失方法及行号并提供修复策略 | 无 |
 | `create_save_backup` | **存档快照备份**：修改内存或安装 Mod 前一键安全备份游戏存档 | 无 |
