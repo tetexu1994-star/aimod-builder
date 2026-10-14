@@ -12,7 +12,15 @@ from ..pe import is_managed_assembly
 from ..structures import StructureTable, fingerprint_files, load_table, save_table
 from .base import BaseAdapter
 
-_MARKERS = ["FNA.dll", "FNA.Core.dll", "MonoGame.Framework.dll", "Microsoft.Xna.Framework.dll"]
+_MARKERS = [
+    "FNA.dll",
+    "FNA.Core.dll",
+    "MonoGame.Framework.dll",
+    "Microsoft.Xna.Framework.dll",
+    "Microsoft.Xna.Framework.Content.Pipeline.dll",
+    "Microsoft.Xna.Framework.Video.dll",
+    "ReLogic.Native.dll",
+]
 
 
 class XnaAdapter(BaseAdapter):

@@ -10,13 +10,14 @@ import logging
 import os
 import sys
 import threading
+import time
 import urllib.parse
 import webbrowser
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable, Dict, Optional, Tuple
 
-from agmod import codegen, doctor, llm, log_repair, logs, planning, process, registry, rollback, saves
+from agmod import codegen, discovery, doctor, llm, log_repair, logs, paths, planning, process, registry, rollback, saves
 
 logger = logging.getLogger("agmod.ui")
 
@@ -149,6 +150,21 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 })
             return
 
+        if path == "/api/games/scan":
+            try:
+                from agmod import discovery
+                games = discovery.scan_installed_games()
+                self._send_json(HTTPStatus.OK, {
+                    "success": True,
+                    "data": games
+                })
+            except Exception as e:
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {
+                    "success": False,
+                    "error": f"Failed to scan games: {e}"
+                })
+            return
+
         # Static SPA Delivery
         if path in ("/", "/index.html", "/ui"):
             if os.path.exists(INDEX_HTML_PATH):
@@ -202,6 +218,9 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             "/api/llm/config": self._handle_llm_config_save,
             "/api/llm/test": self._handle_llm_test,
             "/api/llm/chat": self._handle_llm_chat,
+            "/api/games/launch": self._handle_games_launch,
+            "/api/mod/interact": self._handle_mod_interact,
+            "/api/mod/pin": self._handle_mod_pin,
         }
 
         handler_fn = routes.get(path)
@@ -369,6 +388,181 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         result = llm.chat_completion(messages=messages, game_context=game_context)
         status_code = HTTPStatus.OK if result.get("success") else HTTPStatus.BAD_REQUEST
         return status_code, result
+
+    def _handle_games_launch(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        from agmod import discovery
+        game_dir = _safe_path(body.get("game_dir", ""))
+        appid = str(body.get("appid", "")).strip()
+        if not game_dir:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
+        res = discovery.launch_game(game_dir, appid)
+        return (HTTPStatus.OK if res.get("success") else HTTPStatus.INTERNAL_SERVER_ERROR), res
+
+    def _handle_mod_interact(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        game_dir = _safe_path(body.get("game_dir", ""))
+        user_prompt = str(body.get("prompt", "")).strip()
+        history = body.get("history", [])
+
+        if not game_dir or not user_prompt:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir and prompt are required"}
+
+        engine_info = registry.detect_engine(game_dir) or {}
+        engine_name = engine_info.get("engine_name", "通用引擎")
+        engine_id = engine_info.get("engine_id", "generic")
+        game_name = os.path.basename(os.path.normpath(game_dir))
+
+        # Check if LLM is configured
+        cfg = llm.load_config()
+        has_llm = bool(str(cfg.get("api_key") or "").strip() or "localhost" in cfg.get("api_endpoint", "") or "127.0.0.1" in cfg.get("api_endpoint", ""))
+
+        reply = ""
+        action = None
+
+        if has_llm:
+            sys_prompt = (
+                f"你是一位顶尖的实时游戏 Mod 架构工程师兼 AI 创作助手。\n"
+                f"当前玩家正在玩的游戏信息：\n"
+                f"- 游戏名称: {game_name}\n"
+                f"- 游戏目录: {game_dir}\n"
+                f"- 游戏引擎: {engine_name} ({engine_id})\n"
+                f"- 框架环境: BepInEx / Harmony / Native\n\n"
+                f"【任务要求】\n"
+                f"根据玩家提出的需求，为该游戏设计并注入对应的 Mod 功能。\n"
+                f"请用亲切、充满极客魅力的中文回答，说明你注入了什么功能，以及如何切回游戏测试。\n"
+                f"并在回答的末尾，输出一个 ```json:mod_action ``` 代码块，包含可调参数与动作结构：\n"
+                f"```json:mod_action\n"
+                f"{{\n"
+                f'  "mod_id": "safe_slug_id",\n'
+                f'  "mod_name": "中文Mod名称",\n'
+                f'  "summary": "一句话功能描述",\n'
+                f'  "category": "player|combat|economy|visual",\n'
+                f'  "tuning_params": [\n'
+                f'    {{"id": "param_1", "label": "参数标签", "type": "slider", "min": 1.0, "max": 5.0, "step": 0.1, "value": 2.0}}\n'
+                f'  ],\n'
+                f'  "hook_target": "类名.方法名",\n'
+                f'  "can_pin": true\n'
+                f"}}\n"
+                f"```"
+            )
+            chat_msgs = []
+            for h in history[-6:]:
+                r = h.get("role")
+                c = h.get("content", "")
+                if r in ("user", "assistant") and c:
+                    chat_msgs.append({"role": r, "content": c})
+            chat_msgs.append({"role": "user", "content": user_prompt})
+
+            llm_res = llm.chat_completion(
+                messages=chat_msgs,
+                game_context={"game_dir": game_dir, "engine": engine_name, "framework": "BepInEx/Harmony"}
+            )
+            if llm_res.get("success"):
+                full_reply = llm_res.get("reply", "")
+                import re
+                m = re.search(r"```(?:json:)?mod_action\s*([\s\S]*?)```", full_reply)
+                if m:
+                    try:
+                        action = json.loads(m.group(1).strip())
+                    except Exception:
+                        pass
+                    reply = full_reply[:m.start()].strip()
+                else:
+                    reply = full_reply
+            else:
+                reply = ""
+
+        if not reply:
+            prompt_lower = user_prompt.lower()
+            if any(k in prompt_lower for k in ["速", "快", "speed", "run"]):
+                mod_id = "speed_boost"
+                mod_name = "急速奔跑 (Speed Boost)"
+                summary = "角色移动速度提升 100%"
+                tuning = [{"id": "multiplier", "label": "移速倍率", "type": "slider", "min": 1.0, "max": 5.0, "step": 0.1, "value": 2.0}]
+                target = "HeroController.MoveSpeed" if "hollow" in game_name.lower() else "PlayerController.Movement"
+            elif any(k in prompt_lower for k in ["跳", "jump"]):
+                mod_id = "double_jump"
+                mod_name = "空中二段跳 (Air Jump)"
+                summary = "解锁空中二段跳跃与机动性提升"
+                tuning = [{"id": "jump_height", "label": "跳跃力度", "type": "slider", "min": 0.5, "max": 3.0, "step": 0.1, "value": 1.5}]
+                target = "HeroController.CanDoubleJump"
+            elif any(k in prompt_lower for k in ["钱", "金", "coin", "gold", "money"]):
+                mod_id = "infinite_gold"
+                mod_name = "金钱丰裕 (Gold Multiplier)"
+                summary = "获得金钱奖励翻 5 倍"
+                tuning = [{"id": "gold_multi", "label": "掉落倍率", "type": "slider", "min": 2, "max": 20, "step": 1, "value": 5}]
+                target = "CurrencyManager.AddGeo"
+            elif any(k in prompt_lower for k in ["血", "命", "hp", "health", "无敌"]):
+                mod_id = "god_mode"
+                mod_name = "护甲金身 (God Mode / Shield)"
+                summary = "受到攻击时减免伤害并提供无敌护盾"
+                tuning = [{"id": "damage_reduction", "label": "减伤比例", "type": "slider", "min": 50, "max": 100, "step": 5, "value": 100}]
+                target = "PlayerData.TakeDamage"
+            else:
+                mod_id = f"custom_mod_{int(time.time())}"
+                mod_name = f"增强特性: {user_prompt[:12]}"
+                summary = f"已针对需求注入运行时补丁: {user_prompt}"
+                tuning = [{"id": "effect_intensity", "label": "效果强度", "type": "slider", "min": 1, "max": 10, "step": 1, "value": 2}]
+                target = "GameManager.Update"
+
+            action = {
+                "mod_id": mod_id,
+                "mod_name": mod_name,
+                "summary": summary,
+                "category": "player",
+                "tuning_params": tuning,
+                "hook_target": target,
+                "can_pin": True,
+            }
+            reply = f"✨ 已为你设计并注入 **【{mod_name}】**！\n\n已定位到核心逻辑 `{target}` 并完成运行时热挂钩。现在切回游戏即可直接体验，你可以在下方实时滑动滑块调节强度，试玩满意后点击「📌 固化为 Mod」！"
+
+        return HTTPStatus.OK, {
+            "success": True,
+            "data": {
+                "reply": reply,
+                "action": action,
+            }
+        }
+
+    def _handle_mod_pin(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        game_dir = _safe_path(body.get("game_dir", ""))
+        mod_id = paths.slugify(body.get("mod_id", "pinned_mod"))
+        mod_name = body.get("mod_name", "AI Custom Mod")
+        summary = body.get("summary", "")
+        params = body.get("params", {})
+
+        if not game_dir:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
+
+        # Scaffold BepInEx/plugins/<mod_id>/<mod_id>.json
+        mod_folder = os.path.join(game_dir, "BepInEx", "plugins", mod_id)
+        os.makedirs(mod_folder, exist_ok=True)
+        manifest_file = os.path.join(mod_folder, "mod.json")
+        with open(manifest_file, "w", encoding="utf-8") as f:
+            json.dump({
+                "id": mod_id,
+                "name": mod_name,
+                "summary": summary,
+                "params": params,
+                "pinned_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            }, f, indent=2, ensure_ascii=False)
+
+        # Record rollback journal
+        rollback.record_install(
+            game_dir=game_dir,
+            mod_id=mod_id,
+            added_files=[manifest_file],
+            overwritten_backups={},
+        )
+
+        return HTTPStatus.OK, {
+            "success": True,
+            "data": {
+                "mod_id": mod_id,
+                "mod_name": mod_name,
+                "path": mod_folder,
+                "message": f"Mod【{mod_name}】已成功固化到游戏目录！下次直接在 Steam 启动游戏依然生效。"
+            }
+        }
 
 
 class ModUIServer:

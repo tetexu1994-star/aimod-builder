@@ -224,6 +224,42 @@ System.NullReferenceException: Object reference not set to an instance of an obj
                 self.assertEqual(save_res["data"]["provider_name"], "TestProvider")
                 self.assertNotIn("api_key", save_res["data"])
 
+    def test_games_and_mod_copilot(self):
+        # 1. Test /api/games/scan
+        code, body = _http_get(f"{self.base_url}/api/games/scan")
+        self.assertEqual(code, 200)
+        res = json.loads(body)
+        self.assertTrue(res["success"])
+        self.assertIsInstance(res["data"], list)
+
+        # 2. Test /api/mod/interact
+        with tempfile.TemporaryDirectory() as tmp_game:
+            # create mock game exe
+            with open(os.path.join(tmp_game, "game.exe"), "w") as f:
+                f.write("mock")
+
+            code, mod_res = _http_post(f"{self.base_url}/api/mod/interact", {
+                "game_dir": tmp_game,
+                "prompt": "角色移动速度增加 100%"
+            })
+            self.assertEqual(code, 200)
+            self.assertTrue(mod_res["success"])
+            self.assertIn("reply", mod_res["data"])
+            self.assertIsNotNone(mod_res["data"]["action"])
+            self.assertEqual(mod_res["data"]["action"]["mod_id"], "speed_boost")
+
+            # 3. Test /api/mod/pin
+            code, pin_res = _http_post(f"{self.base_url}/api/mod/pin", {
+                "game_dir": tmp_game,
+                "mod_id": "speed_boost",
+                "mod_name": "急速奔跑",
+                "summary": "角色移动速度提升 100%",
+                "params": {"multiplier": 2.0}
+            })
+            self.assertEqual(code, 200)
+            self.assertTrue(pin_res["success"])
+            self.assertTrue(os.path.exists(pin_res["data"]["path"]))
+
     def test_launch_ui_function(self):
         port = _get_free_port()
         url = launch_ui(host="127.0.0.1", port=port, open_browser=False)

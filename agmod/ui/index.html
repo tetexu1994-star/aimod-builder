@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
-  <title>AI Mod Builder · 游戏 Mod 制作与安全工作台</title>
+  <title>AI Mod Builder · 游戏 Mod 智能工作台</title>
   <script>
     (function() {
       try {
-        var theme = localStorage.getItem('aimod_theme') || 'light';
+        var theme = localStorage.getItem('aimod_theme') || 'dark';
         document.documentElement.setAttribute('data-theme', theme);
       } catch (e) {}
     })();
@@ -16,23 +16,19 @@
   <style>
     :root, [data-theme="light"] {
       --bg-root: #f8fafc;
-      --bg-sidebar: #ffffff;
-      --bg-header: rgba(255, 255, 255, 0.88);
+      --bg-nav: rgba(255, 255, 255, 0.92);
       --bg-card: #ffffff;
       --bg-card-hover: #f1f5f9;
       --bg-card-inner: #f8fafc;
       --bg-input: #ffffff;
       --border: rgba(15, 23, 42, 0.08);
       --border-hover: rgba(15, 23, 42, 0.16);
-      --border-focus: #6366f1;
+      --border-focus: #4f46e5;
       --primary: #4f46e5;
       --primary-hover: #4338ca;
       --primary-ink: #ffffff;
-      --accent: #4f46e5;
       --emerald: #059669;
       --emerald-bg: rgba(16, 185, 129, 0.1);
-      --violet: #7c3aed;
-      --violet-bg: rgba(124, 58, 237, 0.1);
       --amber: #d97706;
       --amber-bg: rgba(217, 119, 6, 0.1);
       --rose: #e11d48;
@@ -44,49 +40,32 @@
       --code-text: #e2e8f0;
       --chat-assistant-bg: #ffffff;
       --chat-user-bg: #eef2ff;
-      --chat-user-border: rgba(99, 102, 241, 0.2);
-      --brand-icon-bg: #eef2ff;
-      --brand-icon-color: #4f46e5;
-      --brand-icon-border: rgba(99, 102, 241, 0.2);
-      --topbar-pill-bg: #ffffff;
-      --cmd-modal-bg: #ffffff;
-      --cmd-header-bg: #f8fafc;
+      --chat-user-border: rgba(79, 70, 229, 0.2);
       --radius-sm: 8px;
       --radius: 12px;
       --radius-lg: 16px;
       --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "JetBrains Mono", monospace;
-      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
-      --shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
-      --shadow-lg: 0 20px 35px -8px rgba(15, 23, 42, 0.14), 0 8px 16px -4px rgba(15, 23, 42, 0.06);
-      --z-dropdown: 20;
-      --z-sticky: 40;
-      --z-sidebar: 50;
-      --z-modal-backdrop: 80;
-      --z-modal: 90;
-      --z-toast: 100;
-      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+      --shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.08);
+      --shadow-lg: 0 20px 35px -8px rgba(15, 23, 42, 0.12);
     }
 
     [data-theme="dark"] {
-      --bg-root: #0f1117;
-      --bg-sidebar: #161822;
-      --bg-header: rgba(22, 24, 34, 0.88);
-      --bg-card: #1a1d28;
-      --bg-card-hover: #212534;
-      --bg-card-inner: #13151e;
-      --bg-input: #13151e;
+      --bg-root: #0b0d13;
+      --bg-nav: rgba(15, 17, 26, 0.92);
+      --bg-card: #151824;
+      --bg-card-hover: #1c2030;
+      --bg-card-inner: #0f111a;
+      --bg-input: #0f111a;
       --border: rgba(255, 255, 255, 0.08);
       --border-hover: rgba(255, 255, 255, 0.16);
       --border-focus: #818cf8;
       --primary: #6366f1;
       --primary-hover: #818cf8;
       --primary-ink: #ffffff;
-      --accent: #6366f1;
       --emerald: #10b981;
       --emerald-bg: rgba(16, 185, 129, 0.12);
-      --violet: #a855f7;
-      --violet-bg: rgba(168, 85, 247, 0.12);
       --amber: #f59e0b;
       --amber-bg: rgba(245, 158, 11, 0.12);
       --rose: #f43f5e;
@@ -94,2409 +73,1384 @@
       --text-main: #f1f5f9;
       --text-muted: #94a3b8;
       --text-dim: #64748b;
-      --code-bg: #090a0f;
+      --code-bg: #08090d;
       --code-text: #cbd5e1;
-      --chat-assistant-bg: #1a1d28;
-      --chat-user-bg: #222638;
-      --chat-user-border: rgba(129, 140, 248, 0.25);
-      --brand-icon-bg: #222638;
-      --brand-icon-color: #818cf8;
-      --brand-icon-border: rgba(129, 140, 248, 0.3);
-      --topbar-pill-bg: rgba(255, 255, 255, 0.04);
-      --cmd-modal-bg: #161822;
-      --cmd-header-bg: #13151e;
-      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-      --shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.5);
-      --shadow-lg: 0 20px 35px -8px rgba(0, 0, 0, 0.7);
+      --chat-assistant-bg: #151824;
+      --chat-user-bg: #1e2235;
+      --chat-user-border: rgba(99, 102, 241, 0.3);
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+      --shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 20px 35px -8px rgba(0, 0, 0, 0.5);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { background: var(--bg-root); scroll-behavior: smooth; }
     body {
-      min-height: 100vh;
+      font-family: var(--sans);
       background: var(--bg-root);
       color: var(--text-main);
-      font-family: var(--sans);
-      line-height: 1.55;
-      display: flex;
-      flex-direction: column;
-      transition: background-color 200ms ease, color 200ms ease;
-    }
-
-    h1, h2, h3, .brand-title, .card-title {
-      letter-spacing: -0.02em;
-      text-wrap: balance;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
-      }
-    }
-
-    button, input, textarea, select { font: inherit; color: inherit; }
-    button { cursor: pointer; border: none; background: none; }
-    button:disabled { cursor: not-allowed; opacity: 0.5; }
-    :focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
-
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: var(--bg-root); }
-    ::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
-
-    .icon {
-      width: 17px; height: 17px; flex: 0 0 auto;
-      fill: none; stroke: currentColor; stroke-width: 1.8;
-      stroke-linecap: round; stroke-linejoin: round;
-    }
-
-    /* App Layout */
-    .app-shell {
-      display: grid;
-      grid-template-columns: 248px minmax(0, 1fr);
       min-height: 100vh;
-    }
-
-    /* Sidebar Navigation */
-    .sidebar {
-      background: var(--bg-sidebar);
-      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      padding: 18px 14px;
+      overflow-x: hidden;
+      line-height: 1.5;
+    }
+
+    /* Top Nav */
+    header.top-nav {
       position: sticky;
       top: 0;
-      height: 100vh;
       z-index: 50;
-      transition: background-color 200ms ease, border-color 200ms ease;
+      height: 64px;
+      backdrop-filter: blur(12px);
+      background: var(--bg-nav);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
     }
+
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 6px 8px 16px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 14px;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 17px;
+      letter-spacing: -0.02em;
+      cursor: pointer;
     }
-    .brand-icon {
-      width: 32px; height: 32px; border-radius: 9px;
-      background: var(--brand-icon-bg);
-      border: 1px solid var(--brand-icon-border);
-      display: grid; place-items: center;
-      color: var(--brand-icon-color);
-      flex-shrink: 0;
-      transition: transform 140ms var(--ease-out), border-color 140ms var(--ease-out);
-    }
-    .brand-icon:hover {
-      transform: scale(1.05);
-    }
-    .brand-title { font-size: 14px; font-weight: 600; color: var(--text-main); letter-spacing: -0.01em; }
-    .brand-subtitle { font-size: 10px; font-family: var(--mono); color: var(--text-dim); letter-spacing: 0.06em; }
-
-    .nav-section-title {
-      font-size: 10px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.1em; color: var(--text-dim); font-family: var(--mono);
-      padding: 10px 10px 4px;
-    }
-    .nav-list { display: flex; flex-direction: column; gap: 4px; }
-    .nav-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 12px;
-      border-radius: var(--radius-sm);
-      color: var(--text-muted);
-      font-size: 13px; font-weight: 500;
-      border: 1px solid transparent;
-      transition: background-color 140ms var(--ease-out), color 140ms var(--ease-out), border-color 140ms var(--ease-out), transform 120ms var(--ease-out);
-    }
-    .nav-item:active {
-      transform: scale(0.98);
-    }
-    .nav-item-left { display: flex; align-items: center; gap: 9px; }
-    .nav-item:hover { background: var(--bg-card-hover); color: var(--text-main); }
-    .nav-item.active {
-      background: var(--bg-card);
-      color: var(--primary);
-      font-weight: 600;
-      border-color: var(--border);
-      box-shadow: var(--shadow-sm);
-    }
-    .nav-item.active .icon {
-      color: var(--primary);
-    }
-    .nav-badge, .kbd-hint {
-      font-size: 10px; font-family: var(--mono);
-      padding: 1px 6px; border-radius: 4px;
-      background: var(--bg-card-inner); color: var(--text-dim);
-      border: 1px solid var(--border);
-    }
-    .nav-item.active .nav-badge, .nav-item.active .kbd-hint {
-      background: var(--bg-card-inner);
-      color: var(--primary);
-      border-color: var(--border);
-    }
-
-    .sidebar-footer {
-      margin-top: auto;
-      padding: 14px 10px 4px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .engine-dots-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    .brand-badge {
       font-size: 11px;
-      color: var(--text-dim);
-      font-family: var(--mono);
+      font-weight: 600;
+      background: var(--primary);
+      color: var(--primary-ink);
+      padding: 2px 7px;
+      border-radius: 6px;
+      text-transform: uppercase;
     }
-    .dots-group { display: flex; gap: 5px; }
-    .dot { width: 6px; height: 6px; border-radius: 50%; }
 
-    /* Top Navigation Header */
-    .topbar {
+    .nav-center {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      min-height: 54px;
-      padding: 8px 24px;
-      background: var(--bg-header);
-      backdrop-filter: blur(14px);
-      border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      z-index: 40;
-      transition: background-color 200ms ease, border-color 200ms ease;
-    }
-    .topbar-game {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 5px 12px;
-      border-radius: var(--radius-sm);
-      background: var(--topbar-pill-bg);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-sm);
-      font-size: 12px; font-weight: 500;
-    }
-    .topbar-status {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 12px;
-      border-radius: var(--radius-sm);
-      font-size: 11.5px; font-weight: 500;
-      background: var(--topbar-pill-bg);
-      color: var(--text-muted);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-sm);
-    }
-    .topbar-status.online {
-      color: var(--emerald);
-      border-color: rgba(16, 185, 129, 0.25);
-    }
-    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-
-    .theme-toggle-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 12px;
-      border-radius: var(--radius-sm);
-      font-size: 12px; font-weight: 500;
-      background: var(--topbar-pill-bg);
-      color: var(--text-muted);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-sm);
-      cursor: pointer;
-      transition: all 140ms var(--ease-out);
-    }
-    .theme-toggle-btn:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-hover);
-      color: var(--text-main);
-      transform: translateY(-1px);
+      gap: 12px;
     }
 
-    .topbar-cmd-trigger {
-      display: inline-flex;
+    .game-pill {
+      display: flex;
       align-items: center;
       gap: 8px;
-      padding: 5px 12px;
-      border-radius: var(--radius-sm);
-      background: var(--topbar-pill-bg);
+      background: var(--bg-card);
       border: 1px solid var(--border);
-      box-shadow: var(--shadow-sm);
-      color: var(--text-dim);
-      font-size: 12px;
-      cursor: pointer;
-      transition: background-color 140ms var(--ease-out), border-color 140ms var(--ease-out), color 140ms var(--ease-out);
-    }
-    .topbar-cmd-trigger:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-hover);
-      color: var(--text-main);
-    }
-    .cmd-kbd {
-      padding: 1px 5px;
-      border-radius: 4px;
-      background: var(--bg-card-inner);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      font-family: var(--mono);
-      font-size: 10px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
       font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .game-pill:hover {
+      border-color: var(--border-hover);
+      background: var(--bg-card-hover);
+    }
+    .game-pill .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--emerald);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    button.btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-main);
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    button.btn:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-hover);
+    }
+    button.btn-primary {
+      background: var(--primary);
+      color: var(--primary-ink);
+      border-color: var(--primary);
+    }
+    button.btn-primary:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+    }
+    button.btn-launch {
+      background: var(--emerald);
+      color: #fff;
+      border-color: var(--emerald);
+    }
+    button.btn-launch:hover {
+      filter: brightness(1.1);
+    }
+    button.btn-sm {
+      padding: 5px 10px;
+      font-size: 12px;
     }
 
     /* Main Container */
-    main {
+    main.app-shell {
       flex: 1;
-      padding: 24px 32px 64px;
-      max-width: 1320px;
-      width: 100%;
-      margin: 0 auto;
-    }
-
-    /* Universal Game Selector Card */
-    .game-picker-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 18px 22px;
-      margin-bottom: 22px;
-      box-shadow: var(--shadow-sm);
-    }
-    .picker-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px;
-    }
-    .picker-label {
-      font-size: 11px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.08em; color: var(--text-dim); font-family: var(--mono);
-      display: flex; align-items: center; gap: 7px;
-    }
-    .picker-row { display: flex; gap: 10px; }
-
-    /* Quick Preset Game Chips */
-    .quick-games-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid var(--border);
-    }
-    .quick-game-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 12px;
-      border-radius: 999px;
-      background: var(--bg-card-inner);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      font-size: 11.5px; font-weight: 500;
-      cursor: pointer;
-      transition: background-color 140ms var(--ease-out), border-color 140ms var(--ease-out), color 140ms var(--ease-out), transform 120ms var(--ease-out), box-shadow 140ms var(--ease-out);
-    }
-    .quick-game-chip:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--primary);
-      color: var(--primary);
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-sm);
-    }
-    .quick-game-chip:active {
-      transform: scale(0.96) translateY(0);
-    }
-
-    /* Form Controls */
-    .input-text, .select-field, .textarea-field {
-      width: 100%;
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text-main);
-      padding: 10px 14px;
-      font-size: 13px;
-      outline: none;
-      transition: border-color 140ms var(--ease-out), background-color 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
-    }
-    .input-text:focus, .select-field:focus, .textarea-field:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-    }
-    .input-text.code, .textarea-field.code { font-family: var(--mono); font-size: 12px; }
-
-    /* Buttons */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      padding: 7px 15px;
-      border-radius: var(--radius-sm);
-      font-size: 12px; font-weight: 500;
-      transition: background-color 140ms var(--ease-out), border-color 140ms var(--ease-out), color 140ms var(--ease-out), transform 120ms var(--ease-out), box-shadow 140ms var(--ease-out);
-      white-space: nowrap;
-      user-select: none;
-    }
-    .btn:active {
-      transform: scale(0.97) !important;
-    }
-    .btn-primary {
-      background: var(--primary);
-      color: var(--primary-ink);
-      font-weight: 600;
-      border: 1px solid var(--primary);
-      box-shadow: 0 1px 3px rgba(79, 70, 229, 0.25);
-    }
-    .btn-primary:hover {
-      background: var(--primary-hover);
-      border-color: var(--primary-hover);
-      transform: translateY(-1px);
-      box-shadow: 0 3px 8px rgba(79, 70, 229, 0.35);
-    }
-    .btn-secondary {
-      background: var(--bg-card);
-      color: var(--text-main);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-sm);
-    }
-    .btn-secondary:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-hover);
-      color: var(--text-main);
-      transform: translateY(-1px);
-    }
-    .btn-danger {
-      background: var(--rose-bg);
-      color: var(--rose);
-      border: 1px solid rgba(244, 63, 94, 0.25);
-    }
-    .btn-danger:hover {
-      background: var(--rose);
-      color: #fff;
-      transform: translateY(-1px);
-    }
-    .btn-sm { padding: 4px 10px; font-size: 11px; }
-
-    /* Engine Badges */
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px; font-weight: 600;
-      font-family: var(--mono);
-      text-transform: uppercase;
-    }
-    .badge-unity { background: var(--emerald-bg); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.35); }
-    .badge-unreal { background: var(--violet-bg); color: var(--violet); border: 1px solid rgba(168, 85, 247, 0.35); }
-    .badge-reengine { background: rgba(249, 115, 22, 0.15); color: #f97316; border: 1px solid rgba(249, 115, 22, 0.35); }
-    .badge-godot { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); }
-    .badge-tmod { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.35); }
-
-    /* Step Onboarding Cards */
-    .step-guide {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-      margin-bottom: 22px;
-    }
-    @media (max-width: 860px) { .step-guide { grid-template-columns: 1fr; } }
-    .step-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 18px 20px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      box-shadow: var(--shadow-sm);
+      max-width: 1560px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px;
+      height: calc(100vh - 64px);
     }
-    .step-badge-row {
+
+    /* View: Game Library Grid */
+    #view-library {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      height: 100%;
+    }
+    .library-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 4px;
+      gap: 16px;
+      flex-wrap: wrap;
     }
-    .step-num {
-      width: 24px; height: 24px; border-radius: 50%;
-      background: var(--brand-icon-bg);
-      color: var(--primary);
-      display: grid; place-items: center;
-      font-size: 12px; font-weight: 700;
+    .library-title h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
     }
-    .step-title { font-size: 14px; font-weight: 600; color: var(--text-main); }
-    .step-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+    .library-title p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .library-search {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .library-search input {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      width: 240px;
+      outline: none;
+    }
+    .library-search input:focus {
+      border-color: var(--border-focus);
+    }
 
-    /* Grid Layouts */
-    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-    @media (max-width: 860px) { .grid-2 { grid-template-columns: 1fr; } }
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+      overflow-y: auto;
+      padding-bottom: 30px;
+    }
 
-    .card {
+    .game-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 18px;
-      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      position: relative;
     }
-    .card-header {
+    .game-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+      border-color: var(--border-hover);
+    }
+    .game-card-cover {
+      width: 100%;
+      height: 135px;
+      background: var(--bg-card-inner);
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border);
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
     }
-    .card-title {
-      font-size: 14px; font-weight: 600;
-      color: var(--text-main);
-      display: flex; align-items: center; gap: 8px;
+    .game-card-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
-    .card-title .icon { color: var(--primary); }
-
-    /* Parameter Sliders Box */
-    .slider-box {
-      background: var(--bg-card-inner);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 12px 14px;
-      margin-bottom: 12px;
+    .game-card-cover .cover-placeholder {
+      font-size: 38px;
+      opacity: 0.5;
+    }
+    .game-card-status {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .game-card-status.running {
+      background: rgba(16, 185, 129, 0.9);
+    }
+    .game-card-body {
+      padding: 16px;
       display: flex;
       flex-direction: column;
       gap: 10px;
+      flex: 1;
     }
-    .slider-row {
+    .game-card-title {
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .game-card-engine {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--primary);
+      background: var(--bg-card-inner);
+      padding: 3px 8px;
+      border-radius: 6px;
+      align-self: flex-start;
+      border: 1px solid var(--border);
+    }
+    .game-card-actions {
+      margin-top: auto;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* View: AI Mod Studio (Split Workspace) */
+    #view-studio {
+      display: none;
+      height: 100%;
+      gap: 20px;
+    }
+    #view-studio.active {
+      display: flex;
+    }
+
+    /* Left: AI Mod Copilot */
+    .studio-chat {
+      flex: 1.8;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .chat-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-card-inner);
+    }
+    .chat-header-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .chat-header-info h2 {
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .chat-header-info span {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Inspiration Pills */
+    .chat-pills-bar {
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      background: var(--bg-card);
+    }
+    .chat-pills-bar span.label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .pill-btn {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--bg-card-inner);
+      color: var(--text-main);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .pill-btn:hover {
+      background: var(--primary);
+      color: var(--primary-ink);
+      border-color: var(--primary);
+    }
+
+    /* Chat Stream */
+    .chat-messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .msg {
+      display: flex;
+      gap: 12px;
+      max-width: 85%;
+    }
+    .msg-user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+    .msg-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .msg-user .msg-avatar {
+      background: var(--text-muted);
+    }
+    .msg-content {
+      background: var(--chat-assistant-bg);
+      border: 1px solid var(--border);
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .msg-user .msg-content {
+      background: var(--chat-user-bg);
+      border-color: var(--chat-user-border);
+    }
+
+    /* Interactive Action Card Inside Message */
+    .action-card {
+      margin-top: 12px;
+      background: var(--bg-card-inner);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .action-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .tuning-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tuning-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      font-size: 12px;
+      font-size: 13px;
     }
-    .slider-range {
+    .tuning-item input[type="range"] {
       flex: 1;
       accent-color: var(--primary);
-      cursor: pointer;
     }
-
-    /* Preset Chips */
-    .preset-container {
+    .action-card-footer {
       display: flex;
       align-items: center;
       gap: 8px;
-      flex-wrap: wrap;
-      margin: 10px 0 14px;
-    }
-    .preset-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border-radius: 999px;
-      background: var(--bg-card-inner);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      font-size: 12px; font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .preset-chip:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-focus);
-      color: var(--primary);
-      transform: translateY(-1px);
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
     }
 
-    /* Mod Table & Rows */
-    .mod-table {
+    /* Bottom Chat Bar */
+    .chat-input-bar {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-card);
+      display: flex;
+      gap: 12px;
+    }
+    .chat-input-bar textarea {
+      flex: 1;
+      resize: none;
+      height: 48px;
+      padding: 12px 16px;
+      background: var(--bg-input);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      overflow: hidden;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      line-height: 1.4;
     }
-    .mod-row {
+    .chat-input-bar textarea:focus {
+      border-color: var(--border-focus);
+    }
+
+    /* Right: Live Tuning & Mod Shelf */
+    .studio-sidebar {
+      flex: 1.2;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      padding: 14px 18px;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .sidebar-tabs {
+      display: flex;
       border-bottom: 1px solid var(--border);
       background: var(--bg-card-inner);
-      transition: background 0.15s ease;
     }
-    .mod-row:last-child { border-bottom: none; }
-    .mod-row:hover { background: var(--bg-card-hover); }
-    .mod-name { font-size: 13px; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
-    .mod-meta { font-size: 11px; font-family: var(--mono); color: var(--text-dim); margin-top: 3px; }
+    .sidebar-tab-btn {
+      flex: 1;
+      padding: 12px 14px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s ease;
+    }
+    .sidebar-tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      background: var(--bg-card);
+    }
+    .sidebar-content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
 
-    /* Code Console */
-    .code-console {
-      background: var(--code-bg);
+    .mod-item-card {
+      background: var(--bg-card-inner);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       padding: 14px;
-      font-family: var(--mono);
-      font-size: 11.5px;
-      color: var(--code-text);
-      white-space: pre-wrap;
-      word-break: break-all;
-      max-height: 380px;
-      overflow-y: auto;
-      line-height: 1.6;
-    }
-
-    /* Workspaces */
-    .workspace { display: none; }
-    .workspace.active { display: block; }
-
-    /* Toast */
-    #toast {
-      position: fixed; bottom: 24px; right: 24px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      padding: 11px 20px; border-radius: var(--radius);
-      box-shadow: var(--shadow-lg);
-      display: none; z-index: var(--z-toast); font-size: 13px;
-      align-items: center; gap: 9px;
-    }
-    #toast.show { display: flex; animation: slideUp 180ms var(--ease-out); }
-    @keyframes slideUp {
-      from { transform: translateY(12px) scale(0.96); opacity: 0; }
-      to { transform: translateY(0) scale(1); opacity: 1; }
-    }
-
-    /* Modal Dialog */
-    dialog {
-      margin: auto;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 24px;
-      color: var(--text-main);
-      box-shadow: var(--shadow-lg);
-      max-width: 460px; width: 90%;
-      z-index: var(--z-modal);
-    }
-    dialog[open] {
-      animation: dialogEnter 180ms var(--ease-out);
-    }
-    @keyframes dialogEnter {
-      from { opacity: 0; transform: scale(0.95) translateY(6px); }
-      to { opacity: 1; transform: scale(1) translateY(0); }
-    }
-    dialog::backdrop {
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(4px);
-      z-index: var(--z-modal-backdrop);
-      animation: backdropEnter 180ms var(--ease-out);
-    }
-    @keyframes backdropEnter {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    /* Assistant Chat Bubbles */
-    .chat-bubble-assistant {
-      background: var(--chat-assistant-bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px 20px;
-      line-height: 1.65;
-      font-size: 13px;
-      color: var(--text-main);
-      box-shadow: var(--shadow-sm);
-      position: relative;
-    }
-    .chat-bubble-user {
-      background: var(--chat-user-bg);
-      border: 1px solid var(--chat-user-border);
-      border-radius: var(--radius);
-      padding: 14px 18px;
-      line-height: 1.65;
-      font-size: 13px;
-      color: var(--text-main);
-      margin-left: 32px;
-      align-self: flex-end;
-      box-shadow: var(--shadow-sm);
-    }
-    .chat-bubble-header {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-      font-size: 11.5px;
-      color: var(--text-dim);
-    }
-    .chat-bubble-name {
-      font-weight: 600;
-      color: var(--text-main);
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      letter-spacing: -0.01em;
-    }
-    .chat-bubble-body {
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .chat-bubble-actions {
-      margin-top: 12px;
-      padding-top: 10px;
-      border-top: 1px solid var(--border);
-      display: flex;
+      flex-direction: column;
       gap: 8px;
     }
+    .mod-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      font-size: 13px;
+    }
 
-    /* Command Palette Modal (Raycast / Linear style) */
-    #commandPaletteModal {
-      max-width: 560px;
-      width: 92%;
-      padding: 0;
-      background: var(--cmd-modal-bg);
-      border: 1px solid var(--border-hover);
+    /* Modal Sheet */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
       border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 540px;
       box-shadow: var(--shadow-lg);
       overflow: hidden;
-      color: var(--text-main);
-    }
-    .cmd-header {
       display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--border);
-      background: var(--cmd-header-bg);
+      flex-direction: column;
     }
-    .cmd-input {
-      flex: 1;
-      background: none;
-      border: none;
-      color: var(--text-main);
-      font-size: 13.5px;
-      outline: none;
-    }
-    .cmd-list {
-      max-height: 320px;
-      overflow-y: auto;
-      padding: 6px;
-    }
-    .cmd-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 9px 12px;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      font-size: 12.5px;
-      color: var(--text-muted);
-      transition: background-color 100ms var(--ease-out), color 100ms var(--ease-out);
-    }
-    .cmd-item:hover, .cmd-item.active {
-      background: var(--bg-card-hover);
-      color: var(--text-main);
-    }
-    .cmd-item-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .modal-head {
-      padding: 16px 22px;
+    .modal-header {
+      padding: 18px 24px;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: var(--bg-card);
     }
-    .modal-title-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 16px;
+    .modal-header h3 {
+      font-size: 17px;
       font-weight: 700;
-      color: var(--text-main);
-    }
-    .modal-close-btn {
-      background: none;
-      border: none;
-      color: var(--text-dim);
-      font-size: 20px;
-      cursor: pointer;
-      display: grid;
-      place-items: center;
-      width: 28px;
-      height: 28px;
-      border-radius: var(--radius-sm);
-    }
-    .modal-close-btn:hover {
-      background: var(--bg-card-hover);
-      color: var(--text-main);
     }
     .modal-body {
-      padding: 20px 24px;
+      padding: 24px;
       display: flex;
       flex-direction: column;
       gap: 16px;
-      max-height: 72vh;
-      overflow-y: auto;
     }
-    .modal-footer {
-      padding: 14px 24px;
-      border-top: 1px solid var(--border);
+    .form-group {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--bg-card);
+      flex-direction: column;
+      gap: 6px;
     }
-    .field-label {
+    .form-group label {
       font-size: 12px;
       font-weight: 600;
-      color: var(--text-main);
-      margin-bottom: 6px;
-      display: block;
-    }
-    .field-hint {
-      font-size: 11px;
-      color: var(--text-dim);
-      margin-top: 4px;
-    }
-    .preset-pill-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 4px;
-    }
-    .preset-pill {
-      font-size: 11px;
-      font-weight: 500;
-      padding: 3px 10px;
-      border-radius: 999px;
-      background: var(--bg-card-inner);
-      border: 1px solid var(--border);
       color: var(--text-muted);
-      cursor: pointer;
-      transition: background-color 140ms var(--ease-out), border-color 140ms var(--ease-out), color 140ms var(--ease-out), transform 120ms var(--ease-out);
     }
-    .preset-pill:hover, .preset-pill.active {
-      background: var(--bg-card-hover);
-      border-color: var(--primary);
+    .form-group input, .form-group select {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
       color: var(--text-main);
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      outline: none;
     }
-    .preset-pill:active {
-      transform: scale(0.96);
+    .form-group input:focus, .form-group select:focus {
+      border-color: var(--border-focus);
+    }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-card-inner);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
     }
 
-    /* Responsive Media Queries */
-    @media (max-width: 860px) {
-      .app-shell {
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
-      }
-      .sidebar {
-        position: static;
-        height: auto;
-        border-right: none;
-        border-bottom: 1px solid var(--border);
-        padding: 12px 16px 8px;
-        z-index: 10;
-      }
-      .brand {
-        padding: 0 0 10px;
-        margin-bottom: 8px;
-        border-bottom: 1px solid var(--border);
-      }
-      .nav-label { display: none; }
-      .nav-list {
-        flex-direction: row;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        gap: 6px;
-        padding-bottom: 6px;
-      }
-      .nav-item {
-        white-space: nowrap;
-        padding: 6px 12px;
-        font-size: 12px;
-      }
-      .nav-item.active {
-        background: rgba(56, 189, 248, 0.14);
-        border: 1px solid rgba(56, 189, 248, 0.35);
-      }
-      .sidebar-footer { display: none; }
-      .topbar {
-        padding: 10px 16px;
-        flex-wrap: wrap;
-      }
-      main {
-        padding: 16px 16px 40px;
-      }
-      .step-guide { grid-template-columns: 1fr; }
-      .grid-2 { grid-template-columns: 1fr; }
-      .picker-row {
-        flex-direction: column;
-      }
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .toast {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      padding: 12px 18px;
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow);
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: slideIn 0.2s ease-out;
+    }
+    @keyframes slideIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Hidden Skip Link for A11y and Automated Verification -->
-  <a href="#main-content" style="position: absolute; left: -9999px;">跳至主内容 (game-mod-agent)</a>
+  <!-- Top Nav -->
+  <header class="top-nav">
+    <div class="brand" onclick="showLibrary()">
+      <span>AI Mod Builder</span>
+      <span class="brand-badge">PRO</span>
+    </div>
 
-  <div class="app-shell">
+    <div class="nav-center">
+      <div class="game-pill" id="nav-game-pill" onclick="showLibrary()">
+        <span class="dot" id="nav-game-dot"></span>
+        <span id="nav-game-name">正在加载 Steam 游戏库...</span>
+        <span style="font-size:10px; opacity:0.6;">▼</span>
+      </div>
+    </div>
 
-    <!-- Left Navigation Sidebar -->
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-icon" title="AI Mod Builder · 游戏 Mod 制作与逆向工作台">
-          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
-            <rect x="3" y="3" width="18" height="18" rx="4"></rect>
-            <path d="M7 8l4 4-4 4M13 16h4"></path>
-          </svg>
+    <div class="nav-actions">
+      <button class="btn btn-sm" onclick="scanGames()">🔍 刷新游戏</button>
+      <button class="btn btn-sm btn-launch" id="btn-launch-game" onclick="launchCurrentGame()">▶ 启动游戏</button>
+      <button class="btn btn-sm" id="btn-save-backup" onclick="createSaveBackup()">🛡️ 备份存档</button>
+      <button class="btn btn-sm" onclick="openLLMModal()">⚙️ 模型 (CC Switch)</button>
+      <button class="btn btn-sm" onclick="toggleTheme()" title="切换亮/暗模式" id="theme-btn">🌙</button>
+    </div>
+  </header>
+
+  <!-- App Shell -->
+  <main class="app-shell">
+
+    <!-- View A: Steam Game Library -->
+    <section id="view-library">
+      <div class="library-header">
+        <div class="library-title">
+          <h1>本地 Steam 游戏大厅 · 制作新 Mod</h1>
+          <p>已自动发现你电脑上的已安装游戏，点击任意卡片即可一键进入 AI Mod 创作空间。</p>
         </div>
-        <div>
-          <h1 class="brand-title">AI Mod Builder</h1>
-          <div class="brand-subtitle">CREATIVE WORKBENCH · v2.5</div>
+        <div class="library-search">
+          <input type="text" id="game-search-input" placeholder="搜索游戏名称..." oninput="filterGames()">
+          <button class="btn btn-sm" onclick="addCustomGame()">➕ 手动路径</button>
         </div>
       </div>
 
-      <div class="nav-section-title">WORKBENCH</div>
-      <nav class="nav-list" role="tablist">
-        <button class="nav-item active" data-tab="inspector" role="tab" aria-selected="true">
-          <div class="nav-item-left">
-            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polygon points="12 8 8 12 12 16 12 8"></polygon></svg>
-            <span>游戏巡检 · Inspector</span>
+      <div class="games-grid" id="games-grid">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- View B: AI Mod Studio Workspace -->
+    <section id="view-studio">
+      
+      <!-- Left Column: AI Mod Copilot -->
+      <div class="studio-chat">
+        <div class="chat-header">
+          <div class="chat-header-info">
+            <h2 id="studio-game-title">游戏名称</h2>
+            <span id="studio-game-engine">引擎: Unity Mono</span>
           </div>
-          <span class="kbd-hint">1</span>
-        </button>
-
-        <button class="nav-item" data-tab="studio" role="tab" aria-selected="false">
-          <div class="nav-item-left">
-            <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-            <span>制作新 Mod · Studio</span>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-sm" onclick="showLibrary()">← 更换游戏</button>
+            <button class="btn btn-sm btn-launch" id="studio-launch-btn" onclick="launchCurrentGame()">▶ 启动游戏</button>
           </div>
-          <span class="kbd-hint">2</span>
-        </button>
+        </div>
 
-        <button class="nav-item" data-tab="manager" data-action="mods" role="tab" aria-selected="false">
-          <div class="nav-item-left">
-            <svg class="icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-            <span>已装模组 · Manager</span>
-          </div>
-          <span id="navBadgeMods" class="nav-badge">0</span>
-        </button>
+        <!-- Inspiration Pills -->
+        <div class="chat-pills-bar">
+          <span class="label">灵感气泡:</span>
+          <button class="pill-btn" onclick="sendPrompt('角色移动速度提升 100%')">⚡ 移速翻倍</button>
+          <button class="pill-btn" onclick="sendPrompt('解锁空中二段跳')">🦘 空中二段跳</button>
+          <button class="pill-btn" onclick="sendPrompt('金币掉落倍率提高 5 倍')">💰 5倍金币</button>
+          <button class="pill-btn" onclick="sendPrompt('受到伤害减免 100% 无敌护盾')">🛡️ 无敌金身</button>
+          <button class="pill-btn" onclick="sendPrompt('攻击距离与挥砍范围翻倍')">🗡️ 剑气范围扩大</button>
+        </div>
 
-        <button class="nav-item" data-tab="saves" data-action="saves" role="tab" aria-selected="false">
-          <div class="nav-item-left">
-            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
-            <span>存档时光机 · Snapshots</span>
-          </div>
-          <span class="kbd-hint">4</span>
-        </button>
+        <!-- Chat Messages -->
+        <div class="chat-messages" id="chat-messages">
+          <!-- Dynamically inserted -->
+        </div>
 
-        <div class="nav-section-title">REVERSE ENG</div>
-
-        <button class="nav-item" data-tab="logs" role="tab" aria-selected="false">
-          <div class="nav-item-left">
-            <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-            <span>崩溃排查 · Crash Logs</span>
-          </div>
-          <span id="logStatus" class="kbd-hint">5</span>
-        </button>
-
-        <button class="nav-item" data-tab="hooklab" role="tab" aria-selected="false">
-          <div class="nav-item-left">
-            <svg class="icon" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-            <span>Hook 实验室 · Hook Lab</span>
-          </div>
-          <span class="kbd-hint">6</span>
-        </button>
-
-        <div class="nav-section-title">ASSISTANT</div>
-
-        <button class="nav-item" data-tab="chat" role="tab" aria-selected="false">
-          <div class="nav-item-left">
-            <svg class="icon" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
-            <span>AI 模组助手 · Assistant</span>
-          </div>
-          <span class="kbd-hint">7</span>
-        </button>
-      </nav>
-
-      <div class="sidebar-footer">
-        <div class="engine-dots-row">
-          <span>17+ 引擎架构</span>
-          <div class="dots-group">
-            <span class="dot" style="background:#10b981;" title="Unity"></span>
-            <span class="dot" style="background:#a855f7;" title="Unreal Engine"></span>
-            <span class="dot" style="background:#f97316;" title="RE Engine"></span>
-            <span class="dot" style="background:#38bdf8;" title="Godot"></span>
-          </div>
+        <!-- Bottom Chat Input -->
+        <div class="chat-input-bar">
+          <textarea id="prompt-input" placeholder="对 AI 说出你想要的 Mod 功能... (例如：攻击时附带剑气、无限制跳跃、敌人血量减半)" onkeydown="handleChatKey(event)"></textarea>
+          <button class="btn btn-primary" id="btn-send" onclick="submitPrompt()">发送生成</button>
         </div>
       </div>
-    </aside>
 
-    <!-- Main Content Area -->
-    <div style="display: flex; flex-direction: column; min-width: 0;">
-
-      <!-- Top Header Bar -->
-      <header class="topbar">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <div class="topbar-game">
-            <span style="color: var(--text-dim);">当前游戏:</span>
-            <span id="topbarGameName" style="color: var(--text-main); font-weight: 600;">未选定</span>
-            <span id="engineBadge" class="badge badge-unity" style="display: none;">Unity</span>
-          </div>
-
-          <button class="topbar-cmd-trigger" onclick="openCommandPalette()" title="按 ⌘K 快速查找">
-            <svg class="icon" viewBox="0 0 24 24" style="width: 13px; height: 13px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <span>快捷搜索与操作...</span>
-            <kbd class="cmd-kbd">⌘K</kbd>
-          </button>
+      <!-- Right Column: Live Tuning & Mod Shelf -->
+      <div class="studio-sidebar">
+        <div class="sidebar-tabs">
+          <button class="sidebar-tab-btn active" id="tab-live" onclick="switchSidebarTab('live')">实时生效中 (<span id="active-mods-count">0</span>)</button>
+          <button class="sidebar-tab-btn" id="tab-mods" onclick="switchSidebarTab('mods')">已固化 Mod (<span id="installed-mods-count">0</span>)</button>
+          <button class="sidebar-tab-btn" id="tab-saves" onclick="switchSidebarTab('saves')">安全存档</button>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <!-- Light / Dark Theme Switcher -->
-          <button id="themeToggleBtn" class="theme-toggle-btn" onclick="toggleTheme()" title="切换浅色 / 深色模式" aria-label="切换浅色 / 深色模式">
-            <span id="themeToggleIcon">☀️</span>
-            <span id="themeToggleLabel">浅色</span>
-          </button>
-
-          <!-- Model Settings Trigger Pill (ccswitch style) -->
-          <button id="btnOpenModelConfig" class="topbar-status" style="cursor: pointer;" onclick="openModelModal()" title="点击配置/切换大模型供应商">
-            <span class="status-dot" style="background: #10b981;" id="topbarModelDot"></span>
-            <span id="topbarModelLabel">DeepSeek · deepseek-chat</span>
-            <span style="font-size: 10px; color: var(--text-dim); margin-left: 2px;">设置</span>
-          </button>
-
-          <div id="connectionStatus" class="topbar-status online">
-            <span class="status-dot"></span>
-            <span>服务就绪</span>
-          </div>
-          <button class="btn btn-secondary btn-sm" data-action="doctor">
-            <svg class="icon" style="width: 13px; height: 13px;" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            <span>环境体检</span>
-          </button>
+        <div class="sidebar-content" id="sidebar-content">
+          <!-- Dynamically rendered -->
         </div>
-      </header>
+      </div>
 
-      <!-- Main Container -->
-      <main id="main-content">
+    </section>
 
-        <!-- Universal Target Game Selector with Quick Preset Chips -->
-        <div class="game-picker-card">
-          <div class="picker-head">
-            <label class="picker-label" for="targetGameDir">
-              <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-              <span>单机游戏安装根目录</span>
-            </label>
-          </div>
-          <div class="picker-row">
-            <input type="text" id="targetGameDir" class="input-text code" placeholder="例如: D:\SteamLibrary\steamapps\common\Hollow Knight 或 /Games/Hades" value="">
-            <button class="btn btn-primary" data-action="detect">
-              <svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              <span>识别架构</span>
-            </button>
-          </div>
+  </main>
 
-          <!-- Quick Game Selection Chips -->
-          <div class="quick-games-bar">
-            <span style="font-size: 11px; color: var(--text-dim); font-weight: 500;">快速切换:</span>
-            <span class="quick-game-chip" onclick="quickSelectGame('C:\\Games\\Hollow Knight', '空洞骑士 (Unity)')">空洞骑士 (Unity)</span>
-            <span class="quick-game-chip" onclick="quickSelectGame('C:\\Games\\Resident Evil 4', '生化危机4重制版 (RE-Engine)')">生化危机4 (RE)</span>
-            <span class="quick-game-chip" onclick="quickSelectGame('C:\\Games\\Palworld', '幻兽帕鲁 (Unreal 5)')">幻兽帕鲁 (Unreal)</span>
-            <span class="quick-game-chip" onclick="quickSelectGame('C:\\Games\\Brotato', '土豆兄弟 (Godot)')">土豆兄弟 (Godot)</span>
-          </div>
+  <!-- LLM & CC Switch Settings Modal -->
+  <div class="modal-overlay" id="llm-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>大模型设置 (CC Switch / DeepSeek)</h3>
+        <button class="btn btn-sm" onclick="closeLLMModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>快速预设配置</label>
+          <select id="llm-preset-select" onchange="onPresetChange()">
+            <option value="ccswitch" selected>CC Switch (本地网关/中转)</option>
+            <option value="deepseek">DeepSeek 官方 API</option>
+            <option value="openai">OpenAI (GPT-4o)</option>
+            <option value="ollama">Ollama (本地免联网)</option>
+            <option value="qwen">通义千问 (DashScope)</option>
+            <option value="siliconflow">硅基流动 (SiliconFlow)</option>
+          </select>
         </div>
-
-        <!-- 1. Inspector / Home Workspace -->
-        <div id="ws-inspector" class="workspace active">
-          <!-- Step-by-Step User Guidance -->
-          <div class="step-guide">
-            <div class="step-card">
-              <div class="step-badge-row">
-                <div class="step-num">1</div>
-                <span class="badge badge-unity">Step 1</span>
-              </div>
-              <div class="step-title">选定游戏根目录</div>
-              <div class="step-desc">填入游戏目录后点击「一键识别」，自动探测引擎、前置 Mod 加载器与运行状态。</div>
-            </div>
-            <div class="step-card">
-              <div class="step-badge-row">
-                <div class="step-num">2</div>
-                <span class="badge badge-godot">Step 2</span>
-              </div>
-              <div class="step-title">制作或定制 Mod</div>
-              <div class="step-desc">进入「制作新 Mod」，可直接点击 99999 金币、倍速滑块，或用中文写需求。</div>
-            </div>
-            <div class="step-card">
-              <div class="step-badge-row">
-                <div class="step-num">3</div>
-                <span class="badge badge-tmod">Step 3</span>
-              </div>
-              <div class="step-title">安全管理与回滚</div>
-              <div class="step-desc">修改前自动备份存档，已安装文件随时可一键安全卸载，彻底杜绝坏档后顾之忧。</div>
-            </div>
-          </div>
-
-          <div class="grid-2">
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">
-                  <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-                  <span>游戏引擎与 Mod 支持概览</span>
-                </div>
-                <button class="btn btn-secondary btn-sm" data-action="detect">重新侦测</button>
-              </div>
-              <div id="engineDetails" class="code-console">输入游戏目录并点击「一键识别游戏」，系统将自动探测引擎（Unity / Unreal / RE / Godot）、架构指纹及前置加载器...</div>
-            </div>
-
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">
-                  <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                  <span>游戏运行状态与写入锁感测</span>
-                </div>
-                <button class="btn btn-secondary btn-sm" data-action="process">刷新状态</button>
-              </div>
-              <div id="processDetails" class="code-console">安装或卸载 Mod 前自动感测游戏进程是否运行，防止 Windows 文件写锁定错误（Access Denied）。</div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">
-                <svg class="icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-                <span>本机 Mod 开发工具链状态 (Doctor)</span>
-              </div>
-              <button class="btn btn-secondary btn-sm" data-action="doctor">立即体检</button>
-            </div>
-            <div id="doctorReport" class="code-console">点击「立即体检」检查本机 .NET SDK、逆向反编译器（ilspycmd / Cpp2IL）与缓存就绪状态...</div>
-          </div>
+        <div class="form-group">
+          <label>API 端点 (Base URL)</label>
+          <input type="text" id="llm-endpoint" placeholder="http://127.0.0.1:8000/v1">
         </div>
-
-        <!-- 2. Create Mod Workspace (Visual Sliders + Presets) -->
-        <div id="ws-studio" class="workspace">
-          <div class="grid-2">
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">
-                  <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                  <span>你想在游戏里实现什么功能？</span>
-                </div>
-              </div>
-
-              <!-- Quick Presets -->
-              <div>
-                <span style="font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">常用功能快速填入:</span>
-                <div class="preset-container">
-                  <span class="preset-chip" onclick="applyPreset('给主角增加 99999 金币，可通过配置修改数值', 'player_gold_boost', {'amount': 99999})">金币充能 (Gold 99999)</span>
-                  <span class="preset-chip" onclick="applyPreset('主角移动速度提高 2.0 倍', 'speed_multiplier', {'multiplier': 2.0})">移速倍率 (Speed 2.0x)</span>
-                  <span class="preset-chip" onclick="applyPreset('玩家免疫受到的一切伤害 (锁血无敌)', 'god_mode_invincible', {'god_mode': true})">无敌锁血 (God Mode)</span>
-                  <span class="preset-chip" onclick="applyPreset('玩家翻滚与奔跑耐力永久不减', 'infinite_stamina', {'infinite': true})">无限耐力 (Stamina)</span>
-                  <span class="preset-chip" onclick="applyPreset('武器基础攻击力提升 50%', 'weapon_damage_up', {'damage_rate': 1.5})">攻击加成 (Damage)</span>
-                </div>
-              </div>
-
-              <!-- Interactive Parameter Sliders Box -->
-              <div class="slider-box">
-                <div class="slider-row">
-                  <span style="color: var(--text-muted); font-weight: 600;">移速倍率 (Speed Multiplier):</span>
-                  <span id="sliderSpeedVal" style="font-family: var(--mono); color: var(--primary); font-weight: 700;">2.0x</span>
-                </div>
-                <input type="range" class="slider-range" min="1.0" max="5.0" step="0.5" value="2.0" oninput="updateSpeedSlider(this.value)">
-
-                <div class="slider-row" style="margin-top: 6px;">
-                  <span style="color: var(--text-muted); font-weight: 600;">金币数值 (Gold Amount):</span>
-                  <span id="sliderGoldVal" style="font-family: var(--mono); color: var(--amber); font-weight: 700;">99999</span>
-                </div>
-                <input type="range" class="slider-range" min="1000" max="999999" step="5000" value="99999" oninput="updateGoldSlider(this.value)">
-              </div>
-
-              <div style="display: flex; flex-direction: column; gap: 12px;">
-                <div>
-                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">需求功能描述</label>
-                  <textarea id="planRequest" class="textarea-field" style="min-height: 75px;" placeholder="例如: 让主角移动速度提高2倍，攻击力提升50%，耐力永久不减">主角移动速度提高 2.0 倍</textarea>
-                </div>
-
-                <div class="grid-2">
-                  <div>
-                    <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Mod 标识 (ID)</label>
-                    <input type="text" id="planModId" class="input-text code" placeholder="my_speed_mod" value="speed_multiplier">
-                  </div>
-                  <div>
-                    <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">版本号</label>
-                    <input type="text" id="planModVersion" class="input-text code" value="1.0.0">
-                  </div>
-                </div>
-
-                <div>
-                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">自定义配置参数 (JSON 字典)</label>
-                  <textarea id="planCustomizations" class="textarea-field code" style="min-height: 48px;" placeholder='{"multiplier": 2.0}'>{"multiplier": 2.0}</textarea>
-                </div>
-
-                <div style="display: flex; gap: 10px; margin-top: 4px;">
-                  <button class="btn btn-primary" data-action="plan">生成 Mod 规划与蓝图</button>
-                  <button class="btn btn-secondary" data-action="clear-plan">清空重写</button>
-                </div>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">
-                  <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                  <span>Mod 生成结果预览</span>
-                </div>
-              </div>
-              <div id="planSpecViewer" class="code-console" style="min-height: 320px;">点击左侧「生成 Mod 规划」后，此处将呈现结构化的 ModSpec 契约、修改目标及引擎工程骨架...</div>
-            </div>
-          </div>
+        <div class="form-group">
+          <label>API Key</label>
+          <input type="password" id="llm-key" placeholder="在此输入 API Key (如使用 CC Switch 或本地代理可留空或填默认key)">
         </div>
-
-        <!-- 3. Mod Manager Workspace -->
-        <div id="ws-manager" class="workspace">
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">
-                <svg class="icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-                <span>当前游戏已安装的 Mod 清单</span>
-              </div>
-              <div style="display: flex; gap: 8px;">
-                <button class="btn btn-secondary btn-sm" data-action="mods">刷新清单</button>
-                <button class="btn btn-danger btn-sm" data-action="rollback">还原纯净游戏 (撤销全部 Mod)</button>
-              </div>
-            </div>
-
-            <!-- Mod List Table -->
-            <div id="modListContainer" class="mod-table">
-              <div class="mod-row" style="color: var(--text-dim); justify-content: center; padding: 32px;">
-                点击「刷新清单」载入该游戏下已安装追踪的 Mod 档案...
-              </div>
-            </div>
-          </div>
+        <div class="form-group">
+          <label>模型名称 (Model Name)</label>
+          <input type="text" id="llm-model" placeholder="claude-3-7-sonnet">
         </div>
-
-        <!-- 4. Save Time Machine Workspace -->
-        <div id="ws-saves" class="workspace">
-          <div class="grid-2">
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">
-                  <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
-                  <span>创建存档安全快照</span>
-                </div>
-              </div>
-
-              <div style="display: flex; flex-direction: column; gap: 12px;">
-                <p style="font-size: 13px; color: var(--text-muted);">
-                  在注入 Mod 或修改游戏前先生成快照，可随时一键无损还原，避免坏档或坏档后游戏无法启动。
-                </p>
-
-                <div>
-                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">快照备注名称</label>
-                  <input type="text" id="saveBackupLabel" class="input-text" placeholder="例如: 修改金币前备份" value="修改前备份">
-                </div>
-
-                <button class="btn btn-primary" data-action="create-save" style="margin-top: 4px;">生成当前存档快照</button>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">
-                  <svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                  <span>历史快照时间线</span>
-                </div>
-                <button class="btn btn-secondary btn-sm" data-action="saves">刷新快照</button>
-              </div>
-
-              <div id="savesListContainer" class="mod-table">
-                <div class="mod-row" style="color: var(--text-dim); justify-content: center; padding: 32px;">
-                  点击「刷新快照」读取已备份的历史时间线...
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 5. Crash Logs & Healing Workspace -->
-        <div id="ws-logs" class="workspace">
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">
-                <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                <span>游戏运行与崩溃日志排查</span>
-              </div>
-              <div style="display: flex; gap: 8px;">
-                <button class="btn btn-secondary btn-sm" data-action="read-logs">抓取最近日志</button>
-                <button class="btn btn-primary btn-sm" data-action="diagnose">诊断报错堆栈</button>
-              </div>
-            </div>
-
-            <textarea id="liveLogText" class="textarea-field code" style="min-height: 180px;" placeholder="在此粘贴或点击「自动抓取最近日志」读取游戏报错内容..."></textarea>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">
-                <svg class="icon" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
-                <span>崩溃定位与修复方案</span>
-              </div>
-            </div>
-            <div id="logDiagnosisResult" class="code-console">点击「AI 自愈分析报错」即可自动解析报错堆栈，精确定位报错文件行号及修复代码。</div>
-          </div>
-        </div>
-
-        <!-- 6. Hook Lab Workspace (Advanced Devs) -->
-        <div id="ws-hooklab" class="workspace">
-          <div class="grid-2">
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">
-                  <svg class="icon" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                  <span>Hook 代码生成器 (高级)</span>
-                </div>
-              </div>
-
-              <div style="display: flex; flex-direction: column; gap: 12px;">
-                <div>
-                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">目标引擎框架</label>
-                  <select id="hookEngine" class="select-field">
-                    <option value="unity">Unity (Mono / IL2CPP - Harmony C#)</option>
-                    <option value="unreal">Unreal Engine (UE4SS Lua RegisterHook)</option>
-                    <option value="reengine">RE-Engine (REFramework Lua sdk.hook)</option>
-                    <option value="godot">Godot Engine (GDScript ModLoader)</option>
-                  </select>
-                </div>
-
-                <div class="grid-2">
-                  <div>
-                    <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">目标类名 (Class)</label>
-                    <input type="text" id="hookClass" class="input-text code" value="HeroController">
-                  </div>
-                  <div>
-                    <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">目标方法名 (Method)</label>
-                    <input type="text" id="hookMethod" class="input-text code" value="TakeDamage">
-                  </div>
-                </div>
-
-                <div class="grid-2">
-                  <div>
-                    <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">拦截时机</label>
-                    <select id="hookType" class="select-field">
-                      <option value="prefix">Prefix (前置拦截 / 修改参数)</option>
-                      <option value="postfix">Postfix (后置截取 / 修改返回值)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">返回值类型</label>
-                    <input type="text" id="hookReturn" class="input-text code" value="void">
-                  </div>
-                </div>
-
-                <div>
-                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">参数列表 (JSON Array)</label>
-                  <input type="text" id="hookParams" class="input-text code" value='[{"name": "damage", "type": "int", "by_ref": false}]'>
-                </div>
-
-                <div style="display: flex; gap: 10px; margin-top: 4px;">
-                  <button class="btn btn-primary" data-action="hook-template">合成 Hook 源码</button>
-                  <button class="btn btn-secondary" data-action="hook-evidence">基于 Evidence 合成</button>
-                </div>
-
-                <!-- Hidden evidence field for advanced automated testing -->
-                <textarea id="hookEvidence" style="display: none;">{"engine": "unity", "target_symbol": "HeroController.TakeDamage", "class_name": "HeroController", "method_name": "TakeDamage", "hook_type": "prefix", "provenance": "dump", "confidence": 0.95}</textarea>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">
-                  <svg class="icon" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                  <span>生成的 Hook 代码</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <span id="hookStatus" class="badge badge-unity">Ready</span>
-                  <button class="btn btn-secondary btn-sm" data-action="copy-hook">复制代码</button>
-                </div>
-              </div>
-              <pre id="hookCodeOutput" class="code-console" style="min-height: 280px;">// 点击「合成 Hook 源码」生成具备静态闭合校验的补丁源码...</pre>
-            </div>
-          </div>
-        </div>
-
-        <!-- 6. AI Assistant Workspace -->
-        <div id="ws-chat" class="workspace">
-          <!-- Assistant Header Card -->
-          <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--brand-icon-bg); border: 1px solid var(--brand-icon-border); display: grid; place-items: center; color: var(--primary);">
-                <svg class="icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
-              </div>
-              <div>
-                <div style="font-size: 14px; font-weight: 600; color: var(--text-main);" id="chatAssistantTitle">AI Mod 制作助手</div>
-                <div style="font-size: 11.5px; color: var(--text-dim);" id="chatAssistantSubtitle">智能代码生成 · 逆向切面指引 · 游戏内存定位</div>
-              </div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); cursor: pointer;">
-                <input type="checkbox" id="chatIncludeGameContext" checked>
-                <span>挂载当前游戏上下文 (<span id="chatContextGameName" style="color:var(--text-main); font-weight: 500;">未选定</span>)</span>
-              </label>
-              <button class="btn btn-secondary btn-sm" onclick="clearChatHistory()">清空对话</button>
-              <button class="btn btn-secondary btn-sm" onclick="openModelModal()">模型设置</button>
-            </div>
-          </div>
-
-          <!-- Chat Messages Container -->
-          <div id="chatMessages" style="min-height: 420px; max-height: 580px; overflow-y: auto; padding: 18px; background: var(--bg-card-inner); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; display: flex; flex-direction: column; gap: 14px;">
-            <!-- Welcome Message -->
-            <div class="chat-bubble-assistant">
-              <div class="chat-bubble-header">
-                <span class="chat-bubble-name">
-                  <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
-                  AI 制作助手 · 准备就绪
-                </span>
-                <span style="font-size: 11px; color: var(--text-dim);">欢迎使用</span>
-              </div>
-              <div class="chat-bubble-body">你好！我是你的 AI 游戏 Mod 制作助手。
-支持为你提供：
-1. 引擎架构定位：分析 Unity、Unreal、RE-Engine、Godot 等单机游戏架构及前置加载器配置。
-2. 切面补丁生成：自动编写 Harmony、UE4SS Lua、REFramework 等 Hook 源码。
-3. 内存与数值定位：解答生命值、金币、移速等属性的逆向与内存定位方法。
-
-你可以直接输入你的 Mod 需求，或者点击下方快捷问题开始体验：</div>
-            </div>
-          </div>
-
-          <!-- Quick Prompts Bar -->
-          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
-            <button class="quick-game-chip" onclick="sendQuickPrompt('针对我当前选定的游戏，推荐最佳的 Mod 制作方案和前置工具是什么？')">推荐最佳注入方案</button>
-            <button class="quick-game-chip" onclick="sendQuickPrompt('我想修改主角的移动速度和攻击力，通常应该找哪些类或内存偏移？')">主角数值类与偏移</button>
-            <button class="quick-game-chip" onclick="sendQuickPrompt('怎么给游戏制作无敌锁血和无限体力的 Hook 钩子？')">无敌锁血切面编写</button>
-            <button class="quick-game-chip" onclick="sendQuickPrompt('怎么使用内存扫描 (Cheat Engine 方式) 搜出金币的稳定基址？')">定位金币内存基址</button>
-          </div>
-
-          <!-- Chat Input Area -->
-          <div style="display: flex; gap: 10px; align-items: flex-end;">
-            <textarea id="chatInputText" class="textarea-field" rows="2" placeholder="输入 Mod 需求或逆向疑问... 例如：给主角添加二段跳、修改移速 (Enter 发送, Shift+Enter 换行)" style="flex: 1; resize: none; font-size: 13px;"></textarea>
-            <button id="btnSendChat" class="btn btn-primary" onclick="sendChatMessage()" style="height: 44px; padding: 0 22px; font-weight: 600;">发送 (Enter)</button>
-          </div>
-        </div>
-
-      </main>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm" onclick="testLLMConnection()">⚡ 测试连接</button>
+        <button class="btn btn-sm btn-primary" onclick="saveLLMConfig()">💾 保存配置</button>
+      </div>
     </div>
   </div>
 
-  <!-- Confirmation Modal Dialog -->
-  <dialog id="confirmDialog">
-    <div style="display: flex; flex-direction: column; gap: 14px;">
-      <h3 style="font-size: 16px; font-weight: 700; color: var(--text-main);">确认执行还原纯净游戏？</h3>
-      <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
-        该操作将逆序移除所有记录安装的 Mod 文件，并恢复备份的原始文件，使游戏回到未修改状态。
-      </p>
-      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
-        <button id="confirmCancel" class="btn btn-secondary">取消</button>
-        <button id="confirmAccept" class="btn btn-danger">确认撤销所有 Mod</button>
-      </div>
-    </div>
-  </dialog>
-
-  <!-- Model Provider Settings Modal (Edit Provider / ccswitch style) -->
-  <dialog id="modelModal">
-    <div class="modal-head">
-      <div class="modal-title-row">
-        <button type="button" class="modal-close-btn" onclick="closeModelModal()">←</button>
-        <span>编辑供应商</span>
-      </div>
-      <button type="button" class="modal-close-btn" onclick="closeModelModal()">✕</button>
-    </div>
-
-    <div class="modal-body">
-      <!-- Quick Presets -->
-      <div>
-        <label class="field-label">常用预设一键填入:</label>
-        <div class="preset-pill-group">
-          <button type="button" class="preset-pill active" onclick="applyLlmPreset('deepseek')">DeepSeek</button>
-          <button type="button" class="preset-pill" onclick="applyLlmPreset('openai')">OpenAI</button>
-          <button type="button" class="preset-pill" onclick="applyLlmPreset('qwen')">通义千问</button>
-          <button type="button" class="preset-pill" onclick="applyLlmPreset('moonshot')">月之暗面 (Kimi)</button>
-          <button type="button" class="preset-pill" onclick="applyLlmPreset('siliconflow')">硅基流动</button>
-          <button type="button" class="preset-pill" onclick="applyLlmPreset('ollama')">本地 Ollama</button>
-        </div>
-      </div>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        <div>
-          <label class="field-label" for="llmProviderName">供应商名称</label>
-          <input type="text" id="llmProviderName" class="input-text" placeholder="例如: DeepSeek" value="DeepSeek">
-        </div>
-        <div>
-          <label class="field-label" for="llmNote">备注</label>
-          <input type="text" id="llmNote" class="input-text" placeholder="例如: 个人专用账号" value="官方默认">
-        </div>
-      </div>
-
-      <div>
-        <label class="field-label" for="llmWebsite">官网链接</label>
-        <input type="text" id="llmWebsite" class="input-text code" placeholder="https://platform.deepseek.com" value="https://platform.deepseek.com">
-      </div>
-
-      <div>
-        <label class="field-label" for="llmProtocol">API 模式</label>
-        <select id="llmProtocol" class="select-field">
-          <option value="OpenAI Chat Completions">OpenAI Chat Completions</option>
-        </select>
-        <div class="field-hint">供应商 API 协议。请根据端点选择正确的协议。</div>
-      </div>
-
-      <div>
-        <label class="field-label" for="llmEndpoint">API 端点</label>
-        <input type="text" id="llmEndpoint" class="input-text code" placeholder="https://api.deepseek.com" value="https://api.deepseek.com">
-        <div class="field-hint">供应商的 API 端点地址（支持输入基础路径或完整 /chat/completions 路径）。</div>
-      </div>
-
-      <div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-          <label class="field-label" for="llmApiKey" style="margin: 0;">API Key</label>
-          <a id="llmWebsiteLink" href="https://platform.deepseek.com" target="_blank" style="font-size: 11px; color: var(--primary); text-decoration: none;">获取 API Key ↗</a>
-        </div>
-        <div style="position: relative;">
-          <input type="password" id="llmApiKey" class="input-text code" placeholder="留空保持已保存的 API Key 不变" value="" style="padding-right: 40px;">
-          <button type="button" onclick="toggleApiKeyVisibility()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-dim); display: grid; place-items: center;" title="显示/隐藏 API Key">
-            <svg class="icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-          </button>
-        </div>
-      </div>
-
-      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
-        <div>
-          <label class="field-label" for="llmModel">模型名称</label>
-          <input type="text" id="llmModel" class="input-text code" placeholder="deepseek-chat" value="deepseek-chat">
-        </div>
-        <div>
-          <label class="field-label" for="llmTemp">温度 (Temperature)</label>
-          <input type="number" id="llmTemp" class="input-text" step="0.1" min="0" max="2" value="0.7">
-        </div>
-      </div>
-
-      <!-- Test Connection Result Banner -->
-      <div id="llmTestResult" style="display: none; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 12px; line-height: 1.5; font-family: var(--mono);"></div>
-    </div>
-
-    <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" onclick="testLlmConnection()" id="btnTestLlm">测试连接</button>
-      <div style="display: flex; gap: 10px;">
-        <button type="button" class="btn btn-secondary" onclick="closeModelModal()">取消</button>
-        <button type="button" class="btn btn-primary" onclick="saveLlmConfig()" id="btnSaveLlm">保存配置</button>
-      </div>
-    </div>
-  </dialog>
-
-  <!-- Raycast / Linear Style Command Palette Modal -->
-  <dialog id="commandPaletteModal">
-    <div class="cmd-header">
-      <svg class="icon" viewBox="0 0 24 24" style="width: 14px; height: 14px; color: var(--text-dim);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-      <input type="text" id="cmdInput" class="cmd-input" placeholder="输入命令、切换工作区或载入预设游戏..." oninput="filterCommandPalette(this.value)">
-      <kbd class="cmd-kbd">ESC</kbd>
-    </div>
-    <div id="cmdList" class="cmd-list"></div>
-  </dialog>
-
-  <!-- Notification Toast -->
-  <div id="toast">
-    <span id="toastMsg">通知信息</span>
-  </div>
+  <div class="toast-container" id="toast-container"></div>
 
   <script>
-    const $ = (id) => document.getElementById(id);
+    // State
+    let allGames = [];
+    let currentGame = null;
+    let activeActions = [];
+    let installedMods = [];
+    let chatHistory = [];
+    let currentSidebarTab = 'live';
 
-    const state = {
-      gameDir: '',
-      activeTab: 'inspector',
-      hookCode: '',
-      detectedEngine: null,
-      mods: [],
-      saves: []
-    };
+    // Initialization
+    window.addEventListener('DOMContentLoaded', async () => {
+      await loadLLMConfig();
+      await scanGames();
+    });
 
-    function showToast(msg, isError = false) {
-      const toast = $('toast');
-      const toastMsg = $('toastMsg');
-      toastMsg.textContent = msg;
-      toast.style.borderColor = isError ? 'var(--rose)' : 'var(--border)';
-      toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 2800);
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = (type === 'success' ? '✅ ' : type === 'error' ? '❌ ' : 'ℹ️ ') + msg;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3500);
     }
 
-    async function apiPost(endpoint, body) {
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const target = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', target);
+      localStorage.setItem('aimod_theme', target);
+      document.getElementById('theme-btn').textContent = target === 'dark' ? '🌙' : '☀️';
+    }
+
+    // --- Games Discovery & Switching ---
+    async function scanGames() {
       try {
-        const res = await fetch(endpoint, {
+        const resp = await fetch('/api/games/scan');
+        const json = await resp.json();
+        if (json.success) {
+          allGames = json.data || [];
+          renderGameCards(allGames);
+          if (allGames.length > 0 && !currentGame) {
+            updateNavGamePill(allGames[0]);
+          }
+        }
+      } catch (e) {
+        showToast('扫描游戏失败: ' + e.message, 'error');
+      }
+    }
+
+    function renderGameCards(games) {
+      const grid = document.getElementById('games-grid');
+      grid.innerHTML = '';
+      if (games.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1/-1; text-align:center; padding: 60px 20px; color: var(--text-muted);">
+            <h3>暂未扫描到默认 Steam 游戏</h3>
+            <p style="margin-top:8px;">请确保 Steam 已安装，或点击右上角「➕ 手动路径」添加游戏目录。</p>
+          </div>
+        `;
+        return;
+      }
+
+      games.forEach(g => {
+        const card = document.createElement('div');
+        card.className = 'game-card';
+        card.onclick = () => selectGame(g);
+
+        const coverHtml = g.cover_url
+          ? `<img src="${g.cover_url}" alt="${g.name}" onerror="this.parentElement.innerHTML='<div class=\\'cover-placeholder\\'>🎮</div>'">`
+          : `<div class="cover-placeholder">🎮</div>`;
+
+        const statusHtml = g.is_running
+          ? `<div class="game-card-status running">🟢 运行中 (PID: ${g.running_pid})</div>`
+          : `<div class="game-card-status">● 未运行</div>`;
+
+        card.innerHTML = `
+          <div class="game-card-cover">
+            ${coverHtml}
+            ${statusHtml}
+          </div>
+          <div class="game-card-body">
+            <div class="game-card-title">${g.name}</div>
+            <div class="game-card-engine">${g.engine_name || '通用引擎'}</div>
+            <div class="game-card-actions">
+              <span style="font-size:12px; color:var(--text-muted);">${g.source === 'steam' ? 'Steam 游戏' : '本地目录'}</span>
+              <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); selectGame(${JSON.stringify(g).replace(/"/g, '&quot;')})">进入工作台 →</button>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function filterGames() {
+      const kw = document.getElementById('game-search-input').value.toLowerCase().trim();
+      const filtered = allGames.filter(g => g.name.toLowerCase().includes(kw) || (g.engine_name && g.engine_name.toLowerCase().includes(kw)));
+      renderGameCards(filtered);
+    }
+
+    function selectGame(game) {
+      currentGame = game;
+      updateNavGamePill(game);
+
+      document.getElementById('studio-game-title').textContent = game.name;
+      document.getElementById('studio-game-engine').textContent = `引擎: ${game.engine_name || '检测中'} · ${game.is_running ? '🟢 游戏中' : '○ 未运行'}`;
+
+      document.getElementById('view-library').style.display = 'none';
+      const studio = document.getElementById('view-studio');
+      studio.classList.add('active');
+
+      // Reset chat stream with welcome message
+      initChatForGame(game);
+      loadGameMods(game);
+      loadGameSaves(game);
+    }
+
+    function showLibrary() {
+      document.getElementById('view-library').style.display = 'flex';
+      document.getElementById('view-studio').classList.remove('active');
+    }
+
+    function updateNavGamePill(game) {
+      document.getElementById('nav-game-name').textContent = game.name;
+      document.getElementById('nav-game-dot').style.background = game.is_running ? 'var(--emerald)' : 'var(--text-dim)';
+      const btn = document.getElementById('btn-launch-game');
+      if (game.is_running) {
+        btn.textContent = '🟢 游戏中';
+        btn.className = 'btn btn-sm';
+      } else {
+        btn.textContent = '▶ 启动游戏';
+        btn.className = 'btn btn-sm btn-launch';
+      }
+    }
+
+    async function launchCurrentGame() {
+      if (!currentGame) {
+        showToast('请先选择游戏', 'error');
+        return;
+      }
+      showToast('正在启动游戏并创建存档快照...', 'info');
+      try {
+        const resp = await fetch('/api/games/launch', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            game_dir: currentGame.game_dir,
+            appid: currentGame.appid || ''
+          })
         });
-        return await res.json();
-      } catch (e) {
-        return { success: false, error: e.toString() };
-      }
-    }
-
-    async function apiGet(endpoint) {
-      try {
-        const res = await fetch(endpoint);
-        return await res.json();
-      } catch (e) {
-        return { success: false, error: e.toString() };
-      }
-    }
-
-    function requireGameDir() {
-      const dir = $('targetGameDir').value.trim();
-      if (!dir) {
-        showToast('请先输入或选择游戏目录', true);
-        $('targetGameDir').focus();
-        return '';
-      }
-      state.gameDir = dir;
-      const basename = dir.replace(/\\/g, '/').split('/').filter(Boolean).pop() || dir;
-      $('topbarGameName').textContent = basename;
-      if ($('chatContextGameName')) {
-        $('chatContextGameName').textContent = basename;
-      }
-      return dir;
-    }
-
-    function setBusy(btn, busy, text = '处理中…') {
-      if (!btn) return;
-      btn.disabled = busy;
-      if (busy) {
-        btn.dataset.origText = btn.textContent;
-        btn.textContent = text;
-      } else if (btn.dataset.origText) {
-        btn.textContent = btn.dataset.origText;
-      }
-    }
-
-    function switchTab(tabId, updateHash = true) {
-      state.activeTab = tabId;
-      document.querySelectorAll('.nav-item').forEach(el => {
-        const match = el.dataset.tab === tabId;
-        el.classList.toggle('active', match);
-        el.setAttribute('aria-selected', match ? 'true' : 'false');
-      });
-      document.querySelectorAll('.workspace').forEach(el => {
-        el.classList.toggle('active', el.id === `ws-${tabId}`);
-      });
-      if (updateHash && location.hash !== `#${tabId}`) {
-        location.hash = tabId;
-      }
-    }
-
-    function quickSelectGame(path, displayName) {
-      $('targetGameDir').value = path;
-      $('topbarGameName').textContent = displayName;
-      showToast(`已填入示例路径：${displayName}，请改成你的实际游戏目录`);
-    }
-
-    function applyPreset(prompt, modId, customizations) {
-      $('planRequest').value = prompt;
-      $('planModId').value = modId;
-      $('planCustomizations').value = JSON.stringify(customizations, null, 2);
-      showToast(`已填入预设: ${modId}`);
-    }
-
-    function updateSpeedSlider(val) {
-      $('sliderSpeedVal').textContent = `${val}x`;
-      $('planRequest').value = `主角移动速度提高 ${val} 倍`;
-      $('planModId').value = `speed_${val.replace('.', '_')}x`;
-      $('planCustomizations').value = JSON.stringify({ multiplier: parseFloat(val) }, null, 2);
-    }
-
-    function updateGoldSlider(val) {
-      $('sliderGoldVal').textContent = `${val}`;
-      $('planRequest').value = `给主角增加 ${val} 金币，可通过配置修改数值`;
-      $('planModId').value = `gold_boost_${val}`;
-      $('planCustomizations').value = JSON.stringify({ amount: parseInt(val) }, null, 2);
-    }
-
-    function formatEngineInfo(data) {
-      const lines = [];
-      lines.push(`<strong>${escapeHtml(data.name || data.id || '未知引擎')}</strong>`);
-      if (data.mod_framework) lines.push(`前置 Mod 框架：${escapeHtml(data.mod_framework)}`);
-      if (data.structure) lines.push(`怎么做 Mod：${escapeHtml(data.structure)}`);
-      if (data.examples) lines.push(`参考：${escapeHtml(data.examples)}`);
-      return lines.join('<br>');
-    }
-
-    function formatProcessInfo(data) {
-      const lines = [];
-      lines.push(`游戏可执行文件：${escapeHtml((data.executables || []).join('、') || '未检测到')}`);
-      if (data.is_running) {
-        lines.push('<span style="color:var(--rose);">游戏正在运行，安装/卸载前请先退出游戏。</span>');
-      } else {
-        lines.push('<span style="color:var(--emerald);">游戏未运行，可以安全安装或卸载 Mod。</span>');
-      }
-      return lines.join('<br>');
-    }
-
-    function formatPlanSpec(spec) {
-      const lines = [];
-      lines.push(`<strong>${escapeHtml(spec.name || spec.id || '未命名 Mod')}</strong>（v${escapeHtml(spec.version || '1.0.0')}）`);
-      if (spec.engine && spec.engine.name) lines.push(`目标引擎：${escapeHtml(spec.engine.name)}`);
-      if (spec.route) lines.push(`制作路线：${escapeHtml(spec.route)}`);
-      if (spec.prerequisites && spec.prerequisites.length) lines.push(`需要准备：${escapeHtml(spec.prerequisites.join('、'))}`);
-      if (spec.candidate_symbols && spec.candidate_symbols.length) lines.push(`疑似相关符号：${escapeHtml(spec.candidate_symbols.slice(0, 5).join('、'))}`);
-      lines.push('');
-      lines.push('下一步：已按路线生成 Mod 项目骨架，可去「Hook 实验室」编辑，或直接在生成的文件里改，完成后回到「已装 Mod 管理」安装与验证。');
-      return lines.join('<br>');
-    }
-
-    // 1. Game Inspection
-    async function detectGame(btn) {
-      const gameDir = requireGameDir();
-      if (!gameDir) return;
-      setBusy(btn, true, '正在识别…');
-      const res = await apiPost('/api/detect', { game_dir: gameDir });
-      setBusy(btn, false);
-      const badge = $('engineBadge');
-      const navBadge = $('navBadgeEngine');
-      if (res.success && res.data) {
-        state.detectedEngine = res.data;
-        badge.style.display = 'inline-flex';
-        badge.textContent = res.data.name || res.data.id;
-        badge.className = `badge badge-${res.data.id === 're-engine' ? 'reengine' : res.data.id}`;
-        navBadge.textContent = res.data.id.toUpperCase();
-        $('engineDetails').innerHTML = formatEngineInfo(res.data);
-        showToast(`识别成功: ${res.data.name}`);
-        if ($('hookEngine')) {
-          const map = { 'unity': 'unity', 'unreal': 'unreal', 're-engine': 'reengine', 'godot': 'godot' };
-          if (map[res.data.id]) $('hookEngine').value = map[res.data.id];
-        }
-      } else {
-        badge.style.display = 'none';
-        $('engineDetails').textContent = res.error || '未识别到受支持的引擎特征。';
-        showToast(res.error || '未识别到游戏引擎', true);
-      }
-      checkProcess();
-    }
-
-    async function checkProcess(btn) {
-      const gameDir = requireGameDir();
-      if (!gameDir) return;
-      setBusy(btn, true, '检测中…');
-      const res = await apiPost('/api/process', { game_dir: gameDir });
-      setBusy(btn, false);
-      if (res.success && res.data) {
-        $('processDetails').innerHTML = formatProcessInfo(res.data);
-        if (res.data.is_running) {
-          showToast('[提示] 游戏进程正在运行中，修改前请先保存退出', true);
-        }
-      }
-    }
-
-    async function runDoctor(btn) {
-      setBusy(btn, true, '自检中…');
-      const res = await apiGet('/api/doctor');
-      setBusy(btn, false);
-      if (res.success && res.data) {
-        $('doctorReport').textContent = res.data.formatted || JSON.stringify(res.data.details, null, 2);
-        showToast('工具链自检完成');
-      } else {
-        $('doctorReport').textContent = 'Doctor 自检失败: ' + (res.error || '未知错误');
-      }
-    }
-
-    // 2. Mod Planning
-    async function generatePlan(btn) {
-      const gameDir = requireGameDir();
-      if (!gameDir) return;
-      const request = $('planRequest').value.trim();
-      if (!request) { showToast('请先输入功能描述或点击预设', true); return; }
-      let customizations = {};
-      const rawCustom = $('planCustomizations').value.trim();
-      if (rawCustom) {
-        try { customizations = JSON.parse(rawCustom); }
-        catch (e) { showToast('自定义项格式错误: ' + e.message, true); return; }
-      }
-      setBusy(btn, true, '构思生成中…');
-      const res = await apiPost('/api/plan', {
-        game_dir: gameDir,
-        request: request,
-        mod_id: $('planModId').value.trim(),
-        mod_version: $('planModVersion').value.trim() || '1.0.0',
-        customizations: customizations
-      });
-      setBusy(btn, false);
-      if (res.success && res.data) {
-        $('planSpecViewer').innerHTML = formatPlanSpec(res.data);
-        showToast('Mod 蓝图生成成功！');
-      } else {
-        $('planSpecViewer').textContent = '规划生成失败: ' + (res.error || '未知错误');
-        showToast(res.error || '蓝图生成失败', true);
-      }
-    }
-
-    // 3. Hook Lab
-    async function generateHook(btn, fromEvidence = false) {
-      setBusy(btn, true, '生成中…');
-      let endpoint = '/api/codegen/template';
-      let body = {
-        engine: $('hookEngine').value,
-        class_name: $('hookClass').value.trim() || 'PlayerController',
-        method_name: $('hookMethod').value.trim() || 'TakeDamage',
-        hook_type: $('hookType').value,
-        return_type: $('hookReturn').value.trim() || 'void',
-        parameters: []
-      };
-
-      const paramsRaw = $('hookParams').value.trim();
-      if (paramsRaw) {
-        try { body.parameters = JSON.parse(paramsRaw); } catch (e) {}
-      }
-
-      if (fromEvidence) {
-        endpoint = '/api/codegen/evidence';
-        try {
-          body = { evidence: JSON.parse($('hookEvidence').value) };
-        } catch (e) {
-          showToast('Evidence 解析失败', true);
-          setBusy(btn, false);
-          return;
-        }
-      }
-
-      const res = await apiPost(endpoint, body);
-      setBusy(btn, false);
-      if (res.success && res.data) {
-        state.hookCode = res.data.code || '';
-        $('hookCodeOutput').textContent = state.hookCode;
-        const statusBadge = $('hookStatus');
-        if (res.data.validation && res.data.validation.valid) {
-          statusBadge.textContent = 'Verified Valid';
-          statusBadge.className = 'badge badge-unity';
+        const res = await resp.json();
+        if (res.success) {
+          showToast(res.message || '启动指令已发送！', 'success');
+          setTimeout(scanGames, 3000);
         } else {
-          statusBadge.textContent = 'Needs Review';
-          statusBadge.className = 'badge badge-tmod';
+          showToast('启动失败: ' + res.error, 'error');
         }
-        showToast('Hook 代码生成成功！');
-      } else {
-        $('hookCodeOutput').textContent = '生成失败: ' + (res.error || '未知错误');
-        showToast(res.error || '代码生成失败', true);
-      }
-    }
-
-    async function copyHookCode() {
-      if (!state.hookCode) { showToast('暂无代码可复制', true); return; }
-      try {
-        await navigator.clipboard.writeText(state.hookCode);
-        showToast('代码已复制到剪贴板');
       } catch (e) {
-        showToast('复制失败: ' + e.toString(), true);
+        showToast('启动游戏网络错误: ' + e.message, 'error');
       }
     }
 
-    // 4. Mod Manager
-    async function refreshMods(btn) {
-      const gameDir = requireGameDir();
-      if (!gameDir) return;
-      setBusy(btn, true, '读取档案…');
-      const res = await apiPost('/api/mods/list', { game_dir: gameDir });
-      setBusy(btn, false);
-      const container = $('modListContainer');
-      const navBadge = $('navBadgeMods');
-      if (res.success && Array.isArray(res.data)) {
-        state.mods = res.data;
-        navBadge.textContent = res.data.length.toString();
-        if (res.data.length === 0) {
-          container.innerHTML = `<div class="mod-row" style="color: var(--text-dim); justify-content: center; padding: 32px;">当前游戏目录暂无已记录安装的 Mod。</div>`;
-          return;
+    async function createSaveBackup() {
+      if (!currentGame) return;
+      showToast('正在创建游戏存档安全快照...', 'info');
+      try {
+        const resp = await fetch('/api/saves/create', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ game_dir: currentGame.game_dir, reason: 'Manual_Backup' })
+        });
+        const res = await resp.json();
+        if (res.success) {
+          showToast('🛡️ 存档安全快照已创建！', 'success');
+          loadGameSaves(currentGame);
         }
-        container.innerHTML = res.data.map(mod => `
-          <div class="mod-row">
-            <div>
-              <div class="mod-name">
-                <span>📦 ${escapeHtml(mod.mod_id || 'unnamed_mod')}</span>
-                <span class="badge badge-unity">已安装</span>
-              </div>
-              <div class="mod-meta">添加文件: ${(mod.added || []).length} 项 | 覆盖原文件: ${Object.keys(mod.overwritten || {}).length} 项</div>
+      } catch (e) {
+        showToast('备份失败: ' + e.message, 'error');
+      }
+    }
+
+    // --- Chat & AI Interaction ---
+    function initChatForGame(game) {
+      const container = document.getElementById('chat-messages');
+      container.innerHTML = '';
+      chatHistory = [];
+
+      appendAIMessage(
+        `你好！我已经接入 **${game.name}**（${game.engine_name || '检测就绪'}）。\n\n` +
+        `你想在游戏里实现什么新特性？可以直接用自然语言告诉我，例如：\n` +
+        `- **“角色移动速度提升一倍”**\n` +
+        `- **“解锁空中二段跳”**\n` +
+        `- **“敌人掉落金币提高 5 倍”**\n` +
+        `- **“受到攻击减免 100% 伤害”**\n\n` +
+        `我会直接在后台分析游戏逻辑并完成注入，游戏内立刻生效！`
+      );
+    }
+
+    function appendUserMessage(text) {
+      const container = document.getElementById('chat-messages');
+      const msg = document.createElement('div');
+      msg.className = 'msg msg-user';
+      msg.innerHTML = `
+        <div class="msg-avatar">你</div>
+        <div class="msg-content">${text.replace(/</g, '&lt;')}</div>
+      `;
+      container.appendChild(msg);
+      container.scrollTop = container.scrollHeight;
+      chatHistory.push({ role: 'user', content: text });
+    }
+
+    function appendAIMessage(markdownText, action = null) {
+      const container = document.getElementById('chat-messages');
+      const msg = document.createElement('div');
+      msg.className = 'msg';
+
+      let html = markdownText
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/`([^`]+)`/g, '<code style="background:var(--code-bg); color:var(--code-text); padding:2px 5px; border-radius:4px; font-family:var(--mono); font-size:12px;">$1</code>')
+        .replace(/\n/g, '<br>');
+
+      let actionHtml = '';
+      if (action) {
+        activeActions.push(action);
+        renderSidebarContent();
+
+        let tuningHtml = '';
+        if (action.tuning_params && action.tuning_params.length > 0) {
+          tuningHtml = action.tuning_params.map(p => `
+            <div class="tuning-item">
+              <span>${p.label}: <strong id="val-${p.id}">${p.value}</strong></span>
+              <input type="range" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.value}" oninput="document.getElementById('val-${p.id}').textContent = this.value; onParamTune('${action.mod_id}', '${p.id}', this.value)">
             </div>
-            <button class="btn btn-secondary btn-sm" data-uninstall="${escapeHtml(mod.mod_id || '')}">🗑️ 卸载此 Mod</button>
-          </div>
-        `).join('');
-        showToast(`已载入 ${res.data.length} 个已安装 Mod`);
-      } else {
-        container.innerHTML = `<div class="mod-row" style="color: var(--rose); justify-content: center; padding: 24px;">读取失败: ${escapeHtml(res.error || '未知错误')}</div>`;
-      }
-    }
-
-    async function uninstallMod(modId) {
-      const gameDir = requireGameDir();
-      if (!gameDir) return;
-      if (!confirm(`确定要安全卸载 Mod [${modId}] 并恢复原文件吗？`)) return;
-      showToast('正在卸载 Mod…');
-      const res = await apiPost('/api/mods/uninstall', { game_dir: gameDir, mod_id: modId });
-      if (res.success) {
-        showToast(`Mod [${modId}] 卸载成功！`);
-        refreshMods();
-      } else {
-        showToast('卸载失败: ' + (res.error || '未知错误'), true);
-      }
-    }
-
-    async function rollbackAllMods() {
-      const gameDir = requireGameDir();
-      if (!gameDir) return;
-      const dialog = $('confirmDialog');
-      const confirmed = await new Promise((resolve) => {
-        $('confirmAccept').onclick = () => { dialog.close(); resolve(true); };
-        $('confirmCancel').onclick = () => { dialog.close(); resolve(false); };
-        dialog.showModal();
-      });
-      if (!confirmed) return;
-      showToast('正在撤销所有 Mod…');
-      const res = await apiPost('/api/mods/rollback', { game_dir: gameDir });
-      if (res.success) {
-        showToast('已撤销所有 Mod，游戏目录恢复纯净状态！');
-        refreshMods();
-      } else {
-        showToast('全量回滚失败: ' + (res.error || '未知错误'), true);
-      }
-    }
-
-    // 5. Logs & Self-Healing
-    async function readLogs(btn) {
-      const gameDir = requireGameDir();
-      if (!gameDir) return;
-      setBusy(btn, true, '读取日志…');
-      const res = await apiPost('/api/logs/read', { game_dir: gameDir, lines: 120 });
-      setBusy(btn, false);
-      if (res.success && res.data) {
-        $('liveLogText').value = res.data.content || '// 未发现活跃日志文件';
-        showToast(res.data.found ? '日志读取完成' : '未发现活跃日志文件');
-      } else {
-        showToast('读取日志失败: ' + (res.error || '未知错误'), true);
-      }
-    }
-
-    async function diagnoseLogs(btn) {
-      const text = $('liveLogText').value.trim();
-      if (!text) { showToast('请先输入或抓取运行日志', true); return; }
-      setBusy(btn, true, '分析诊断中…');
-      const res = await apiPost('/api/logs/diagnose', { log_text: text });
-      setBusy(btn, false);
-      if (res.success && res.data) {
-        $('logDiagnosisResult').textContent = JSON.stringify(res.data, null, 2);
-        showToast(res.data.has_error ? `发现 ${res.data.issue_count} 个错误并给出修复建议` : '未检测到已知报错特征');
-      } else {
-        $('logDiagnosisResult').textContent = '诊断失败: ' + (res.error || '未知错误');
-      }
-    }
-
-    // 6. Save Time Machine
-    async function createSaveBackup(btn) {
-      const gameDir = requireGameDir();
-      if (!gameDir) return;
-      const label = $('saveBackupLabel').value.trim() || 'manual_snapshot';
-      setBusy(btn, true, '创建快照中…');
-      const res = await apiPost('/api/saves/create', { game_dir: gameDir, label: label });
-      setBusy(btn, false);
-      if (res.success && res.data) {
-        showToast('存档快照创建成功！');
-        refreshSaves();
-      } else {
-        showToast('快照创建失败: ' + (res.error || '未找到存档目录'), true);
-      }
-    }
-
-    async function refreshSaves(btn) {
-      const gameDir = requireGameDir();
-      if (!gameDir) return;
-      setBusy(btn, true, '读取快照…');
-      const res = await apiPost('/api/saves/list', { game_dir: gameDir });
-      setBusy(btn, false);
-      const container = $('savesListContainer');
-      const navBadge = $('navBadgeSaves');
-      if (res.success && Array.isArray(res.data)) {
-        state.saves = res.data;
-        navBadge.textContent = res.data.length.toString();
-        if (res.data.length === 0) {
-          container.innerHTML = `<div class="mod-row" style="color: var(--text-dim); justify-content: center; padding: 32px;">暂无该游戏的存档快照。点击左侧一键创建。</div>`;
-          return;
+          `).join('');
         }
-        container.innerHTML = res.data.map(save => `
-          <div class="mod-row">
-            <div>
-              <div class="mod-name">
-                <span>⏳ ${escapeHtml(save.tag || '快照')}</span>
-                <span class="badge badge-unity">${(save.size_bytes ? (save.size_bytes / 1024 / 1024).toFixed(2) + ' MB' : 'Archive')}</span>
-              </div>
-              <div class="mod-meta">ID: ${escapeHtml(save.backup_id)} | 文件数: ${save.files_count || 1}</div>
+
+        actionHtml = `
+          <div class="action-card">
+            <div class="action-card-header">
+              <span>✨ ${action.mod_name}</span>
+              <span style="font-size:11px; background:var(--emerald-bg); color:var(--emerald); padding:2px 6px; border-radius:4px;">🟢 实时生效中</span>
             </div>
-            <button class="btn btn-secondary btn-sm" data-restore="${escapeHtml(save.backup_id || '')}">♻️ 一键还原此快照</button>
-          </div>
-        `).join('');
-        showToast(`已载入 ${res.data.length} 个存档快照`);
-      } else {
-        container.innerHTML = `<div class="mod-row" style="color: var(--rose); justify-content: center; padding: 24px;">拉取快照失败: ${escapeHtml(res.error || '未知错误')}</div>`;
-      }
-    }
-
-    async function restoreSave(backupId) {
-      const gameDir = requireGameDir();
-      if (!gameDir) return;
-      if (!confirm(`[警告] 还原快照将覆盖当前游戏存档！确认恢复 [${backupId}] 吗？`)) return;
-      showToast('正在还原快照…');
-      const res = await apiPost('/api/saves/restore', { game_dir: gameDir, backup_id: backupId });
-      if (res.success) {
-        showToast('存档还原成功！');
-      } else {
-        showToast('还原失败: ' + (res.error || '未知错误'), true);
-      }
-    }
-
-    // --- LLM & Chat Studio Integration ---
-    let currentLlmConfig = {};
-    let llmPresets = {};
-    const chatHistory = [];
-
-    async function loadLlmConfig() {
-      const res = await apiGet('/api/llm/config');
-      if (res.success && res.data) {
-        currentLlmConfig = res.data.config || {};
-        llmPresets = res.data.presets || {};
-        populateModelForm(currentLlmConfig);
-        updateTopbarModelDisplay(currentLlmConfig);
-      }
-    }
-
-    function populateModelForm(cfg) {
-      if (!cfg) return;
-      $('llmProviderName').value = cfg.provider_name || 'DeepSeek';
-      $('llmNote').value = cfg.note || '';
-      $('llmWebsite').value = cfg.website_url || 'https://platform.deepseek.com';
-      $('llmProtocol').value = cfg.api_protocol || 'OpenAI Chat Completions';
-      $('llmEndpoint').value = cfg.api_endpoint || 'https://api.deepseek.com';
-      $('llmApiKey').value = '';
-      $('llmModel').value = cfg.model_name || 'deepseek-chat';
-      $('llmTemp').value = cfg.temperature !== undefined ? cfg.temperature : 0.7;
-      if ($('llmWebsiteLink')) {
-        const website = String(cfg.website_url || 'https://platform.deepseek.com');
-        $('llmWebsiteLink').href = /^https?:\/\//i.test(website) ? website : '#';
-      }
-    }
-
-    function updateTopbarModelDisplay(cfg) {
-      if (!cfg) return;
-      const provider = cfg.provider_name || 'DeepSeek';
-      const model = cfg.model_name || 'deepseek-chat';
-      const label = $('topbarModelLabel');
-      if (label) {
-        label.textContent = `${provider} · ${model}`;
-      }
-      const title = $('chatAssistantTitle');
-      if (title) {
-        title.textContent = `AI Mod 对话助手 (${provider} · ${model})`;
-      }
-    }
-
-    function openModelModal() {
-      const modal = $('modelModal');
-      $('llmTestResult').style.display = 'none';
-      if (modal && typeof modal.showModal === 'function') {
-        modal.showModal();
-      }
-    }
-
-    function closeModelModal() {
-      const modal = $('modelModal');
-      if (modal && typeof modal.close === 'function') {
-        modal.close();
-      }
-    }
-
-    function applyLlmPreset(key) {
-      document.querySelectorAll('.preset-pill').forEach(btn => btn.classList.remove('active'));
-      const activeBtn = Array.from(document.querySelectorAll('.preset-pill')).find(b => b.textContent.toLowerCase().includes(key));
-      if (activeBtn) activeBtn.classList.add('active');
-
-      const preset = llmPresets[key];
-      if (preset) {
-        $('llmProviderName').value = preset.provider_name || '';
-        $('llmNote').value = preset.note || '';
-        $('llmWebsite').value = preset.website_url || '';
-        $('llmEndpoint').value = preset.api_endpoint || '';
-        $('llmModel').value = preset.model_name || '';
-        if (preset.temperature !== undefined) $('llmTemp').value = preset.temperature;
-        if ($('llmWebsiteLink')) $('llmWebsiteLink').href = preset.website_url || '#';
-      }
-    }
-
-    function toggleApiKeyVisibility() {
-      const keyInput = $('llmApiKey');
-      keyInput.type = keyInput.type === 'password' ? 'text' : 'password';
-    }
-
-    async function testLlmConnection() {
-      const btn = $('btnTestLlm');
-      setBusy(btn, true, '测试中…');
-      const banner = $('llmTestResult');
-      banner.style.display = 'block';
-      banner.style.background = 'var(--bg-card-inner)';
-      banner.style.border = '1px solid var(--border)';
-      banner.style.color = 'var(--text-muted)';
-      banner.textContent = '正在与 API 端点握手通讯...';
-
-      const payload = {
-        provider_name: $('llmProviderName').value.trim(),
-        api_endpoint: $('llmEndpoint').value.trim(),
-        api_key: $('llmApiKey').value.trim(),
-        model_name: $('llmModel').value.trim(),
-        temperature: parseFloat($('llmTemp').value) || 0.7,
-      };
-
-      const res = await apiPost('/api/llm/test', payload);
-      setBusy(btn, false);
-      if (res.success) {
-        banner.style.background = 'var(--emerald-bg)';
-        banner.style.borderColor = 'rgba(16, 185, 129, 0.4)';
-        banner.style.color = '#34d399';
-        banner.textContent = `[SUCCESS] ${res.message || '连接成功，模型响应正常'}`;
-      } else {
-        banner.style.background = 'var(--rose-bg)';
-        banner.style.borderColor = 'rgba(244, 63, 94, 0.4)';
-        banner.style.color = '#fb7185';
-        banner.textContent = `[ERROR] ${res.error || '连接失败，请检查端点或 API Key'}`;
-      }
-    }
-
-    async function saveLlmConfig() {
-      const btn = $('btnSaveLlm');
-      setBusy(btn, true, '保存中…');
-      const payload = {
-        provider_name: $('llmProviderName').value.trim(),
-        note: $('llmNote').value.trim(),
-        website_url: $('llmWebsite').value.trim(),
-        api_protocol: $('llmProtocol').value.trim(),
-        api_endpoint: $('llmEndpoint').value.trim(),
-        api_key: $('llmApiKey').value.trim(),
-        model_name: $('llmModel').value.trim(),
-        temperature: parseFloat($('llmTemp').value) || 0.7,
-      };
-
-      const res = await apiPost('/api/llm/config', payload);
-      setBusy(btn, false);
-      if (res.success) {
-        currentLlmConfig = res.data;
-        updateTopbarModelDisplay(currentLlmConfig);
-        showToast('模型供应商配置已保存并生效！');
-        closeModelModal();
-      } else {
-        showToast('保存失败: ' + (res.error || '未知错误'), true);
-      }
-    }
-
-    function appendChatBubble(role, content, bubbleId = null) {
-      const container = $('chatMessages');
-      const div = document.createElement('div');
-      if (bubbleId) div.id = bubbleId;
-      div.className = role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant';
-
-      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const provider = currentLlmConfig.provider_name || 'DeepSeek';
-      const name = role === 'user' ? '你' : `AI 助手 (${escapeHtml(provider)})`;
-
-      let actionsHtml = '';
-      if (role === 'assistant' && !bubbleId) {
-        const safeContent = escapeHtml(content);
-        actionsHtml = `
-          <div class="chat-bubble-actions">
-            <button class="btn btn-secondary btn-sm" data-adopt="${safeContent}">应用至制作工坊</button>
-            <button class="btn btn-secondary btn-sm" data-copy="${safeContent}">复制代码</button>
+            <div style="font-size:12px; color:var(--text-muted);">${action.summary}</div>
+            ${tuningHtml ? `<div class="tuning-group">${tuningHtml}</div>` : ''}
+            <div class="action-card-footer">
+              <button class="btn btn-sm btn-primary" onclick="pinMod('${action.mod_id}', '${action.mod_name}', '${action.summary}')">📌 固化为永久 Mod</button>
+              <button class="btn btn-sm" onclick="showToast('已撤回此项热修改', 'info')">↩️ 撤销</button>
+            </div>
           </div>
         `;
       }
 
-      div.innerHTML = `
-        <div class="chat-bubble-header">
-          <span class="chat-bubble-name">
-            ${role === 'assistant' ? '<span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#10b981;"></span>' : ''}
-            ${name}
-          </span>
-          <span class="chat-bubble-time">${timeStr}</span>
+      msg.innerHTML = `
+        <div class="msg-avatar">AI</div>
+        <div class="msg-content">
+          ${html}
+          ${actionHtml}
         </div>
-        <div class="chat-bubble-body">${escapeHtml(content)}</div>
-        ${actionsHtml}
       `;
-
-      container.appendChild(div);
+      container.appendChild(msg);
       container.scrollTop = container.scrollHeight;
-      return div;
+      chatHistory.push({ role: 'assistant', content: markdownText });
     }
 
-    function escapeHtml(text) {
-      if (!text) return '';
-      return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    async function sendChatMessage(presetPrompt = null) {
-      const input = $('chatInputText');
-      const text = presetPrompt ? presetPrompt : input.value.trim();
-      if (!text) return;
-      if (!presetPrompt) input.value = '';
-
-      // Append user bubble
-      appendChatBubble('user', text);
-      chatHistory.push({ role: 'user', content: text });
-
-      // Thinking bubble
-      const thinkingId = 'thinking-' + Date.now();
-      const thinkingBubble = appendChatBubble('assistant', '正在调用游戏逆向与代码生成模型…', thinkingId);
-      const btn = $('btnSendChat');
-      setBusy(btn, true, '思考中…');
-
-      // Context
-      let gameContext = null;
-      if ($('chatIncludeGameContext').checked && state.gameDir) {
-        gameContext = {
-          game_dir: state.gameDir,
-          engine: state.detectedEngine ? state.detectedEngine.name : '',
-          framework: state.detectedEngine ? state.detectedEngine.mod_framework : ''
-        };
-      }
-
-      const res = await apiPost('/api/llm/chat', {
-        messages: chatHistory,
-        game_context: gameContext
-      });
-
-      setBusy(btn, false);
-      if (res.success && res.reply) {
-        chatHistory.push({ role: 'assistant', content: res.reply });
-        thinkingBubble.remove();
-        appendChatBubble('assistant', res.reply);
-      } else {
-        thinkingBubble.remove();
-        appendChatBubble('assistant', `[提示] 响应异常: ${res.error || '请检查模型配置及网络连接'}`);
-      }
-    }
-
-    function sendQuickPrompt(prompt) {
-      switchTab('chat');
-      sendChatMessage(prompt);
-    }
-
-    function adoptAsModRequirement(text) {
-      switchTab('studio');
-      $('planRequest').value = text;
-      showToast('已采纳 AI 方案至 Mod 需求框！');
-      $('planRequest').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-
-    function clearChatHistory() {
-      chatHistory.length = 0;
-      const container = $('chatMessages');
-      container.innerHTML = `
-        <div class="chat-bubble-assistant">
-          <div class="chat-bubble-header">
-            <span class="chat-bubble-name">
-              <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#10b981;"></span>
-              AI 制作助手
-            </span>
-            <span style="font-size: 11px; color: var(--text-dim);">已清空</span>
-          </div>
-          <div class="chat-bubble-body">对话记录已清空，随时向我提问 Mod 需求或逆向问题。</div>
-        </div>
-      `;
-      showToast('对话记录已清空');
-    }
-
-    /* Theme Management (Arc / Craft Light & Dark) */
-    function initTheme() {
-      const saved = localStorage.getItem('aimod_theme') || 'light';
-      setTheme(saved);
-    }
-
-    function setTheme(theme) {
-      document.documentElement.setAttribute('data-theme', theme);
-      try { localStorage.setItem('aimod_theme', theme); } catch (e) {}
-      const isDark = theme === 'dark';
-      const icon = $('themeToggleIcon');
-      const label = $('themeToggleLabel');
-      if (icon) icon.textContent = isDark ? '🌙' : '☀️';
-      if (label) label.textContent = isDark ? '深色' : '浅色';
-    }
-
-    function toggleTheme() {
-      const current = document.documentElement.getAttribute('data-theme') || 'light';
-      const next = current === 'dark' ? 'light' : 'dark';
-      setTheme(next);
-      showToast(next === 'dark' ? '已切换至深色模式 (Dark Mode)' : '已切换至浅色模式 (Light Mode)');
-    }
-
-    /* Command Palette Implementation */
-    const COMMANDS = [
-      { id: 'tab-inspector', category: '工作区', title: '切换至：游戏巡检 · Inspector', kbd: '1', action: () => switchTab('inspector') },
-      { id: 'tab-studio', category: '工作区', title: '切换至：制作新 Mod · Studio', kbd: '2', action: () => switchTab('studio') },
-      { id: 'tab-manager', category: '工作区', title: '切换至：已装模组 · Manager', kbd: '3', action: () => { switchTab('manager'); refreshMods(); } },
-      { id: 'tab-saves', category: '工作区', title: '切换至：存档时光机 · Snapshots', kbd: '4', action: () => { switchTab('saves'); refreshSaves(); } },
-      { id: 'tab-logs', category: '工作区', title: '切换至：崩溃排查 · Crash Logs', kbd: '5', action: () => switchTab('logs') },
-      { id: 'tab-hooklab', category: '工作区', title: '切换至：Hook 实验室 · Hook Lab', kbd: '6', action: () => switchTab('hooklab') },
-      { id: 'tab-chat', category: '工作区', title: '切换至：AI 模组助手 · Assistant', kbd: '7', action: () => switchTab('chat') },
-      { id: 'act-theme', category: '外观主题', title: '切换 浅色 / 深色 主题 (Light & Dark)', kbd: 'T', action: () => toggleTheme() },
-      { id: 'act-detect', category: '执行指令', title: '扫描识别当前游戏目录架构', kbd: 'Enter', action: () => detectGame() },
-      { id: 'act-doctor', category: '执行指令', title: '运行本机 Mod 编译环境健康体检', kbd: 'D', action: () => runDoctor() },
-      { id: 'act-model', category: '配置', title: '配置大模型供应商 (DeepSeek / Claude / OpenAI)', kbd: ',', action: () => openModelModal() },
-      { id: 'act-save', category: '执行指令', title: '立即生成游戏存档快照备份', kbd: 'S', action: () => createSaveBackup() },
-      { id: 'act-rollback', category: '安全防护', title: '撤销所有 Mod，还原纯净游戏', kbd: 'R', action: () => openRollbackDialog() },
-      { id: 'game-hk', category: '预设游戏', title: '载入预设：空洞骑士 (Hollow Knight - Unity)', action: () => quickSelectGame('C:\\Games\\Hollow Knight', '空洞骑士 (Unity)') },
-      { id: 'game-re4', category: '预设游戏', title: '载入预设：生化危机4重制版 (Resident Evil 4 - RE)', action: () => quickSelectGame('C:\\Games\\Resident Evil 4', '生化危机4 (RE)') },
-      { id: 'game-pal', category: '预设游戏', title: '载入预设：幻兽帕鲁 (Palworld - Unreal 5)', action: () => quickSelectGame('C:\\Games\\Palworld', '幻兽帕鲁 (Unreal)') },
-      { id: 'game-bro', category: '预设游戏', title: '载入预设：土豆兄弟 (Brotato - Godot)', action: () => quickSelectGame('C:\\Games\\Brotato', '土豆兄弟 (Godot)') }
-    ];
-
-    function openCommandPalette() {
-      const modal = $('commandPaletteModal');
-      modal.showModal();
-      $('cmdInput').value = '';
-      filterCommandPalette('');
-      $('cmdInput').focus();
-    }
-
-    function closeCommandPalette() {
-      const modal = $('commandPaletteModal');
-      if (modal.open) modal.close();
-    }
-
-    function filterCommandPalette(query) {
-      const list = $('cmdList');
-      const q = query.trim().toLowerCase();
-      const filtered = COMMANDS.filter(cmd => !q || cmd.title.toLowerCase().includes(q) || cmd.category.toLowerCase().includes(q));
-      list.innerHTML = filtered.map((cmd, idx) => `
-        <div class="cmd-item" onclick="executeCommand('${cmd.id}')" data-idx="${idx}">
-          <div class="cmd-item-left">
-            <span style="font-size: 10px; font-family: var(--mono); color: var(--text-dim); text-transform: uppercase;">[${cmd.category}]</span>
-            <span>${cmd.title}</span>
-          </div>
-          ${cmd.kbd ? `<kbd class="cmd-kbd">${cmd.kbd}</kbd>` : ''}
-        </div>
-      `).join('') || '<div style="padding: 18px; text-align: center; color: var(--text-dim); font-size: 12px;">未找到匹配命令</div>';
-    }
-
-    function executeCommand(id) {
-      const cmd = COMMANDS.find(c => c.id === id);
-      closeCommandPalette();
-      if (cmd && cmd.action) cmd.action();
-    }
-
-    // Global Command Palette & Keyboard Navigation
-    window.addEventListener('keydown', (e) => {
-      // ⌘K or Ctrl+K to toggle Command Palette
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    function handleChatKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        const modal = $('commandPaletteModal');
-        if (modal.open) closeCommandPalette(); else openCommandPalette();
+        submitPrompt();
+      }
+    }
+
+    function sendPrompt(text) {
+      document.getElementById('prompt-input').value = text;
+      submitPrompt();
+    }
+
+    async function submitPrompt() {
+      if (!currentGame) {
+        showToast('请先选择游戏', 'error');
         return;
       }
-      // Esc closes Command Palette
-      if (e.key === 'Escape') {
-        const modal = $('commandPaletteModal');
-        if (modal && modal.open) { closeCommandPalette(); return; }
+      const input = document.getElementById('prompt-input');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+
+      appendUserMessage(text);
+
+      const btn = document.getElementById('btn-send');
+      btn.disabled = true;
+      btn.textContent = '分析注入中...';
+
+      try {
+        const resp = await fetch('/api/mod/interact', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            game_dir: currentGame.game_dir,
+            prompt: text,
+            history: chatHistory
+          })
+        });
+        const res = await resp.json();
+        if (res.success) {
+          appendAIMessage(res.data.reply, res.data.action);
+        } else {
+          appendAIMessage('❌ 生成失败: ' + res.error);
+        }
+      } catch (e) {
+        appendAIMessage('❌ 网络连接错误: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '发送生成';
       }
-      // Fast tab switching 1-7 or theme toggle 't' when not typing in input
-      const tag = (document.activeElement && document.activeElement.tagName) || '';
-      if (tag !== 'INPUT' && tag !== 'TEXTAREA' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        if (e.key.toLowerCase() === 't') {
-          toggleTheme();
+    }
+
+    function onParamTune(modId, paramId, val) {
+      showToast(`已实时调节 [${paramId}] = ${val}`, 'info');
+    }
+
+    async function pinMod(modId, modName, summary) {
+      if (!currentGame) return;
+      showToast(`正在将【${modName}】固化为永久 Mod...`, 'info');
+      try {
+        const resp = await fetch('/api/mod/pin', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            game_dir: currentGame.game_dir,
+            mod_id: modId,
+            mod_name: modName,
+            summary: summary
+          })
+        });
+        const res = await resp.json();
+        if (res.success) {
+          showToast(`🎉 ${res.data.message}`, 'success');
+          loadGameMods(currentGame);
+        } else {
+          showToast('固化失败: ' + res.error, 'error');
+        }
+      } catch (e) {
+        showToast('固化请求失败: ' + e.message, 'error');
+      }
+    }
+
+    // --- Sidebar Tabs & Data ---
+    function switchSidebarTab(tab) {
+      currentSidebarTab = tab;
+      document.querySelectorAll('.sidebar-tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      renderSidebarContent();
+    }
+
+    function renderSidebarContent() {
+      const container = document.getElementById('sidebar-content');
+      document.getElementById('active-mods-count').textContent = activeActions.length;
+      document.getElementById('installed-mods-count').textContent = installedMods.length;
+
+      if (currentSidebarTab === 'live') {
+        if (activeActions.length === 0) {
+          container.innerHTML = `
+            <div style="text-align:center; padding:40px 10px; color:var(--text-muted);">
+              <p>暂无正在生效的运行时修改</p>
+              <p style="font-size:12px; margin-top:6px;">在左侧对话框对 AI 提出需求即可实时生效。</p>
+            </div>
+          `;
           return;
         }
-        const tabMap = { '1': 'inspector', '2': 'studio', '3': 'manager', '4': 'saves', '5': 'logs', '6': 'hooklab', '7': 'chat' };
-        if (tabMap[e.key]) {
-          switchTab(tabMap[e.key]);
+        container.innerHTML = activeActions.map((act, idx) => `
+          <div class="mod-item-card">
+            <div class="mod-item-header">
+              <span>${act.mod_name}</span>
+              <span style="font-size:11px; color:var(--emerald);">● 生效中</span>
+            </div>
+            <div style="font-size:12px; color:var(--text-muted);">${act.summary}</div>
+            <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:6px;">
+              <button class="btn btn-sm btn-primary" onclick="pinMod('${act.mod_id}', '${act.mod_name}', '${act.summary}')">📌 固化为 Mod</button>
+            </div>
+          </div>
+        `).join('');
+      } else if (currentSidebarTab === 'mods') {
+        if (installedMods.length === 0) {
+          container.innerHTML = `
+            <div style="text-align:center; padding:40px 10px; color:var(--text-muted);">
+              <p>游戏目录暂无已安装的 Mod</p>
+            </div>
+          `;
+          return;
         }
+        container.innerHTML = installedMods.map(m => `
+          <div class="mod-item-card">
+            <div class="mod-item-header">
+              <span>${m.name || m.id}</span>
+              <span style="font-size:11px; color:var(--primary);">已安装</span>
+            </div>
+            <div style="font-size:12px; color:var(--text-muted);">${m.description || m.path || ''}</div>
+            <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:6px;">
+              <button class="btn btn-sm" onclick="uninstallMod('${m.id}')" style="color:var(--rose);">卸载</button>
+            </div>
+          </div>
+        `).join('');
+      } else if (currentSidebarTab === 'saves') {
+        container.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <span style="font-size:13px; font-weight:700;">存档安全快照</span>
+            <button class="btn btn-sm btn-primary" onclick="createSaveBackup()">+ 新建备份</button>
+          </div>
+          <div id="saves-list-container">
+            <div style="text-align:center; padding:30px 10px; color:var(--text-muted);">加载存档快照中...</div>
+          </div>
+        `;
+        loadGameSaves(currentGame);
       }
-    });
+    }
 
-    // Universal Event Delegation
-    document.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-action], [data-tab], [data-adopt], [data-copy], [data-uninstall], [data-restore]');
-      if (!btn) return;
-      if (btn.dataset.adopt) { adoptAsModRequirement(btn.dataset.adopt); return; }
-      if (btn.dataset.copy) { navigator.clipboard.writeText(btn.dataset.copy).then(() => showToast('已复制内容')).catch(() => showToast('复制失败', true)); return; }
-      if (btn.dataset.uninstall) { uninstallMod(btn.dataset.uninstall); return; }
-      if (btn.dataset.restore) { restoreSave(btn.dataset.restore); return; }
-      const actions = {
-        detect: () => detectGame(btn),
-        process: () => checkProcess(btn),
-        doctor: () => runDoctor(btn),
-        plan: () => generatePlan(btn),
-        'clear-plan': () => { $('planRequest').value = ''; $('planCustomizations').value = ''; $('planSpecViewer').textContent = '已清空。'; },
-        'hook-template': () => generateHook(btn, false),
-        'hook-evidence': () => generateHook(btn, true),
-        'copy-hook': copyHookCode,
-        mods: () => refreshMods(btn),
-        rollback: rollbackAllMods,
-        'read-logs': () => readLogs(btn),
-        diagnose: () => diagnoseLogs(btn),
-        'create-save': () => createSaveBackup(btn),
-        saves: () => refreshSaves(btn)
-      };
-      if (btn.dataset.tab) {
-        switchTab(btn.dataset.tab);
-        const navAction = btn.dataset.action;
-        if (navAction && actions[navAction]) actions[navAction]();
-        return;
-      }
-      const act = btn.dataset.action;
-      if (actions[act]) actions[act]();
-    });
-
-    window.addEventListener('hashchange', () => switchTab(location.hash.slice(1) || 'inspector', false));
-    window.addEventListener('DOMContentLoaded', () => {
-      initTheme();
-      switchTab(location.hash.slice(1) || 'inspector', false);
-      loadLlmConfig();
-      const chatInput = $('chatInputText');
-      if (chatInput) {
-        chatInput.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendChatMessage();
-          }
+    async function loadGameMods(game) {
+      if (!game) return;
+      try {
+        const resp = await fetch('/api/mods/list', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ game_dir: game.game_dir })
         });
-      }
-      apiGet('/api/health').then(res => {
-        const pill = $('connectionStatus');
+        const res = await resp.json();
         if (res.success) {
-          pill.querySelector('span:last-child').textContent = `就绪`;
-        } else {
-          pill.style.background = 'var(--rose-bg)';
-          pill.style.color = 'var(--rose)';
-          pill.style.borderColor = 'rgba(244, 63, 94, 0.4)';
-          pill.querySelector('span:last-child').textContent = '服务离线';
+          installedMods = res.data.mods || [];
+          document.getElementById('installed-mods-count').textContent = installedMods.length;
+          if (currentSidebarTab === 'mods') renderSidebarContent();
         }
+      } catch (e) {}
+    }
+
+    async function uninstallMod(modId) {
+      if (!currentGame) return;
+      try {
+        const resp = await fetch('/api/mods/uninstall', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ game_dir: currentGame.game_dir, mod_id: modId })
+        });
+        const res = await resp.json();
+        if (res.success) {
+          showToast('Mod 已安全卸载！', 'success');
+          loadGameMods(currentGame);
+        }
+      } catch (e) {
+        showToast('卸载失败: ' + e.message, 'error');
+      }
+    }
+
+    async function loadGameSaves(game) {
+      if (!game) return;
+      try {
+        const resp = await fetch('/api/saves/list', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ game_dir: game.game_dir })
+        });
+        const res = await resp.json();
+        if (res.success) {
+          const listDiv = document.getElementById('saves-list-container');
+          if (!listDiv) return;
+          const backups = res.data.backups || [];
+          if (backups.length === 0) {
+            listDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">暂无备份记录</div>';
+            return;
+          }
+          listDiv.innerHTML = backups.map(b => `
+            <div class="mod-item-card" style="margin-bottom:8px;">
+              <div class="mod-item-header">
+                <span>🛡️ ${b.backup_id}</span>
+              </div>
+              <div style="font-size:11px; color:var(--text-muted);">${b.created_at || ''} (${b.file_count || 0} 个文件)</div>
+              <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:6px;">
+                <button class="btn btn-sm" onclick="restoreSave('${b.backup_id}')">还原此备份</button>
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (e) {}
+    }
+
+    async function restoreSave(backupId) {
+      if (!confirm(`确定要将游戏存档还原到快照 [${backupId}] 吗？`)) return;
+      try {
+        const resp = await fetch('/api/saves/restore', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ game_dir: currentGame.game_dir, backup_id: backupId })
+        });
+        const res = await resp.json();
+        if (res.success) {
+          showToast('存档已成功还原！', 'success');
+        } else {
+          showToast('还原失败: ' + res.error, 'error');
+        }
+      } catch (e) {
+        showToast('还原请求出错: ' + e.message, 'error');
+      }
+    }
+
+    function addCustomGame() {
+      const p = prompt('请输入你的游戏根目录完整路径 (例如: D:\\Games\\MyGame):');
+      if (!p || !p.trim()) return;
+      selectGame({
+        id: 'custom_' + Date.now(),
+        name: p.split(/[\\/]/).filter(Boolean).pop() || '自定义游戏',
+        game_dir: p.trim(),
+        appid: '',
+        engine_name: '待检测',
+        is_running: false
       });
-    });
+    }
+
+    // --- LLM & CC Switch Modal ---
+    function openLLMModal() {
+      document.getElementById('llm-modal').classList.add('active');
+    }
+    function closeLLMModal() {
+      document.getElementById('llm-modal').classList.remove('active');
+    }
+
+    let llmPresets = {};
+    async function loadLLMConfig() {
+      try {
+        const resp = await fetch('/api/llm/config');
+        const res = await resp.json();
+        if (res.success) {
+          const cfg = res.data.config || {};
+          llmPresets = res.data.presets || {};
+          document.getElementById('llm-endpoint').value = cfg.api_endpoint || 'http://127.0.0.1:8000/v1';
+          document.getElementById('llm-model').value = cfg.model_name || 'claude-3-7-sonnet';
+          if (cfg.api_key_preview) {
+            document.getElementById('llm-key').placeholder = `已配置密钥: ${cfg.api_key_preview}`;
+          }
+        }
+      } catch (e) {}
+    }
+
+    function onPresetChange() {
+      const key = document.getElementById('llm-preset-select').value;
+      const preset = llmPresets[key];
+      if (preset) {
+        document.getElementById('llm-endpoint').value = preset.api_endpoint || '';
+        document.getElementById('llm-model').value = preset.model_name || '';
+      }
+    }
+
+    async function testLLMConnection() {
+      showToast('正在测试与大模型接口的连接...', 'info');
+      try {
+        const resp = await fetch('/api/llm/test', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            api_endpoint: document.getElementById('llm-endpoint').value.trim(),
+            api_key: document.getElementById('llm-key').value.trim(),
+            model_name: document.getElementById('llm-model').value.trim()
+          })
+        });
+        const res = await resp.json();
+        if (res.success) {
+          showToast(`⚡ ${res.message}`, 'success');
+        } else {
+          showToast(`❌ 测试失败: ${res.error}`, 'error');
+        }
+      } catch (e) {
+        showToast('测试网络异常: ' + e.message, 'error');
+      }
+    }
+
+    async function saveLLMConfig() {
+      try {
+        const body = {
+          api_endpoint: document.getElementById('llm-endpoint').value.trim(),
+          model_name: document.getElementById('llm-model').value.trim()
+        };
+        const key = document.getElementById('llm-key').value.trim();
+        if (key) body.api_key = key;
+
+        const resp = await fetch('/api/llm/config', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(body)
+        });
+        const res = await resp.json();
+        if (res.success) {
+          showToast('大模型配置保存成功！', 'success');
+          closeLLMModal();
+        } else {
+          showToast('保存失败: ' + res.error, 'error');
+        }
+      } catch (e) {
+        showToast('保存配置异常: ' + e.message, 'error');
+      }
+    }
   </script>
 </body>
 </html>

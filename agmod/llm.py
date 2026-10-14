@@ -78,6 +78,15 @@ PRESETS: Dict[str, Dict[str, Any]] = {
         "model_name": "deepseek-ai/DeepSeek-V3",
         "temperature": 0.7,
     },
+    "ccswitch": {
+        "provider_name": "CC Switch (本地中转网关)",
+        "note": "配合桌面的 CC Switch 本地转发，直接配置 API Key 即可连接",
+        "website_url": "http://127.0.0.1:8000",
+        "api_protocol": "OpenAI Chat Completions",
+        "api_endpoint": "http://127.0.0.1:8000/v1",
+        "model_name": "claude-3-7-sonnet",
+        "temperature": 0.7,
+    },
     "ollama": {
         "provider_name": "Ollama (本地模型)",
         "note": "本地免联网运行 (如 Qwen2.5 / Llama3)",
