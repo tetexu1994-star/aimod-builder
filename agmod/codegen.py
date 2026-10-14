@@ -53,8 +53,9 @@ def generate_hook_from_evidence(evidence: dict) -> dict:
 
     if target.engine == "unity":
         param_sigs = [f"{p.get('type', 'object')} {p.get('name', f'arg{i + 1}')}" for i, p in enumerate(params)]
-        prefix_params = [f"{cls_clean} __instance"] + ([] if target.is_static else param_sigs)
-        postfix_params = [f"{cls_clean} __instance"] + ([] if target.is_static else param_sigs)
+        instance_param = [] if target.is_static else [f"{cls_clean} __instance"]
+        prefix_params = instance_param + param_sigs
+        postfix_params = instance_param + param_sigs
         if target.return_type.lower() not in ("void", ""):
             postfix_params.append(f"ref {target.return_type} __result")
         code = f'''using HarmonyLib;
@@ -90,7 +91,9 @@ RegisterHook("{_lua_string(hook_path)}", function({", ".join(lua_params)})
     -- Access parameters through UE4SS RemoteUnrealParam objects.
 '''
         for i, p in enumerate(params, 1):
-            code += f'    -- local value_{_sanitize_ident(p.get("name", f"param{i}"))} = param{i}:get()\n'
+            p_name = p.get("name", f"param{i}")
+            safe_name = _sanitize_ident(p_name)
+            code += f'    -- local value_{safe_name} = {p_name}:get()\n'
         code += 'end)\n'
         return _result(target, "lua", "UE4SS", code, "Place this hook in the UE4SS mod scripts/main.lua file.")
 

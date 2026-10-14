@@ -199,8 +199,25 @@ class TestBenchmarkEvaluation(unittest.TestCase):
         })
         self.assertTrue(result["validation"]["valid"])
         self.assertIn("Game.Player", result["code"])
+        self.assertIn("Controller __instance", result["code"])
+        self.assertIn("int amount", result["code"])
         self.assertEqual(result["target"]["signature"], "System.Void AddGold(System.Int32)")
         self.assertEqual(result["evidence"]["source"], "rea_fast_search")
+
+    def test_unity_static_method_omits_instance_and_keeps_params(self):
+        result = generate_hook_from_evidence({
+            "engine": "unity",
+            "target": {
+                "class_name": "GlobalScore",
+                "method_name": "AddScore",
+                "is_static": True,
+                "parameters": [{"type": "int", "name": "points"}],
+            },
+        })
+        self.assertTrue(result["validation"]["valid"])
+        self.assertNotIn("__instance", result["code"])
+        self.assertIn("int points", result["code"])
+
 
     def test_plan_generation_all_16_cases(self):
         """Verify plan_mod generates complete ModSpec, MODDING_PLAN, and engine project across all 16 cases."""
