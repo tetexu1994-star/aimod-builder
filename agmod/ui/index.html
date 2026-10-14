@@ -7,34 +7,34 @@
   <title>AI Mod Builder · 游戏 Mod 制作与安全工作台</title>
   <style>
     :root {
-      --bg-root: #0b0f19;
-      --bg-sidebar: #0f172a;
-      --bg-card: #141f36;
-      --bg-card-hover: #1a2947;
-      --bg-card-subtle: #0f172a;
-      --bg-input: #090e1a;
-      --border: #202e4d;
-      --border-hover: #2f4370;
-      --border-focus: #38bdf8;
-      --primary: #38bdf8;
-      --primary-hover: #0ea5e9;
-      --emerald: #10b981;
-      --emerald-bg: rgba(16, 185, 129, 0.12);
-      --violet: #a855f7;
-      --violet-bg: rgba(168, 85, 247, 0.12);
-      --amber: #f59e0b;
-      --amber-bg: rgba(245, 158, 11, 0.12);
-      --rose: #f43f5e;
-      --rose-bg: rgba(244, 63, 94, 0.12);
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --text-dim: #64748b;
+      --bg-root: #0e1116;
+      --bg-sidebar: #12161c;
+      --bg-card: #171c24;
+      --bg-card-hover: #1d2430;
+      --bg-card-subtle: #12161c;
+      --bg-input: #0c0f14;
+      --border: #262d38;
+      --border-hover: #38414f;
+      --border-focus: #e3a857;
+      --primary: #e3a857;
+      --primary-hover: #c98f3f;
+      --emerald: #2fbf8f;
+      --emerald-bg: rgba(47, 191, 143, 0.12);
+      --violet: #9d7bd8;
+      --violet-bg: rgba(157, 123, 216, 0.12);
+      --amber: #e3a857;
+      --amber-bg: rgba(227, 168, 87, 0.12);
+      --rose: #e0616b;
+      --rose-bg: rgba(224, 97, 107, 0.12);
+      --text-main: #edf0f4;
+      --text-muted: #9aa4b2;
+      --text-dim: #6b7686;
       --radius-sm: 6px;
       --radius: 10px;
       --radius-lg: 14px;
-      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "JetBrains Mono", monospace;
-      --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      --sans: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.28);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -433,7 +433,7 @@
 <body>
 
   <!-- Hidden Skip Link for A11y and Verification Check -->
-  <a href="#main-content" style="position: absolute; left: -9999px;">跳至主内容 (game-mod-agent)</a>
+  <a href="#main-content" style="position: absolute; left: -9999px;">跳至主内容</a>
 
   <div class="app-shell">
 
@@ -520,7 +520,7 @@
             <span class="status-dot"></span>
             <span>本地服务在线</span>
           </div>
-          <button class="btn btn-secondary btn-sm" data-action="doctor">🩺 环境健康自检</button>
+          <button class="btn btn-secondary btn-sm" data-action="doctor">环境健康自检</button>
         </div>
       </header>
 
@@ -535,7 +535,7 @@
           </label>
           <div class="selector-row">
             <input type="text" id="targetGameDir" class="input-text code" placeholder="例如: D:\SteamLibrary\steamapps\common\Hollow Knight 或 /Games/Hades" value="">
-            <button class="btn btn-primary" data-action="detect">🚀 一键识别游戏</button>
+            <button class="btn btn-primary" data-action="detect">一键识别游戏</button>
           </div>
         </div>
 
@@ -580,7 +580,7 @@
                 </div>
                 <button class="btn btn-secondary btn-sm" data-action="process">刷新状态</button>
               </div>
-              <div id="processDetails" class="code-console">安装或卸载 Mod 前自动感测游戏是否运行，有效防止 Windows 文件写锁定（Access Denied）错误。</div>
+              <div id="processDetails" class="code-console">安装或卸载 Mod 前自动检测游戏是否正在运行，避免文件被占用导致失败。</div>
             </div>
           </div>
 
@@ -588,11 +588,11 @@
             <div class="card-header">
               <div class="card-title">
                 <svg class="icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-                <span>本机 Mod 开发工具链状态 (Doctor)</span>
+                <span>本机 Mod 开发环境体检</span>
               </div>
               <button class="btn btn-secondary btn-sm" data-action="doctor">立即体检</button>
             </div>
-            <div id="doctorReport" class="code-console">点击「立即体检」检查本机 .NET SDK、逆向反编译器（ilspycmd / Cpp2IL）与缓存就绪状态...</div>
+            <div id="doctorReport" class="code-console">点击「立即体检」检查本机是否具备制作 Mod 所需的环境，以及缓存就绪状态...</div>
           </div>
         </div>
 
@@ -611,11 +611,11 @@
               <div style="margin-bottom: 12px;">
                 <span style="font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">常用需求一键填入:</span>
                 <div class="preset-container">
-                  <span class="preset-chip" onclick="applyPreset('给主角增加 99999 金币，可通过配置修改数值', 'player_gold_boost', {'amount': 99999})">💰 99999 金币</span>
-                  <span class="preset-chip" onclick="applyPreset('主角移动速度提高 2.0 倍', 'speed_multiplier', {'multiplier': 2.0})">⚡ 2倍移速</span>
-                  <span class="preset-chip" onclick="applyPreset('玩家免疫受到的一切伤害 (锁血无敌)', 'god_mode_invincible', {'god_mode': true})">🛡️ 锁血无敌</span>
-                  <span class="preset-chip" onclick="applyPreset('玩家翻滚与奔跑耐力永久不减', 'infinite_stamina', {'infinite': true})">♾️ 无限耐力</span>
-                  <span class="preset-chip" onclick="applyPreset('武器基础攻击力提升 50%', 'weapon_damage_up', {'damage_rate': 1.5})">🗡️ 攻击加成</span>
+                  <span class="preset-chip" onclick="applyPreset('给主角增加 99999 金币，可通过配置修改数值', 'player_gold_boost', {'amount': 99999})">99999 金币</span>
+                  <span class="preset-chip" onclick="applyPreset('主角移动速度提高 2.0 倍', 'speed_multiplier', {'multiplier': 2.0})">2倍移速</span>
+                  <span class="preset-chip" onclick="applyPreset('玩家免疫受到的一切伤害 (锁血无敌)', 'god_mode_invincible', {'god_mode': true})">锁血无敌</span>
+                  <span class="preset-chip" onclick="applyPreset('玩家翻滚与奔跑耐力永久不减', 'infinite_stamina', {'infinite': true})">无限耐力</span>
+                  <span class="preset-chip" onclick="applyPreset('武器基础攻击力提升 50%', 'weapon_damage_up', {'damage_rate': 1.5})">攻击加成</span>
                 </div>
               </div>
 
@@ -642,7 +642,7 @@
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-top: 4px;">
-                  <button class="btn btn-primary" data-action="plan">✨ 一键生成 Mod 规划与蓝图</button>
+                  <button class="btn btn-primary" data-action="plan">一键生成 Mod 规划与蓝图</button>
                   <button class="btn btn-secondary" data-action="clear-plan">清空重写</button>
                 </div>
               </div>
@@ -669,8 +669,8 @@
                 <span>当前游戏已安装的 Mod 清单</span>
               </div>
               <div style="display: flex; gap: 8px;">
-                <button class="btn btn-secondary btn-sm" data-action="mods">🔄 刷新清单</button>
-                <button class="btn btn-danger btn-sm" data-action="rollback">⚠️ 还原纯净游戏 (一键撤销所有 Mod)</button>
+                <button class="btn btn-secondary btn-sm" data-action="mods">刷新清单</button>
+                <button class="btn btn-danger btn-sm" data-action="rollback">还原纯净游戏（一键撤销所有 Mod）</button>
               </div>
             </div>
 
@@ -704,7 +704,7 @@
                   <input type="text" id="saveBackupLabel" class="input-text" placeholder="例如: 修改金币前备份" value="修改前备份">
                 </div>
 
-                <button class="btn btn-primary" data-action="create-save" style="margin-top: 4px;">💾 立即为当前存档生成快照</button>
+                <button class="btn btn-primary" data-action="create-save" style="margin-top: 4px;">立即为当前存档生成快照</button>
               </div>
             </div>
 
@@ -714,7 +714,7 @@
                   <svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                   <span>历史快照时间线</span>
                 </div>
-                <button class="btn btn-secondary btn-sm" data-action="saves">🔄 刷新快照</button>
+                <button class="btn btn-secondary btn-sm" data-action="saves">刷新快照</button>
               </div>
 
               <div id="savesListContainer" class="mod-table">
@@ -735,8 +735,8 @@
                 <span>游戏运行与崩溃日志排查</span>
               </div>
               <div style="display: flex; gap: 8px;">
-                <button class="btn btn-secondary btn-sm" data-action="read-logs">📥 自动抓取最近日志</button>
-                <button class="btn btn-primary btn-sm" data-action="diagnose">🧠 AI 自愈分析报错</button>
+                <button class="btn btn-secondary btn-sm" data-action="read-logs">自动抓取最近日志</button>
+                <button class="btn btn-primary btn-sm" data-action="diagnose">自动分析报错原因</button>
               </div>
             </div>
 
@@ -769,7 +769,7 @@
                 <div>
                   <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">目标引擎框架</label>
                   <select id="hookEngine" class="select-field">
-                    <option value="unity">Unity (Mono / IL2CPP - Harmony C#)</option>
+                    <option value="unity">Unity</option>
                     <option value="unreal">Unreal Engine (UE4SS Lua RegisterHook)</option>
                     <option value="reengine">RE-Engine (REFramework Lua sdk.hook)</option>
                     <option value="godot">Godot Engine (GDScript ModLoader)</option>
@@ -807,7 +807,7 @@
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-top: 4px;">
-                  <button class="btn btn-primary" data-action="hook-template">⚡ 合成 Hook 源码</button>
+                  <button class="btn btn-primary" data-action="hook-template">生成 Hook 代码</button>
                   <button class="btn btn-secondary" data-action="hook-evidence">基于 Evidence 合成</button>
                 </div>
 
@@ -824,7 +824,7 @@
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <span id="hookStatus" class="badge badge-unity">Ready</span>
-                  <button class="btn btn-secondary btn-sm" data-action="copy-hook">📋 复制代码</button>
+                  <button class="btn btn-secondary btn-sm" data-action="copy-hook">复制代码</button>
                 </div>
               </div>
               <pre id="hookCodeOutput" class="code-console" style="min-height: 280px;">// 点击「合成 Hook 源码」生成具备静态闭合校验的补丁源码...</pre>
@@ -982,7 +982,7 @@
       if (res.success && res.data) {
         $('processDetails').textContent = JSON.stringify(res.data, null, 2);
         if (res.data.is_running) {
-          showToast('⚠️ 游戏正在运行中，注意退出后修改！', true);
+          showToast('游戏正在运行中，请退出后再修改！', true);
         }
       }
     }
@@ -995,7 +995,7 @@
         $('doctorReport').textContent = res.data.formatted || JSON.stringify(res.data.details, null, 2);
         showToast('工具链自检完成');
       } else {
-        $('doctorReport').textContent = 'Doctor 自检失败: ' + (res.error || '未知错误');
+        $('doctorReport').textContent = '环境自检失败: ' + (res.error || '未知错误');
       }
     }
 
@@ -1082,7 +1082,7 @@
       if (!state.hookCode) { showToast('暂无代码可复制', true); return; }
       try {
         await navigator.clipboard.writeText(state.hookCode);
-        showToast('✅ 代码已复制到剪贴板！');
+        showToast('代码已复制到剪贴板！');
       } catch (e) {
         showToast('复制失败: ' + e.toString(), true);
       }
@@ -1108,12 +1108,12 @@
           <div class="mod-row">
             <div>
               <div class="mod-name">
-                <span>📦 ${mod.mod_id || 'unnamed_mod'}</span>
+                <span>${mod.mod_id || '未命名 Mod'}</span>
                 <span class="badge badge-unity">已安装</span>
               </div>
               <div class="mod-meta">添加文件: ${(mod.added || []).length} 项 | 覆盖原文件: ${Object.keys(mod.overwritten || {}).length} 项</div>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="uninstallMod('${mod.mod_id}')">🗑️ 卸载此 Mod</button>
+            <button class="btn btn-secondary btn-sm" onclick="uninstallMod('${mod.mod_id}')">卸载此 Mod</button>
           </div>
         `).join('');
         showToast(`已载入 ${res.data.length} 个已安装 Mod`);
@@ -1225,7 +1225,7 @@
               </div>
               <div class="mod-meta">ID: ${save.backup_id} | 文件数: ${save.files_count || 1}</div>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="restoreSave('${save.backup_id}')">♻️ 一键还原此快照</button>
+            <button class="btn btn-secondary btn-sm" onclick="restoreSave('${save.backup_id}')">一键还原此快照</button>
           </div>
         `).join('');
         showToast(`已载入 ${res.data.length} 个存档快照`);
@@ -1237,7 +1237,7 @@
     async function restoreSave(backupId) {
       const gameDir = requireGameDir();
       if (!gameDir) return;
-      if (!confirm(`⚠️ 警告: 还原快照将覆盖当前游戏存档！确认恢复 [${backupId}] 吗？`)) return;
+      if (!confirm(`警告：还原快照将覆盖当前游戏存档！确认恢复 [${backupId}] 吗？`)) return;
       showToast('正在还原快照…');
       const res = await apiPost('/api/saves/restore', { game_dir: gameDir, backup_id: backupId });
       if (res.success) {

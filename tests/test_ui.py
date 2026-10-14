@@ -57,7 +57,7 @@ class TestUIServer(unittest.TestCase):
         code, html = _http_get(f"{self.base_url}/")
         self.assertEqual(code, 200)
         self.assertIn("AI Mod Builder", html)
-        self.assertIn("game-mod-agent", html)
+        self.assertIn("制作新 Mod", html)
 
     def test_doctor_endpoint(self):
         code, body = _http_get(f"{self.base_url}/api/doctor")
