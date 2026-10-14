@@ -7,38 +7,40 @@
   <title>AI Mod Builder · 游戏 Mod 制作与安全工作台</title>
   <style>
     :root {
-      --bg-root: #080b11;
-      --bg-sidebar: #0d121c;
-      --bg-header: rgba(13, 18, 28, 0.88);
-      --bg-card: #111726;
-      --bg-card-hover: #172033;
-      --bg-card-inner: #090e17;
-      --bg-input: #080d16;
-      --border: #1e293b;
-      --border-hover: #334155;
-      --border-focus: #38bdf8;
-      --primary: #38bdf8;
-      --primary-hover: #0284c7;
-      --primary-gradient: linear-gradient(135deg, #0284c7, #38bdf8);
+      --bg-root: #09090b;
+      --bg-sidebar: #0e0e11;
+      --bg-header: rgba(14, 14, 17, 0.88);
+      --bg-card: #121215;
+      --bg-card-hover: #17171d;
+      --bg-card-inner: #0a0a0d;
+      --bg-input: #0a0a0d;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-hover: rgba(255, 255, 255, 0.16);
+      --border-focus: rgba(255, 255, 255, 0.32);
+      --primary: #fafafa;
+      --primary-hover: #ffffff;
+      --primary-ink: #09090b;
+      --primary-gradient: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.02) 100%);
+      --accent: #3b82f6;
       --emerald: #10b981;
-      --emerald-bg: rgba(16, 185, 129, 0.12);
+      --emerald-bg: rgba(16, 185, 129, 0.08);
       --violet: #a855f7;
-      --violet-bg: rgba(168, 85, 247, 0.12);
+      --violet-bg: rgba(168, 85, 247, 0.08);
       --amber: #f59e0b;
-      --amber-bg: rgba(245, 158, 11, 0.12);
+      --amber-bg: rgba(245, 158, 11, 0.08);
       --rose: #f43f5e;
-      --rose-bg: rgba(244, 63, 94, 0.12);
-      --text-main: #f8fafc;
-      --text-muted: #cbd5e1;
-      --text-dim: #94a3b8;
+      --rose-bg: rgba(244, 63, 94, 0.08);
+      --text-main: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --text-dim: #71717a;
       --radius-sm: 6px;
-      --radius: 10px;
-      --radius-lg: 14px;
+      --radius: 8px;
+      --radius-lg: 12px;
       --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "JetBrains Mono", monospace;
-      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
-      --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.35);
-      --shadow-lg: 0 12px 28px -6px rgba(0, 0, 0, 0.65);
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+      --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 16px 36px -8px rgba(0, 0, 0, 0.8);
       --z-dropdown: 20;
       --z-sticky: 40;
       --z-sidebar: 50;
@@ -112,65 +114,68 @@
     .brand {
       display: flex;
       align-items: center;
-      gap: 11px;
-      padding: 6px 8px 18px;
+      gap: 10px;
+      padding: 6px 8px 16px;
       border-bottom: 1px solid var(--border);
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
     .brand-icon {
-      width: 38px; height: 38px; border-radius: 10px;
-      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      width: 32px; height: 32px; border-radius: 8px;
+      background: #18181b;
+      border: 1px solid rgba(255, 255, 255, 0.12);
       display: grid; place-items: center;
-      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.35);
+      color: #fafafa;
       flex-shrink: 0;
-      transition: transform 140ms var(--ease-out);
+      transition: transform 140ms var(--ease-out), border-color 140ms var(--ease-out);
     }
     .brand-icon:hover {
-      transform: scale(1.06) rotate(3deg);
+      border-color: rgba(255, 255, 255, 0.28);
+      transform: scale(1.04);
     }
-    .brand-title { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: -0.01em; }
-    .brand-subtitle { font-size: 11px; color: var(--text-dim); }
+    .brand-title { font-size: 14px; font-weight: 600; color: #fff; letter-spacing: -0.01em; }
+    .brand-subtitle { font-size: 10px; font-family: var(--mono); color: var(--text-dim); letter-spacing: 0.06em; }
 
-    .nav-label {
+    .nav-section-title {
       font-size: 10px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.1em; color: var(--text-dim); font-family: var(--mono);
-      padding: 8px 10px 6px;
+      letter-spacing: 0.1em; color: #52525b; font-family: var(--mono);
+      padding: 10px 10px 4px;
     }
-    .nav-list { display: flex; flex-direction: column; gap: 4px; }
+    .nav-list { display: flex; flex-direction: column; gap: 3px; }
     .nav-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 9px 12px;
+      padding: 7px 10px;
       border-radius: var(--radius-sm);
       color: var(--text-muted);
-      font-size: 13px; font-weight: 500;
+      font-size: 12.5px; font-weight: 500;
+      border: 1px solid transparent;
       transition: background-color 140ms var(--ease-out), color 140ms var(--ease-out), border-color 140ms var(--ease-out), transform 120ms var(--ease-out);
     }
     .nav-item:active {
       transform: scale(0.98);
     }
-    .nav-item-left { display: flex; align-items: center; gap: 10px; }
-    .nav-item:hover { background: var(--bg-card); color: var(--text-main); }
+    .nav-item-left { display: flex; align-items: center; gap: 9px; }
+    .nav-item:hover { background: rgba(255, 255, 255, 0.04); color: var(--text-main); }
     .nav-item.active {
-      background: rgba(56, 189, 248, 0.12);
+      background: rgba(255, 255, 255, 0.08);
       color: #ffffff;
-      font-weight: 600;
-      border: 1px solid rgba(56, 189, 248, 0.28);
+      font-weight: 500;
+      border-color: rgba(255, 255, 255, 0.14);
     }
     .nav-item.active .icon {
-      color: var(--primary);
+      color: #ffffff;
     }
-    .nav-badge {
+    .nav-badge, .kbd-hint {
       font-size: 10px; font-family: var(--mono);
-      padding: 1px 7px; border-radius: 999px;
-      background: var(--bg-card-inner); color: var(--text-dim);
-      border: 1px solid var(--border);
+      padding: 1px 6px; border-radius: 4px;
+      background: rgba(255, 255, 255, 0.05); color: var(--text-dim);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
-    .nav-item.active .nav-badge {
-      background: rgba(56, 189, 248, 0.2);
-      color: var(--primary);
-      border-color: rgba(56, 189, 248, 0.4);
+    .nav-item.active .nav-badge, .nav-item.active .kbd-hint {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
     }
 
     .sidebar-footer {
@@ -187,9 +192,10 @@
       justify-content: space-between;
       font-size: 11px;
       color: var(--text-dim);
+      font-family: var(--mono);
     }
     .dots-group { display: flex; gap: 5px; }
-    .dot { width: 7px; height: 7px; border-radius: 50%; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; }
 
     /* Top Navigation Header */
     .topbar {
@@ -197,8 +203,8 @@
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      min-height: 60px;
-      padding: 10px 32px;
+      min-height: 52px;
+      padding: 8px 24px;
       background: var(--bg-header);
       backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border);
@@ -209,26 +215,59 @@
     .topbar-game {
       display: inline-flex;
       align-items: center;
-      gap: 10px;
-      padding: 6px 14px;
-      border-radius: 999px;
-      background: var(--bg-card);
+      gap: 8px;
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.03);
       border: 1px solid var(--border);
-      font-size: 13px; font-weight: 600;
+      font-size: 12px; font-weight: 500;
     }
     .topbar-status {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 5px 12px;
-      border-radius: 999px;
-      font-size: 11px; font-weight: 600;
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 11px; font-weight: 500;
       font-family: var(--mono);
-      background: var(--emerald-bg);
-      color: var(--emerald);
-      border: 1px solid rgba(16, 185, 129, 0.3);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
     }
-    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .topbar-status.online {
+      color: var(--emerald);
+      border-color: rgba(16, 185, 129, 0.25);
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+    .topbar-cmd-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background-color 140ms var(--ease-out), border-color 140ms var(--ease-out), color 140ms var(--ease-out);
+    }
+    .topbar-cmd-trigger:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border-hover);
+      color: var(--text-main);
+    }
+    .cmd-kbd {
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-muted);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+    }
 
     /* Main Container */
     main {
@@ -307,9 +346,9 @@
       transition: border-color 140ms var(--ease-out), background-color 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
     }
     .input-text:focus, .select-field:focus, .textarea-field:focus {
-      border-color: var(--border-focus);
-      background: #0f1626;
-      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+      border-color: rgba(255, 255, 255, 0.28);
+      background: #0d0d10;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
     }
     .input-text.code, .textarea-field.code { font-family: var(--mono); font-size: 12px; }
 
@@ -319,9 +358,9 @@
       align-items: center;
       justify-content: center;
       gap: 7px;
-      padding: 9px 18px;
+      padding: 7px 15px;
       border-radius: var(--radius-sm);
-      font-size: 12px; font-weight: 600;
+      font-size: 12px; font-weight: 500;
       transition: background-color 140ms var(--ease-out), border-color 140ms var(--ease-out), color 140ms var(--ease-out), transform 120ms var(--ease-out), box-shadow 140ms var(--ease-out);
       white-space: nowrap;
       user-select: none;
@@ -330,36 +369,40 @@
       transform: scale(0.97) !important;
     }
     .btn-primary {
-      background: var(--primary);
-      color: #04101e;
-      box-shadow: 0 2px 10px rgba(56, 189, 248, 0.35);
+      background: #fafafa;
+      color: #09090b;
+      font-weight: 600;
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.6);
     }
     .btn-primary:hover {
-      background: #7dd3fc;
+      background: #ffffff;
       transform: translateY(-1px);
-      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.45);
+      box-shadow: 0 2px 8px rgba(255, 255, 255, 0.15);
     }
     .btn-secondary {
-      background: var(--bg-card);
-      color: var(--text-main);
-      border: 1px solid var(--border);
+      background: #151518;
+      color: #e4e4e7;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     }
     .btn-secondary:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-hover);
+      background: #1c1c22;
+      border-color: rgba(255, 255, 255, 0.18);
+      color: #fff;
       transform: translateY(-1px);
     }
     .btn-danger {
       background: var(--rose-bg);
       color: var(--rose);
-      border: 1px solid rgba(244, 63, 94, 0.3);
+      border: 1px solid rgba(244, 63, 94, 0.25);
     }
     .btn-danger:hover {
       background: var(--rose);
       color: #fff;
       transform: translateY(-1px);
     }
-    .btn-sm { padding: 5px 12px; font-size: 11px; }
+    .btn-sm { padding: 4px 10px; font-size: 11px; }
 
     /* Engine Badges */
     .badge {
@@ -578,27 +621,27 @@
       to { opacity: 1; }
     }
 
-    /* Chat Bubbles & Layout */
+    /* Copilot Terminal Console Layout */
     .chat-bubble-assistant {
-      background: var(--bg-card);
+      background: #121215;
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 14px 16px;
+      padding: 14px 18px;
       line-height: 1.6;
       font-size: 13px;
       color: var(--text-main);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
       position: relative;
     }
     .chat-bubble-user {
-      background: rgba(56, 189, 248, 0.12);
-      border: 1px solid rgba(56, 189, 248, 0.35);
+      background: #18181d;
+      border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: var(--radius);
-      padding: 14px 16px;
+      padding: 12px 16px;
       line-height: 1.6;
       font-size: 13px;
       color: var(--text-main);
-      margin-left: 48px;
+      margin-left: 32px;
       align-self: flex-end;
     }
     .chat-bubble-header {
@@ -608,13 +651,15 @@
       margin-bottom: 8px;
       font-size: 11px;
       color: var(--text-dim);
+      font-family: var(--mono);
     }
     .chat-bubble-name {
       font-weight: 600;
-      color: var(--primary);
+      color: var(--text-main);
       display: flex;
       align-items: center;
       gap: 6px;
+      letter-spacing: 0.02em;
     }
     .chat-bubble-body {
       white-space: pre-wrap;
@@ -623,17 +668,62 @@
     .chat-bubble-actions {
       margin-top: 10px;
       padding-top: 8px;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
       display: flex;
       gap: 8px;
     }
 
-    /* Provider Model Settings Modal */
-    #modelModal {
-      max-width: 620px;
-      width: 94%;
+    /* Command Palette Modal (Raycast / Linear style) */
+    #commandPaletteModal {
+      max-width: 560px;
+      width: 92%;
       padding: 0;
+      background: #121216;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
       overflow: hidden;
+    }
+    .cmd-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      background: #0d0d10;
+    }
+    .cmd-input {
+      flex: 1;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 13.5px;
+      outline: none;
+    }
+    .cmd-list {
+      max-height: 320px;
+      overflow-y: auto;
+      padding: 6px;
+    }
+    .cmd-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      transition: background-color 100ms var(--ease-out), color 100ms var(--ease-out);
+    }
+    .cmd-item:hover, .cmd-item.active {
+      background: rgba(255, 255, 255, 0.07);
+      color: #fff;
+    }
+    .cmd-item-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     .modal-head {
       padding: 16px 22px;
@@ -784,47 +874,40 @@
     <!-- Left Navigation Sidebar -->
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-icon" title="Patchy (小补丁) · 你的 AI Mod 伴侣">
-          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px; display: block;">
-            <path d="M32 4V11" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
-            <circle cx="32" cy="4" r="2.5" fill="#ffffff"/>
-            <polygon points="32 10 52 21 52 45 32 56 12 45 12 21" fill="#0284c7" stroke="#bae6fd" stroke-width="3" stroke-linejoin="round"/>
-            <rect x="20" y="24" width="24" height="13" rx="4" fill="#082f49" stroke="#7dd3fc" stroke-width="1.8"/>
-            <circle cx="26" cy="30.5" r="2.5" fill="#38bdf8"/>
-            <circle cx="38" cy="30.5" r="2.5" fill="#38bdf8"/>
-            <circle cx="27" cy="29.5" r="0.8" fill="#ffffff"/>
-            <circle cx="39" cy="29.5" r="0.8" fill="#ffffff"/>
-            <path d="M28 44Q32 48 36 44" stroke="#e0f2fe" stroke-width="2" stroke-linecap="round"/>
+        <div class="brand-icon" title="AI Mod Builder · 逆向与切面工坊">
+          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
+            <rect x="3" y="3" width="18" height="18" rx="4"></rect>
+            <path d="M7 8l4 4-4 4M13 16h4"></path>
           </svg>
         </div>
         <div>
           <h1 class="brand-title">AI Mod Builder</h1>
-          <div class="brand-subtitle">游戏 Mod 安全制作台 · <span style="color:var(--primary); font-weight:500;">Patchy 伴侣</span></div>
+          <div class="brand-subtitle">ENGINEERING SUITE · v2.4</div>
         </div>
       </div>
 
-      <div class="nav-label">核心操作流程</div>
+      <div class="nav-section-title">WORKBENCH</div>
       <nav class="nav-list" role="tablist">
         <button class="nav-item active" data-tab="inspector" role="tab" aria-selected="true">
           <div class="nav-item-left">
             <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polygon points="12 8 8 12 12 16 12 8"></polygon></svg>
-            <span>1. 游戏与环境巡检</span>
+            <span>环境巡检 · Inspector</span>
           </div>
-          <span id="navBadgeEngine" class="nav-badge">Detect</span>
+          <span class="kbd-hint">1</span>
         </button>
 
         <button class="nav-item" data-tab="studio" role="tab" aria-selected="false">
           <div class="nav-item-left">
             <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-            <span>2. 制作新 Mod</span>
+            <span>制作新 Mod · Studio</span>
           </div>
-          <span class="nav-badge">Make</span>
+          <span class="kbd-hint">2</span>
         </button>
 
         <button class="nav-item" data-tab="manager" data-action="mods" role="tab" aria-selected="false">
           <div class="nav-item-left">
             <svg class="icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-            <span>3. 已装 Mod 管理</span>
+            <span>已装模组 · Manager</span>
           </div>
           <span id="navBadgeMods" class="nav-badge">0</span>
         </button>
@@ -832,39 +915,43 @@
         <button class="nav-item" data-tab="saves" data-action="saves" role="tab" aria-selected="false">
           <div class="nav-item-left">
             <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
-            <span>4. 存档时光机</span>
+            <span>存档快照 · Snapshots</span>
           </div>
-          <span id="navBadgeSaves" class="nav-badge">Save</span>
+          <span class="kbd-hint">4</span>
         </button>
+
+        <div class="nav-section-title">REVERSE ENG</div>
 
         <button class="nav-item" data-tab="logs" role="tab" aria-selected="false">
           <div class="nav-item-left">
             <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-            <span>5. 崩溃日志排查</span>
+            <span>崩溃诊断 · Crash Logs</span>
           </div>
-          <span id="logStatus" class="nav-badge">Logs</span>
+          <span id="logStatus" class="kbd-hint">5</span>
         </button>
 
         <button class="nav-item" data-tab="hooklab" role="tab" aria-selected="false">
           <div class="nav-item-left">
             <svg class="icon" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-            <span>高级：Hook 实验室</span>
+            <span>Hook 实验室 · Hook Lab</span>
           </div>
-          <span class="nav-badge">Code</span>
+          <span class="kbd-hint">6</span>
         </button>
+
+        <div class="nav-section-title">INTELLIGENCE</div>
 
         <button class="nav-item" data-tab="chat" role="tab" aria-selected="false">
           <div class="nav-item-left">
-            <svg class="icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-            <span>6. AI 智能对话</span>
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+            <span>Copilot 终端 · Terminal</span>
           </div>
-          <span class="nav-badge" style="color:var(--primary); border-color:var(--border-focus);">Chat</span>
+          <span class="kbd-hint">7</span>
         </button>
       </nav>
 
       <div class="sidebar-footer">
         <div class="engine-dots-row">
-          <span>支持 17+ 引擎架构</span>
+          <span>17+ 引擎架构</span>
           <div class="dots-group">
             <span class="dot" style="background:#10b981;" title="Unity"></span>
             <span class="dot" style="background:#a855f7;" title="Unreal Engine"></span>
@@ -880,26 +967,36 @@
 
       <!-- Top Header Bar -->
       <header class="topbar">
-        <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
           <div class="topbar-game">
-            <span style="color: var(--text-dim);">当前游戏:</span>
+            <span style="color: var(--text-dim);">游戏:</span>
             <span id="topbarGameName" style="color: #fff;">未选定</span>
             <span id="engineBadge" class="badge badge-unity" style="display: none;">Unity</span>
           </div>
+
+          <button class="topbar-cmd-trigger" onclick="openCommandPalette()" title="按 ⌘K 快速查找">
+            <svg class="icon" viewBox="0 0 24 24" style="width: 13px; height: 13px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <span>查找命令、切换工作区...</span>
+            <kbd class="cmd-kbd">⌘K</kbd>
+          </button>
         </div>
+
         <div style="display: flex; align-items: center; gap: 8px;">
           <!-- Model Settings Trigger Pill (ccswitch style) -->
-          <button id="btnOpenModelConfig" class="topbar-status" style="cursor: pointer; background: var(--bg-card); border: 1px solid var(--border);" onclick="openModelModal()" title="点击配置/切换大模型供应商">
+          <button id="btnOpenModelConfig" class="topbar-status" style="cursor: pointer;" onclick="openModelModal()" title="点击配置/切换大模型供应商">
             <span class="status-dot" style="background: #10b981;" id="topbarModelDot"></span>
             <span id="topbarModelLabel">DeepSeek · deepseek-chat</span>
-            <span style="font-size: 10px; color: var(--text-dim); margin-left: 2px;">⚙️配置</span>
+            <span style="font-size: 10px; color: var(--text-dim); margin-left: 2px;">配置</span>
           </button>
 
-          <div id="connectionStatus" class="topbar-status">
+          <div id="connectionStatus" class="topbar-status online">
             <span class="status-dot"></span>
-            <span>本地服务在线</span>
+            <span>服务就绪</span>
           </div>
-          <button class="btn btn-secondary btn-sm" data-action="doctor">🩺 环境健康自检</button>
+          <button class="btn btn-secondary btn-sm" data-action="doctor">
+            <svg class="icon" style="width: 13px; height: 13px;" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <span>环境体检</span>
+          </button>
         </div>
       </header>
 
@@ -911,21 +1008,24 @@
           <div class="picker-head">
             <label class="picker-label" for="targetGameDir">
               <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-              <span>输入或粘贴你的单机游戏安装根目录</span>
+              <span>单机游戏安装根目录</span>
             </label>
           </div>
           <div class="picker-row">
             <input type="text" id="targetGameDir" class="input-text code" placeholder="例如: D:\SteamLibrary\steamapps\common\Hollow Knight 或 /Games/Hades" value="">
-            <button class="btn btn-primary" data-action="detect">🚀 一键识别游戏</button>
+            <button class="btn btn-primary" data-action="detect">
+              <svg class="icon" style="width: 14px; height: 14px;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <span>识别架构</span>
+            </button>
           </div>
 
           <!-- Quick Game Selection Chips -->
           <div class="quick-games-bar">
-            <span style="font-size: 11px; color: var(--text-dim); font-weight: 600;">快速切换示例:</span>
-            <span class="quick-game-chip" onclick="quickSelectGame('C:\\Games\\Hollow Knight', '空洞骑士 (Unity)')">⚔️ 空洞骑士 (Unity)</span>
-            <span class="quick-game-chip" onclick="quickSelectGame('C:\\Games\\Resident Evil 4', '生化危机4重制版 (RE-Engine)')">🧟 生化危机4 (RE)</span>
-            <span class="quick-game-chip" onclick="quickSelectGame('C:\\Games\\Palworld', '幻兽帕鲁 (Unreal 5)')">🌌 幻兽帕鲁 (Unreal)</span>
-            <span class="quick-game-chip" onclick="quickSelectGame('C:\\Games\\Brotato', '土豆兄弟 (Godot)')">🥔 土豆兄弟 (Godot)</span>
+            <span style="font-size: 11px; color: var(--text-dim); font-weight: 500;">快速切换:</span>
+            <span class="quick-game-chip" onclick="quickSelectGame('C:\\Games\\Hollow Knight', '空洞骑士 (Unity)')">空洞骑士 (Unity)</span>
+            <span class="quick-game-chip" onclick="quickSelectGame('C:\\Games\\Resident Evil 4', '生化危机4重制版 (RE-Engine)')">生化危机4 (RE)</span>
+            <span class="quick-game-chip" onclick="quickSelectGame('C:\\Games\\Palworld', '幻兽帕鲁 (Unreal 5)')">幻兽帕鲁 (Unreal)</span>
+            <span class="quick-game-chip" onclick="quickSelectGame('C:\\Games\\Brotato', '土豆兄弟 (Godot)')">土豆兄弟 (Godot)</span>
           </div>
         </div>
 
@@ -1008,26 +1108,26 @@
 
               <!-- Quick Presets -->
               <div>
-                <span style="font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">常用功能一键填入:</span>
+                <span style="font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">常用功能快速填入:</span>
                 <div class="preset-container">
-                  <span class="preset-chip" onclick="applyPreset('给主角增加 99999 金币，可通过配置修改数值', 'player_gold_boost', {'amount': 99999})">💰 99999 金币</span>
-                  <span class="preset-chip" onclick="applyPreset('主角移动速度提高 2.0 倍', 'speed_multiplier', {'multiplier': 2.0})">⚡ 2倍移速</span>
-                  <span class="preset-chip" onclick="applyPreset('玩家免疫受到的一切伤害 (锁血无敌)', 'god_mode_invincible', {'god_mode': true})">🛡️ 锁血无敌</span>
-                  <span class="preset-chip" onclick="applyPreset('玩家翻滚与奔跑耐力永久不减', 'infinite_stamina', {'infinite': true})">♾️ 无限耐力</span>
-                  <span class="preset-chip" onclick="applyPreset('武器基础攻击力提升 50%', 'weapon_damage_up', {'damage_rate': 1.5})">🗡️ 攻击加成</span>
+                  <span class="preset-chip" onclick="applyPreset('给主角增加 99999 金币，可通过配置修改数值', 'player_gold_boost', {'amount': 99999})">金币充能 (Gold 99999)</span>
+                  <span class="preset-chip" onclick="applyPreset('主角移动速度提高 2.0 倍', 'speed_multiplier', {'multiplier': 2.0})">移速倍率 (Speed 2.0x)</span>
+                  <span class="preset-chip" onclick="applyPreset('玩家免疫受到的一切伤害 (锁血无敌)', 'god_mode_invincible', {'god_mode': true})">无敌锁血 (God Mode)</span>
+                  <span class="preset-chip" onclick="applyPreset('玩家翻滚与奔跑耐力永久不减', 'infinite_stamina', {'infinite': true})">无限耐力 (Stamina)</span>
+                  <span class="preset-chip" onclick="applyPreset('武器基础攻击力提升 50%', 'weapon_damage_up', {'damage_rate': 1.5})">攻击加成 (Damage)</span>
                 </div>
               </div>
 
               <!-- Interactive Parameter Sliders Box -->
               <div class="slider-box">
                 <div class="slider-row">
-                  <span style="color: var(--text-muted); font-weight: 600;">⚡ 移速倍率 (Speed Multiplier):</span>
+                  <span style="color: var(--text-muted); font-weight: 600;">移速倍率 (Speed Multiplier):</span>
                   <span id="sliderSpeedVal" style="font-family: var(--mono); color: var(--primary); font-weight: 700;">2.0x</span>
                 </div>
                 <input type="range" class="slider-range" min="1.0" max="5.0" step="0.5" value="2.0" oninput="updateSpeedSlider(this.value)">
 
                 <div class="slider-row" style="margin-top: 6px;">
-                  <span style="color: var(--text-muted); font-weight: 600;">💰 金币修改 (Gold Amount):</span>
+                  <span style="color: var(--text-muted); font-weight: 600;">金币数值 (Gold Amount):</span>
                   <span id="sliderGoldVal" style="font-family: var(--mono); color: var(--amber); font-weight: 700;">99999</span>
                 </div>
                 <input type="range" class="slider-range" min="1000" max="999999" step="5000" value="99999" oninput="updateGoldSlider(this.value)">
@@ -1056,7 +1156,7 @@
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-top: 4px;">
-                  <button class="btn btn-primary" data-action="plan">✨ 一键生成 Mod 规划与蓝图</button>
+                  <button class="btn btn-primary" data-action="plan">生成 Mod 规划与蓝图</button>
                   <button class="btn btn-secondary" data-action="clear-plan">清空重写</button>
                 </div>
               </div>
@@ -1069,7 +1169,7 @@
                   <span>Mod 生成结果预览</span>
                 </div>
               </div>
-              <div id="planSpecViewer" class="code-console" style="min-height: 320px;">点击左侧「一键生成 Mod 规划」后，此处将呈现结构化的 ModSpec 契约、修改目标及引擎工程骨架...</div>
+              <div id="planSpecViewer" class="code-console" style="min-height: 320px;">点击左侧「生成 Mod 规划」后，此处将呈现结构化的 ModSpec 契约、修改目标及引擎工程骨架...</div>
             </div>
           </div>
         </div>
@@ -1083,8 +1183,8 @@
                 <span>当前游戏已安装的 Mod 清单</span>
               </div>
               <div style="display: flex; gap: 8px;">
-                <button class="btn btn-secondary btn-sm" data-action="mods">🔄 刷新清单</button>
-                <button class="btn btn-danger btn-sm" data-action="rollback">⚠️ 还原纯净游戏 (一键撤销所有 Mod)</button>
+                <button class="btn btn-secondary btn-sm" data-action="mods">刷新清单</button>
+                <button class="btn btn-danger btn-sm" data-action="rollback">还原纯净游戏 (撤销全部 Mod)</button>
               </div>
             </div>
 
@@ -1118,7 +1218,7 @@
                   <input type="text" id="saveBackupLabel" class="input-text" placeholder="例如: 修改金币前备份" value="修改前备份">
                 </div>
 
-                <button class="btn btn-primary" data-action="create-save" style="margin-top: 4px;">💾 立即为当前存档生成快照</button>
+                <button class="btn btn-primary" data-action="create-save" style="margin-top: 4px;">生成当前存档快照</button>
               </div>
             </div>
 
@@ -1128,7 +1228,7 @@
                   <svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                   <span>历史快照时间线</span>
                 </div>
-                <button class="btn btn-secondary btn-sm" data-action="saves">🔄 刷新快照</button>
+                <button class="btn btn-secondary btn-sm" data-action="saves">刷新快照</button>
               </div>
 
               <div id="savesListContainer" class="mod-table">
@@ -1149,8 +1249,8 @@
                 <span>游戏运行与崩溃日志排查</span>
               </div>
               <div style="display: flex; gap: 8px;">
-                <button class="btn btn-secondary btn-sm" data-action="read-logs">📥 自动抓取最近日志</button>
-                <button class="btn btn-primary btn-sm" data-action="diagnose">🧠 AI 自愈分析报错</button>
+                <button class="btn btn-secondary btn-sm" data-action="read-logs">抓取最近日志</button>
+                <button class="btn btn-primary btn-sm" data-action="diagnose">诊断报错堆栈</button>
               </div>
             </div>
 
@@ -1221,7 +1321,7 @@
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-top: 4px;">
-                  <button class="btn btn-primary" data-action="hook-template">⚡ 合成 Hook 源码</button>
+                  <button class="btn btn-primary" data-action="hook-template">合成 Hook 源码</button>
                   <button class="btn btn-secondary" data-action="hook-evidence">基于 Evidence 合成</button>
                 </div>
 
@@ -1238,7 +1338,7 @@
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <span id="hookStatus" class="badge badge-unity">Ready</span>
-                  <button class="btn btn-secondary btn-sm" data-action="copy-hook">📋 复制代码</button>
+                  <button class="btn btn-secondary btn-sm" data-action="copy-hook">复制代码</button>
                 </div>
               </div>
               <pre id="hookCodeOutput" class="code-console" style="min-height: 280px;">// 点击「合成 Hook 源码」生成具备静态闭合校验的补丁源码...</pre>
@@ -1246,76 +1346,62 @@
           </div>
         </div>
 
-        <!-- 6. AI Chat Workspace -->
+        <!-- 6. Copilot Terminal Workspace -->
         <div id="ws-chat" class="workspace">
-          <!-- Top Assistant Banner -->
-          <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <div style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #0284c7, #38bdf8); display: grid; place-items: center; box-shadow: 0 4px 12px rgba(56, 189, 248, 0.35); flex-shrink: 0;">
-                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 26px; height: 26px; display: block;">
-                  <path d="M32 4V11" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
-                  <circle cx="32" cy="4" r="2.5" fill="#ffffff"/>
-                  <polygon points="32 10 52 21 52 45 32 56 12 45 12 21" fill="#0284c7" stroke="#bae6fd" stroke-width="3" stroke-linejoin="round"/>
-                  <rect x="20" y="24" width="24" height="13" rx="4" fill="#082f49" stroke="#7dd3fc" stroke-width="2"/>
-                  <circle cx="26" cy="30.5" r="2.5" fill="#38bdf8"/>
-                  <circle cx="38" cy="30.5" r="2.5" fill="#38bdf8"/>
-                  <circle cx="27" cy="29.5" r="0.8" fill="#ffffff"/>
-                  <circle cx="39" cy="29.5" r="0.8" fill="#ffffff"/>
-                  <path d="M28 44Q32 48 36 44" stroke="#e0f2fe" stroke-width="2" stroke-linecap="round"/>
-                </svg>
+          <!-- Terminal Header -->
+          <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="width: 28px; height: 28px; border-radius: 6px; background: rgba(255,255,255,0.06); border: 1px solid var(--border); display: grid; place-items: center; color: #fff;">
+                <svg class="icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
               </div>
               <div>
-                <div style="font-size: 14px; font-weight: 700; color: #fff;" id="chatAssistantTitle">AI 游戏 Mod 助手 · Patchy (小补丁)</div>
-                <div style="font-size: 11px; color: var(--text-dim);" id="chatAssistantSubtitle">单机游戏 Mod 制作 / 逆向分析 / 内存查找 / 代码生成</div>
+                <div style="font-size: 13px; font-weight: 600; color: #fff; font-family: var(--mono);" id="chatAssistantTitle">COPILOT CONSOLE // 逆向与切面协同终端</div>
+                <div style="font-size: 11px; color: var(--text-dim); font-family: var(--mono);" id="chatAssistantSubtitle">17 ENGINE ADAPTERS · HOOK SYNTHESIS · MEMORY SCAN</div>
               </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-              <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); cursor: pointer;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: var(--mono); color: var(--text-muted); cursor: pointer;">
                 <input type="checkbox" id="chatIncludeGameContext" checked>
-                <span>携带当前游戏上下文 (<strong id="chatContextGameName" style="color:var(--text-main);">未选定</strong>)</span>
+                <span>挂载上下文 (<span id="chatContextGameName" style="color:var(--text-main);">未选定</span>)</span>
               </label>
-              <button class="btn btn-secondary btn-sm" onclick="clearChatHistory()">🧹 清空对话</button>
-              <button class="btn btn-secondary btn-sm" onclick="openModelModal()">⚙️ 模型供应商配置</button>
+              <button class="btn btn-secondary btn-sm" onclick="clearChatHistory()">清空终端</button>
+              <button class="btn btn-secondary btn-sm" onclick="openModelModal()">模型供应商</button>
             </div>
           </div>
 
           <!-- Chat Messages Container -->
-          <div id="chatMessages" style="min-height: 400px; max-height: 580px; overflow-y: auto; padding: 18px; background: var(--bg-card-inner); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; display: flex; flex-direction: column; gap: 14px;">
-            <!-- Welcome Message -->
+          <div id="chatMessages" style="min-height: 400px; max-height: 580px; overflow-y: auto; padding: 16px; background: var(--bg-card-inner); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; display: flex; flex-direction: column; gap: 12px;">
+            <!-- Terminal MOTD Welcome Message -->
             <div class="chat-bubble-assistant">
               <div class="chat-bubble-header">
                 <span class="chat-bubble-name">
-                  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 15px; height: 15px; vertical-align: -2px; display: inline-block;">
-                    <polygon points="32 10 52 21 52 45 32 56 12 45 12 21" fill="#0284c7" stroke="#7dd3fc" stroke-width="3"/>
-                    <circle cx="26" cy="30.5" r="3" fill="#fff"/>
-                    <circle cx="38" cy="30.5" r="3" fill="#fff"/>
-                  </svg>
-                  Patchy · AI Mod 伴侣
+                  <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
+                  COPILOT ENGINE READY
                 </span>
-                <span>就绪</span>
+                <span>LISTENING ON PORT 8765</span>
               </div>
-              <div class="chat-bubble-body">你好！我是你的专属 Mod 制作伴侣 Patchy（小补丁）。🛠️
-你可以随时向我咨询任何单机游戏 Mod 制作问题，例如：
-1. 分析特定引擎（Unity / Unreal / RE-Engine / Godot）的 Mod 架构与制作流程。
-2. 指导使用内存扫描查找金币、移速等数值地址并锁定。
-3. 编写 Harmony 切面、UE4SS Lua 钩子或 REFramework 插件源码。
+              <div class="chat-bubble-body">[SYSTEM] 单机游戏 Mod 逆向分析与切面生成终端已挂载。
+支持工作流:
+1. 引擎架构定位: 深度解析 Unity (Mono/IL2CPP), Unreal (4/5), RE-Engine, Godot 架构特征。
+2. 逆向切面合成: 自动生成 HarmonyPrefix/Postfix, UE4SS Lua, REFramework 插件源码。
+3. 内存结构指引: 搜寻 HP, MP, Gold, Speed 偏移与稳定内存基址定位。
 
-直接输入你的需求，或者点击下方的快捷提示词开始吧！</div>
+输入自然语言逆向需求，或从下方指令集选取快速开始:</div>
             </div>
           </div>
 
           <!-- Quick Prompts Bar -->
-          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
-            <button class="quick-game-chip" onclick="sendQuickPrompt('针对我当前选定的游戏，推荐最佳的 Mod 制作方案和前置工具是什么？')">💡 推荐最佳 Mod 方案</button>
-            <button class="quick-game-chip" onclick="sendQuickPrompt('我想修改主角的移动速度和攻击力，通常应该找哪些类或内存偏移？')">⚡ 修改主角移速与攻击</button>
-            <button class="quick-game-chip" onclick="sendQuickPrompt('怎么给游戏制作无敌锁血和无限体力的 Hook 钩子？')">🛡️ 制作无敌锁血 Hook</button>
-            <button class="quick-game-chip" onclick="sendQuickPrompt('怎么使用内存扫描 (Cheat Engine 方式) 搜出金币的稳定基址？')">💰 搜寻金币内存基址</button>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+            <button class="quick-game-chip" onclick="sendQuickPrompt('针对我当前选定的游戏，推荐最佳的 Mod 制作方案和前置工具是什么？')">推荐最佳注入方案</button>
+            <button class="quick-game-chip" onclick="sendQuickPrompt('我想修改主角的移动速度和攻击力，通常应该找哪些类或内存偏移？')">主角数值类与偏移</button>
+            <button class="quick-game-chip" onclick="sendQuickPrompt('怎么给游戏制作无敌锁血和无限体力的 Hook 钩子？')">无敌锁血切面编写</button>
+            <button class="quick-game-chip" onclick="sendQuickPrompt('怎么使用内存扫描 (Cheat Engine 方式) 搜出金币的稳定基址？')">定位金币内存基址</button>
           </div>
 
           <!-- Chat Input Area -->
-          <div style="display: flex; gap: 10px; align-items: flex-end;">
-            <textarea id="chatInputText" class="textarea-field" rows="3" placeholder="输入你想咨询的 Mod 制作问题或需求... (按 Enter 发送，Shift+Enter 换行)" style="flex: 1; resize: none;"></textarea>
-            <button id="btnSendChat" class="btn btn-primary" onclick="sendChatMessage()" style="height: 48px; padding: 0 24px; font-weight: 600;">🚀 发送</button>
+          <div style="display: flex; gap: 8px; align-items: flex-end;">
+            <textarea id="chatInputText" class="textarea-field" rows="2" placeholder="输入逆向需求、切面函数名或内存定位疑问... (Enter 发送, Shift+Enter 换行)" style="flex: 1; resize: none; font-size: 13px;"></textarea>
+            <button id="btnSendChat" class="btn btn-primary" onclick="sendChatMessage()" style="height: 44px; padding: 0 20px; font-weight: 500;">执行 (Enter)</button>
           </div>
         </div>
 
@@ -1398,7 +1484,9 @@
         </div>
         <div style="position: relative;">
           <input type="password" id="llmApiKey" class="input-text code" placeholder="留空保持已保存的 API Key 不变" value="" style="padding-right: 40px;">
-          <button type="button" onclick="toggleApiKeyVisibility()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-dim); font-size: 14px;" title="显示/隐藏 API Key">👁️</button>
+          <button type="button" onclick="toggleApiKeyVisibility()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-dim); display: grid; place-items: center;" title="显示/隐藏 API Key">
+            <svg class="icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
         </div>
       </div>
 
@@ -1414,16 +1502,26 @@
       </div>
 
       <!-- Test Connection Result Banner -->
-      <div id="llmTestResult" style="display: none; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 12px; line-height: 1.5;"></div>
+      <div id="llmTestResult" style="display: none; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 12px; line-height: 1.5; font-family: var(--mono);"></div>
     </div>
 
     <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" onclick="testLlmConnection()" id="btnTestLlm">⚡ 测试连接</button>
+      <button type="button" class="btn btn-secondary" onclick="testLlmConnection()" id="btnTestLlm">测试连接</button>
       <div style="display: flex; gap: 10px;">
         <button type="button" class="btn btn-secondary" onclick="closeModelModal()">取消</button>
-        <button type="button" class="btn btn-primary" onclick="saveLlmConfig()" id="btnSaveLlm">💾 保存配置</button>
+        <button type="button" class="btn btn-primary" onclick="saveLlmConfig()" id="btnSaveLlm">保存配置</button>
       </div>
     </div>
+  </dialog>
+
+  <!-- Raycast / Linear Style Command Palette Modal -->
+  <dialog id="commandPaletteModal">
+    <div class="cmd-header">
+      <svg class="icon" viewBox="0 0 24 24" style="width: 14px; height: 14px; color: var(--text-dim);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" id="cmdInput" class="cmd-input" placeholder="输入命令、切换工作区或载入预设游戏..." oninput="filterCommandPalette(this.value)">
+      <kbd class="cmd-kbd">ESC</kbd>
+    </div>
+    <div id="cmdList" class="cmd-list"></div>
   </dialog>
 
   <!-- Notification Toast -->
@@ -1613,7 +1711,7 @@
       if (res.success && res.data) {
         $('processDetails').innerHTML = formatProcessInfo(res.data);
         if (res.data.is_running) {
-          showToast('⚠️ 游戏正在运行中，注意退出后修改！', true);
+          showToast('[提示] 游戏进程正在运行中，修改前请先保存退出', true);
         }
       }
     }
@@ -1713,7 +1811,7 @@
       if (!state.hookCode) { showToast('暂无代码可复制', true); return; }
       try {
         await navigator.clipboard.writeText(state.hookCode);
-        showToast('✅ 代码已复制到剪贴板！');
+        showToast('代码已复制到剪贴板');
       } catch (e) {
         showToast('复制失败: ' + e.toString(), true);
       }
@@ -1868,7 +1966,7 @@
     async function restoreSave(backupId) {
       const gameDir = requireGameDir();
       if (!gameDir) return;
-      if (!confirm(`⚠️ 警告: 还原快照将覆盖当前游戏存档！确认恢复 [${backupId}] 吗？`)) return;
+      if (!confirm(`[警告] 还原快照将覆盖当前游戏存档！确认恢复 [${backupId}] 吗？`)) return;
       showToast('正在还原快照…');
       const res = await apiPost('/api/saves/restore', { game_dir: gameDir, backup_id: backupId });
       if (res.success) {
@@ -1984,12 +2082,12 @@
         banner.style.background = 'var(--emerald-bg)';
         banner.style.borderColor = 'rgba(16, 185, 129, 0.4)';
         banner.style.color = '#34d399';
-        banner.textContent = `✅ ${res.message || '连接成功！模型响应正常'}`;
+        banner.textContent = `[SUCCESS] ${res.message || '连接成功，模型响应正常'}`;
       } else {
         banner.style.background = 'var(--rose-bg)';
         banner.style.borderColor = 'rgba(244, 63, 94, 0.4)';
         banner.style.color = '#fb7185';
-        banner.textContent = `❌ ${res.error || '连接失败，请检查端点或 API Key'}`;
+        banner.textContent = `[ERROR] ${res.error || '连接失败，请检查端点或 API Key'}`;
       }
     }
 
@@ -2026,16 +2124,15 @@
       div.className = role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant';
 
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const patchyIcon = `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 15px; height: 15px; vertical-align: -2px; display: inline-block;"><polygon points="32 10 52 21 52 45 32 56 12 45 12 21" fill="#0284c7" stroke="#7dd3fc" stroke-width="3"/><circle cx="26" cy="30.5" r="3" fill="#fff"/><circle cx="38" cy="30.5" r="3" fill="#fff"/></svg>`;
-      const name = role === 'user' ? '你' : `${patchyIcon} Patchy (${escapeHtml(currentLlmConfig.provider_name || 'AI Mod 助手')})`;
+      const name = role === 'user' ? 'USER ❯' : `COPILOT // ${escapeHtml(currentLlmConfig.provider_name || 'ENGINE')}`;
 
       let actionsHtml = '';
       if (role === 'assistant' && !bubbleId) {
         const safeContent = escapeHtml(content);
         actionsHtml = `
           <div class="chat-bubble-actions">
-            <button class="btn btn-secondary btn-sm" data-adopt="${safeContent}">📥 采纳为 Mod 制作需求</button>
-            <button class="btn btn-secondary btn-sm" data-copy="${safeContent}">📋 复制回答</button>
+            <button class="btn btn-secondary btn-sm" data-adopt="${safeContent}">应用至制作工坊</button>
+            <button class="btn btn-secondary btn-sm" data-copy="${safeContent}">复制代码</button>
           </div>
         `;
       }
@@ -2076,9 +2173,9 @@
 
       // Thinking bubble
       const thinkingId = 'thinking-' + Date.now();
-      const thinkingBubble = appendChatBubble('assistant', '思考中，正在分析 Mod 方案…', thinkingId);
+      const thinkingBubble = appendChatBubble('assistant', '正在调用逆向引擎与切面分析模型…', thinkingId);
       const btn = $('btnSendChat');
-      setBusy(btn, true, '生成中…');
+      setBusy(btn, true, '执行中…');
 
       // Context
       let gameContext = null;
@@ -2102,7 +2199,7 @@
         appendChatBubble('assistant', res.reply);
       } else {
         thinkingBubble.remove();
-        appendChatBubble('assistant', `⚠️ 对话请求失败: ${res.error || '请检查模型 API Key 与网络连接'}`);
+        appendChatBubble('assistant', `[ERROR] 终端通讯异常: ${res.error || '请检查模型 API Key 与网络连接'}`);
       }
     }
 
@@ -2125,20 +2222,94 @@
         <div class="chat-bubble-assistant">
           <div class="chat-bubble-header">
             <span class="chat-bubble-name">
-              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 15px; height: 15px; vertical-align: -2px; display: inline-block;">
-                <polygon points="32 10 52 21 52 45 32 56 12 45 12 21" fill="#0284c7" stroke="#7dd3fc" stroke-width="3"/>
-                <circle cx="26" cy="30.5" r="3" fill="#fff"/>
-                <circle cx="38" cy="30.5" r="3" fill="#fff"/>
-              </svg>
-              Patchy · AI Mod 伴侣
+              <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#10b981;"></span>
+              COPILOT RUNTIME
             </span>
-            <span>已清空</span>
+            <span>CLEARED</span>
           </div>
-          <div class="chat-bubble-body">对话历史已清空。有什么可以帮你的？</div>
+          <div class="chat-bubble-body">[READY] 终端已就绪，等待输入逆向与切面指令。</div>
         </div>
       `;
-      showToast('对话已清空');
+      showToast('终端记录已清空');
     }
+
+    /* Command Palette Implementation */
+    const COMMANDS = [
+      { id: 'tab-inspector', category: '工作区', title: '切换至：环境巡检 · Inspector', kbd: '1', action: () => switchTab('inspector') },
+      { id: 'tab-studio', category: '工作区', title: '切换至：制作新 Mod · Studio', kbd: '2', action: () => switchTab('studio') },
+      { id: 'tab-manager', category: '工作区', title: '切换至：已装模组 · Manager', kbd: '3', action: () => { switchTab('manager'); refreshMods(); } },
+      { id: 'tab-saves', category: '工作区', title: '切换至：存档快照 · Snapshots', kbd: '4', action: () => { switchTab('saves'); refreshSaves(); } },
+      { id: 'tab-logs', category: '工作区', title: '切换至：崩溃诊断 · Crash Logs', kbd: '5', action: () => switchTab('logs') },
+      { id: 'tab-hooklab', category: '工作区', title: '切换至：Hook 实验室 · Hook Lab', kbd: '6', action: () => switchTab('hooklab') },
+      { id: 'tab-chat', category: '工作区', title: '切换至：Copilot 终端 · Terminal', kbd: '7', action: () => switchTab('chat') },
+      { id: 'act-detect', category: '执行指令', title: '扫描识别当前游戏目录架构', kbd: 'Enter', action: () => detectGame() },
+      { id: 'act-doctor', category: '执行指令', title: '运行本机 Mod 编译环境健康体检', kbd: 'D', action: () => runDoctor() },
+      { id: 'act-model', category: '配置', title: '配置大模型供应商 (DeepSeek / Claude / OpenAI)', kbd: ',', action: () => openModelModal() },
+      { id: 'act-save', category: '执行指令', title: '立即生成游戏存档快照备份', kbd: 'S', action: () => createSaveBackup() },
+      { id: 'act-rollback', category: '危险操作', title: '撤销所有 Mod，还原纯净游戏', kbd: 'R', action: () => openRollbackDialog() },
+      { id: 'game-hk', category: '预设游戏', title: '载入预设：空洞骑士 (Hollow Knight - Unity)', action: () => quickSelectGame('C:\\Games\\Hollow Knight', '空洞骑士 (Unity)') },
+      { id: 'game-re4', category: '预设游戏', title: '载入预设：生化危机4重制版 (Resident Evil 4 - RE)', action: () => quickSelectGame('C:\\Games\\Resident Evil 4', '生化危机4 (RE)') },
+      { id: 'game-pal', category: '预设游戏', title: '载入预设：幻兽帕鲁 (Palworld - Unreal 5)', action: () => quickSelectGame('C:\\Games\\Palworld', '幻兽帕鲁 (Unreal)') },
+      { id: 'game-bro', category: '预设游戏', title: '载入预设：土豆兄弟 (Brotato - Godot)', action: () => quickSelectGame('C:\\Games\\Brotato', '土豆兄弟 (Godot)') }
+    ];
+
+    function openCommandPalette() {
+      const modal = $('commandPaletteModal');
+      modal.showModal();
+      $('cmdInput').value = '';
+      filterCommandPalette('');
+      $('cmdInput').focus();
+    }
+
+    function closeCommandPalette() {
+      const modal = $('commandPaletteModal');
+      if (modal.open) modal.close();
+    }
+
+    function filterCommandPalette(query) {
+      const list = $('cmdList');
+      const q = query.trim().toLowerCase();
+      const filtered = COMMANDS.filter(cmd => !q || cmd.title.toLowerCase().includes(q) || cmd.category.toLowerCase().includes(q));
+      list.innerHTML = filtered.map((cmd, idx) => `
+        <div class="cmd-item" onclick="executeCommand('${cmd.id}')" data-idx="${idx}">
+          <div class="cmd-item-left">
+            <span style="font-size: 10px; font-family: var(--mono); color: var(--text-dim); text-transform: uppercase;">[${cmd.category}]</span>
+            <span>${cmd.title}</span>
+          </div>
+          ${cmd.kbd ? `<kbd class="cmd-kbd">${cmd.kbd}</kbd>` : ''}
+        </div>
+      `).join('') || '<div style="padding: 18px; text-align: center; color: var(--text-dim); font-size: 12px;">未找到匹配命令</div>';
+    }
+
+    function executeCommand(id) {
+      const cmd = COMMANDS.find(c => c.id === id);
+      closeCommandPalette();
+      if (cmd && cmd.action) cmd.action();
+    }
+
+    // Global Command Palette & Keyboard Navigation
+    window.addEventListener('keydown', (e) => {
+      // ⌘K or Ctrl+K to toggle Command Palette
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const modal = $('commandPaletteModal');
+        if (modal.open) closeCommandPalette(); else openCommandPalette();
+        return;
+      }
+      // Esc closes Command Palette
+      if (e.key === 'Escape') {
+        const modal = $('commandPaletteModal');
+        if (modal && modal.open) { closeCommandPalette(); return; }
+      }
+      // Fast tab switching 1-7 when not typing in input
+      const tag = (document.activeElement && document.activeElement.tagName) || '';
+      if (tag !== 'INPUT' && tag !== 'TEXTAREA' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const tabMap = { '1': 'inspector', '2': 'studio', '3': 'manager', '4': 'saves', '5': 'logs', '6': 'hooklab', '7': 'chat' };
+        if (tabMap[e.key]) {
+          switchTab(tabMap[e.key]);
+        }
+      }
+    });
 
     // Universal Event Delegation
     document.addEventListener('click', (e) => {
