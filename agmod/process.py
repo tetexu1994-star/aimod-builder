@@ -92,3 +92,18 @@ def is_game_running(game_dir: str) -> tuple[bool, list[dict]]:
     """Check if any game process from `game_dir` is currently active."""
     procs = get_running_game_processes(game_dir)
     return len(procs) > 0, procs
+
+
+def check_game_status(game_dir: str) -> dict:
+    """Check game executable status: detected binaries, whether any game process is running, and lock risk."""
+    game_dir_abs = os.path.abspath(game_dir) if game_dir else ""
+    exes = find_game_executables(game_dir_abs) if game_dir_abs else []
+    running, running_procs = is_game_running(game_dir_abs) if game_dir_abs else (False, [])
+    return {
+        "game_dir": game_dir_abs,
+        "executables": exes,
+        "is_running": running,
+        "running_processes": running_procs,
+        "lock_warning": "Game is currently running! File operations (install/update/uninstall) may fail due to file locks." if running else None,
+    }
+

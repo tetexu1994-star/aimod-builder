@@ -540,15 +540,8 @@ def validate_package(package_path: str) -> str:
 @mcp.tool()
 def check_game_status(game_dir: str) -> str:
     """Check game executable status: detected binaries, whether any game process is running (PID/exe), and lock risk."""
-    exes = process.find_game_executables(game_dir)
-    running, running_procs = process.is_game_running(game_dir)
-    return json.dumps({
-        "game_dir": os.path.abspath(game_dir),
-        "executables": exes,
-        "is_running": running,
-        "running_processes": running_procs,
-        "lock_warning": "Game is currently running! File operations (install/update/uninstall) may fail due to file locks." if running else None,
-    }, ensure_ascii=False, indent=2)
+    return json.dumps(process.check_game_status(game_dir), ensure_ascii=False, indent=2)
+
 
 
 @mcp.tool()
@@ -615,9 +608,22 @@ def diagnose_runtime_error(log_text: str) -> str:
     return json.dumps(res, ensure_ascii=False, indent=2)
 
 
+@mcp.tool()
+def launch_ui(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True) -> str:
+    """Launch the local AI Mod Builder Web dashboard (HTTP server) and return its access URL."""
+    from agmod.ui import launch_ui as _launch_ui
+    url = _launch_ui(host=host, port=port, open_browser=open_browser)
+    return json.dumps({
+        "status": "online",
+        "url": url,
+        "hint": f"Dashboard is running at {url}. Open in browser to interact.",
+    }, ensure_ascii=False, indent=2)
+
+
 def main() -> None:
     mcp.run()
 
 
 if __name__ == "__main__":
     main()
+

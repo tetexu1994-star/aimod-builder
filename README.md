@@ -59,6 +59,7 @@ game-mod-agent/
 | `list_installs` | 列出当前游戏所有已安装的 Mod 及其文件记录 | 无 |
 | `uninstall_mod` | **安全卸载 Mod**：删除该 Mod 文件、还原被覆盖原文件并清理残留空目录 | 无 |
 | `rollback_game` | **一键全量回滚**：逆序撤销所有 Mod 安装，安全恢复原版纯净游戏 | 无 |
+| `launch_ui` | **可视化工作台**：本地启动免编译极速 Web GUI 交互仪表盘 | 无 |
 | `rea_fast_search` | 秒级搜索 .NET 成员（免全量反编译） | morluto/rea |
 | `rea_disassemble` | 反汇编/反编译指定 Native 函数 | morluto/rea |
 | `generate_hook_template` | **逆向符号代码钩子生成器**：根据探测出的类名/方法名自动合成 Harmony / UE4SS / REFramework / Godot 钩子模板 | 无 |
@@ -72,7 +73,7 @@ game-mod-agent/
 | `package_mod` | 打包 Mod 为 Thunderstore/Nexus 风格 ZIP；支持 Unity、Unreal、RE-Engine、Godot | 无 |
 | `validate_package` | **分发包完整性校验**：检查 ZIP 清单规范、README 与载荷有效性 | 无 |
 
-详细引擎技术细节、Loader 版本与支持清单请查阅 [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md)。
+详细引擎技术细节与版本矩阵请查阅 [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md)；可视化交互系统架构与 API 契约请查阅 [UI_ARCHITECTURE.md](UI_ARCHITECTURE.md)。
 
 
 **内存读写和连续值扫描今天就能用**（纯 ctypes）。终端执行 `python -m agmod.doctor` 可一键查看本机开发环境就绪度。
@@ -110,6 +111,24 @@ REA 桥接使用当前 `rea-agents` 命令契约：Managed 成员、JS/Electron�
 ```bash
 claude mcp add game-mod-agent -- python <绝对路径>/server.py
 ```
+
+## 可视化 Web UI 工作台 (Dashboard)
+
+除了 MCP 命令行无头交互外，AI Mod Builder 提供免编译、零重量级外部依赖的现代 Web 交互界面：
+```bash
+# 启动 UI 工作台并自动打开浏览器 (默认 127.0.0.1:8765)
+python -m agmod.ui
+
+# 或指定端口启动
+python -m agmod.ui --port 9000 --no-browser
+```
+也可在 AI 对话中直接调用 `launch_ui` 工具启动。工作台具备 6 大功能空间：
+1. **🔍 运行巡检 (Inspector)**: 自动探测引擎、检查运行进程与写入锁、查看 Doctor 体检。
+2. **⚡ AI 需求工坊 (AI Studio)**: 自然语言输入需求并实时预览 `mod-spec.json` 与蓝图。
+3. **🧬 Hook 代码实验室 (Hook Lab)**: 逆向符号实时代码生成（Harmony C# / UE4SS Lua / REFramework / Godot）与静态语法校验。
+4. **🛡️ Mod 资产管理 (Manager)**: 冲突检测、安全卸载与一键核武级全量回滚。
+5. **📜 运行日志与自愈 (Logs & Self-Healing)**: 日志流读取、崩溃行提取与 AI 自愈修复建议。
+6. **⏳ 存档时光机 (Save Time Machine)**: 多目录存档探测、修改前自动快照、历史时间线与一键无损还原。
 
 ## 核心工作流
 

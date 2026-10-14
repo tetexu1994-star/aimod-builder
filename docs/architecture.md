@@ -8,16 +8,21 @@
 ## 分层
 
 ```
-[1] Agent 层        Claude Code / Codex / Cursor —— 自然语言 → 工具调用
-        │  MCP (function calling)
-[2] 工具层          server.py —— 20+ 工具，全部路由到 adapter 方法
+[1] 交互层          Claude Code / Codex / Cursor (MCP stdio) 
+                    + 本地可视化工作台 (agmod.ui Web SPA @ 127.0.0.1:8765)
+        │
+[2] 工具/API层      server.py (FastMCP 45+ tools) + agmod/ui/server.py (REST API)
         │
 [3] 适配器层        agmod/adapters/ —— 统一接口，每引擎一个（17 个）
         │
-[4] 能力模块        planning / bepinex / tmodloader / memory / updater / rea / pack / knowledge
+[4] 能力模块        planning / bepinex / tmodloader / memory / updater / rea / pack /
+                    knowledge / codegen / log_repair / process / rollback / saves
         │
 [5] 目标游戏进程 / 文件
 ```
+
+详细 UI 交互工作台架构、REST API 契约与六大工作区设计请查阅根目录 [UI_ARCHITECTURE.md](../UI_ARCHITECTURE.md)。
+
 
 ## 能力接口（BaseAdapter）
 

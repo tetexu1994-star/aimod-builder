@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Mod Builder 工作台 (game-mod-agent)</title>
+  <style>
+    :root {
+      --bg-base: #0b0f19;
+      --bg-card: #131c2e;
+      --bg-card-hover: #1b273f;
+      --bg-input: #0a0e17;
+      --border: #24324d;
+      --border-focus: #3b82f6;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --primary-hover: #0ea5e9;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --accent: #a855f7;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      background: rgba(19, 28, 46, 0.85);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .logo-group { display: flex; align-items: center; gap: 0.75rem; }
+    .logo-badge {
+      background: linear-gradient(135deg, #0284c7, #9333ea);
+      width: 34px; height: 34px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1.1rem; color: #fff;
+    }
+    .logo-text h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.025em; }
+    .logo-text span { font-size: 0.75rem; color: var(--text-muted); }
+
+    .header-actions { display: flex; align-items: center; gap: 1rem; }
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.25rem 0.65rem; border-radius: 9999px;
+      font-size: 0.75rem; font-weight: 600;
+      background: rgba(34, 197, 94, 0.15); color: var(--success);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+    /* Nav Tabs */
+    nav {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      padding: 0 1.5rem;
+      gap: 0.5rem;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      background: none; border: none;
+      color: var(--text-muted);
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem; font-weight: 500;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 0.5rem;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--text-main); }
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* Main Container */
+    main { flex: 1; padding: 1.5rem; max-width: 1400px; margin: 0 auto; width: 100%; }
+
+    /* Workspaces */
+    .workspace { display: none; }
+    .workspace.active { display: block; }
+
+    /* Cards & Layout */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    @media (max-width: 900px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .card-title {
+      font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    /* Forms & Inputs */
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--text-muted); margin-bottom: 0.35rem; }
+    .input-field, .select-field, .textarea-field {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    .input-field:focus, .select-field:focus, .textarea-field:focus {
+      border-color: var(--border-focus);
+    }
+    .textarea-field { min-height: 100px; resize: vertical; font-family: monospace; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+      background: var(--primary); color: #020617;
+      border: none; border-radius: 6px;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s ease;
+    }
+    .btn:hover { background: var(--primary-hover); }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08); color: var(--text-main);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.14); }
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15); color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+    .btn-danger:hover { background: var(--danger); color: #fff; }
+    .btn-sm { padding: 0.25rem 0.6rem; font-size: 0.75rem; }
+
+    /* Engine Badges */
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 0.2rem 0.5rem; border-radius: 4px;
+      font-size: 0.75rem; font-weight: 600;
+    }
+    .badge-unity { background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); }
+    .badge-unreal { background: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-reengine { background: rgba(249, 115, 22, 0.15); color: #f97316; border: 1px solid rgba(249, 115, 22, 0.3); }
+    .badge-godot { background: rgba(2, 132, 199, 0.15); color: #38bdf8; border: 1px solid rgba(2, 132, 199, 0.3); }
+
+    /* Code Block Display */
+    .code-viewer {
+      background: #090d16;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.825rem;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    /* Toast Notification */
+    #toast {
+      position: fixed; bottom: 20px; right: 20px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      padding: 0.75rem 1.25rem; border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      display: none; z-index: 100; font-size: 0.85rem;
+      align-items: center; gap: 0.5rem;
+    }
+    #toast.show { display: flex; animation: slideIn 0.2s ease; }
+    @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="logo-group">
+      <div class="logo-badge">M</div>
+      <div class="logo-text">
+        <h1>AI Mod Builder Studio</h1>
+        <span>game-mod-agent 跨平台通用游戏 Mod 工作台</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div id="connectionStatus" class="status-pill">
+        <span class="status-dot"></span>
+        <span>服务在线 (Localhost:8765)</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="runDoctorCheck()">🔍 环境自检 (Doctor)</button>
+    </div>
+  </header>
+
+  <!-- Workspace Tabs -->
+  <nav>
+    <button class="tab-btn active" onclick="switchTab('inspector')">🔍 运行巡检 (Inspector)</button>
+    <button class="tab-btn" onclick="switchTab('studio')">⚡ AI 需求工坊 (AI Studio)</button>
+    <button class="tab-btn" onclick="switchTab('hooklab')">🧬 Hook 代码实验室 (Hook Lab)</button>
+    <button class="tab-btn" onclick="switchTab('manager')">🛡️ Mod 资产与回滚 (Manager)</button>
+    <button class="tab-btn" onclick="switchTab('logs')">📜 日志与自愈 (Logs & Healing)</button>
+    <button class="tab-btn" onclick="switchTab('saves')">⏳ 存档时光机 (Save Time Machine)</button>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main>
+
+    <!-- Global Target Game Selector -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label">🎯 目标游戏安装根目录 (Target Game Directory)</label>
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="text" id="targetGameDir" class="input-field" placeholder="例如: C:\Games\Hollow Knight 或 /Games/Steam/common/MyGame" value="">
+          <button class="btn" onclick="autoDetectGame()">🚀 一键识别</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1. Inspector Workspace -->
+    <div id="ws-inspector" class="workspace active">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">
+            <span>🎮 游戏引擎与架构检测</span>
+            <span id="engineBadge" class="badge badge-unity" style="display:none;"></span>
+          </div>
+          <div id="engineDetails" class="code-viewer">输入游戏目录并点击「一键识别」以探测引擎指纹...</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span>🔒 运行中进程与文件锁卫士</span>
+            <button class="btn btn-secondary btn-sm" onclick="checkProcessStatus()">刷新状态</button>
+          </div>
+          <div id="processDetails" class="code-viewer">未检测进程占用状态。</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>🩺 逆向开发环境健康度 (Doctor Report)</span>
+          <button class="btn btn-secondary btn-sm" onclick="runDoctorCheck()">重新检测</button>
+        </div>
+        <div id="doctorReport" class="code-viewer">点击「环境自检」检测 .NET SDK、REA 工具链及本地缓存...</div>
+      </div>
+    </div>
+
+    <!-- 2. AI Mod Studio Workspace -->
+    <div id="ws-studio" class="workspace">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">⚡ 自然语言 Mod 需求输入</div>
+          <div class="form-group">
+            <label class="form-label">功能描述 (Request Prompt)</label>
+            <textarea id="planRequest" class="textarea-field" placeholder="例如: 让主角移动速度提高2倍，攻击力提升50%，耐力永久不减"></textarea>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Mod 唯一标识 (ID)</label>
+              <input type="text" id="planModId" class="input-field" placeholder="player_speed_boost">
+            </div>
+            <div class="form-group">
+              <label class="form-label">版本号 (Version)</label>
+              <input type="text" id="planModVersion" class="input-field" value="1.0.0">
+            </div>
+          </div>
+          <button class="btn" onclick="generateModPlan()">✨ 构思蓝图 (Generate Plan)</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📋 生成的 mod-spec.json & 蓝图预览</div>
+          <div id="planSpecViewer" class="code-viewer">待生成 ModSpec 规划数据...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Hook Code Lab Workspace -->
+    <div id="ws-hooklab" class="workspace">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">🧬 Hook 模板参数配置</div>
+          <div class="form-group">
+            <label class="form-label">目标引擎 (Target Engine)</label>
+            <select id="hookEngine" class="select-field">
+              <option value="unity">Unity (Mono / IL2CPP - Harmony C#)</option>
+              <option value="unreal">Unreal Engine (UE4SS Lua)</option>
+              <option value="reengine">RE-Engine (REFramework Lua)</option>
+              <option value="godot">Godot Engine (GDScript)</option>
+            </select>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">类名 / Symbol (Class)</label>
+              <input type="text" id="hookClass" class="input-field" placeholder="HeroController / APawn">
+            </div>
+            <div class="form-group">
+              <label class="form-label">方法名 (Method)</label>
+              <input type="text" id="hookMethod" class="input-field" placeholder="TakeDamage / AddMovementInput">
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Hook 类型</label>
+              <select id="hookType" class="select-field">
+                <option value="prefix">Prefix (前置拦截/修改参数)</option>
+                <option value="postfix">Postfix (后置拦截/修改返回值)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">返回值类型</label>
+              <input type="text" id="hookReturn" class="input-field" value="void">
+            </div>
+          </div>
+          <button class="btn" onclick="generateHookCode()">⚡ 生成安全 Hook 代码</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span>📝 自动生成的补丁代码 (Live Validated)</span>
+            <button class="btn btn-secondary btn-sm" onclick="copyHookCode()">复制源码</button>
+          </div>
+          <div id="hookCodeOutput" class="code-viewer">// 点击「生成安全 Hook 代码」实时编译预览...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Mod Manager Workspace -->
+    <div id="ws-manager" class="workspace">
+      <div class="card">
+        <div class="card-title">
+          <span>📦 已安装 Mod 清单</span>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-secondary btn-sm" onclick="refreshInstalledMods()">刷新列表</button>
+            <button class="btn btn-danger btn-sm" onclick="confirmRollbackGame()">⚠️ 一键核武级全量回滚</button>
+          </div>
+        </div>
+        <div id="installedModsList" class="code-viewer">点击「刷新列表」载入已安装 Mod 档案...</div>
+      </div>
+    </div>
+
+    <!-- 5. Logs & Self-Healing Workspace -->
+    <div id="ws-logs" class="workspace">
+      <div class="card">
+        <div class="card-title">
+          <span>📜 实时运行日志 (Live Log Tail)</span>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-secondary btn-sm" onclick="fetchRecentLogs()">抓取日志</button>
+            <button class="btn btn-sm" onclick="runLogDiagnosis()">🧠 AI 自愈分析 (Diagnose)</button>
+          </div>
+        </div>
+        <textarea id="liveLogText" class="textarea-field" style="min-height: 180px;" placeholder="在此粘贴或点击「抓取日志」读取游戏运行/报错日志..."></textarea>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🛠️ 自愈修复建议与崩溃行提取</div>
+        <div id="logDiagnosisResult" class="code-viewer">无诊断信息。点击「AI 自愈分析」解析堆栈。</div>
+      </div>
+    </div>
+
+    <!-- 6. Save Time Machine Workspace -->
+    <div id="ws-saves" class="workspace">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">⏳ 创建存档安全快照</div>
+          <div class="form-group">
+            <label class="form-label">快照标签 / 说明 (Label)</label>
+            <input type="text" id="saveBackupLabel" class="input-field" placeholder="安装_无敌mod_之前">
+          </div>
+          <button class="btn" onclick="createSaveSnapshot()">💾 立即生成存档快照</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span>🗂️ 历史快照时间线</span>
+            <button class="btn btn-secondary btn-sm" onclick="refreshSaveBackups()">刷新时间线</button>
+          </div>
+          <div id="savesTimeline" class="code-viewer">点击「刷新时间线」查看已有快照...</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Notification Toast -->
+  <div id="toast">
+    <span id="toastMsg">通知信息</span>
+  </div>
+
+  <script>
+    // Tab Switching
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.workspace').forEach(w => w.classList.remove('active'));
+      const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+      if (activeBtn) activeBtn.classList.add('active');
+      const ws = document.getElementById('ws-' + tabId);
+      if (ws) ws.classList.add('active');
+    }
+
+    // Toast
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').innerText = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // Generic API helper
+    async function apiPost(endpoint, body) {
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        return await res.json();
+      } catch (e) {
+        return { success: false, error: e.toString() };
+      }
+    }
+
+    async function apiGet(endpoint) {
+      try {
+        const res = await fetch(endpoint);
+        return await res.json();
+      } catch (e) {
+        return { success: false, error: e.toString() };
+      }
+    }
+
+    // 1. Inspector
+    async function autoDetectGame() {
+      const gameDir = document.getElementById('targetGameDir').value.trim();
+      if (!gameDir) { showToast('请先输入游戏安装目录'); return; }
+      showToast('正在分析游戏引擎结构...');
+      const res = await apiPost('/api/detect', { game_dir: gameDir });
+      const badge = document.getElementById('engineBadge');
+      if (res.success && res.data) {
+        badge.style.display = 'inline-flex';
+        badge.innerText = res.data.name || res.data.id;
+        document.getElementById('engineDetails').innerText = JSON.stringify(res.data, null, 2);
+        showToast('引擎识别成功: ' + res.data.name);
+      } else {
+        badge.style.display = 'none';
+        document.getElementById('engineDetails').innerText = res.error || '未识别到受支持的引擎特征。';
+        showToast('识别失败: ' + (res.error || '未知引擎'));
+      }
+      checkProcessStatus();
+    }
+
+    async function checkProcessStatus() {
+      const gameDir = document.getElementById('targetGameDir').value.trim();
+      const res = await apiPost('/api/process', { game_dir: gameDir });
+      if (res.success && res.data) {
+        document.getElementById('processDetails').innerText = JSON.stringify(res.data, null, 2);
+      }
+    }
+
+    async function runDoctorCheck() {
+      showToast('正在运行逆向工具链体检...');
+      const res = await apiGet('/api/doctor');
+      if (res.success && res.data) {
+        document.getElementById('doctorReport').innerText = res.data.formatted || JSON.stringify(res.data.details, null, 2);
+        showToast('环境体检完成');
+      } else {
+        document.getElementById('doctorReport').innerText = 'Doctor 自检失败: ' + res.error;
+      }
+    }
+
+    // 2. AI Mod Studio
+    async function generateModPlan() {
+      const gameDir = document.getElementById('targetGameDir').value.trim();
+      const req = document.getElementById('planRequest').value.trim();
+      const modId = document.getElementById('planModId').value.trim();
+      const modVersion = document.getElementById('planModVersion').value.trim();
+
+      if (!req) { showToast('请输入需求描述'); return; }
+      showToast('AI 正在构思 Mod 蓝图与规格...');
+      const res = await apiPost('/api/plan', {
+        game_dir: gameDir || './temp_game',
+        request: req,
+        mod_id: modId,
+        mod_version: modVersion
+      });
+      if (res.success && res.data) {
+        document.getElementById('planSpecViewer').innerText = JSON.stringify(res.data, null, 2);
+        showToast('蓝图规划完成！');
+      } else {
+        document.getElementById('planSpecViewer').innerText = '规划生成失败: ' + (res.error || '未知错误');
+      }
+    }
+
+    // 3. Hook Lab
+    async function generateHookCode() {
+      const engine = document.getElementById('hookEngine').value;
+      const className = document.getElementById('hookClass').value.trim() || 'PlayerController';
+      const methodName = document.getElementById('hookMethod').value.trim() || 'TakeDamage';
+      const hookType = document.getElementById('hookType').value;
+      const returnType = document.getElementById('hookReturn').value.trim();
+
+      showToast('正在生成安全 Hook 代码...');
+      const res = await apiPost('/api/codegen/template', {
+        engine: engine,
+        class_name: className,
+        method_name: methodName,
+        hook_type: hookType,
+        return_type: returnType,
+        parameters: []
+      });
+      if (res.success && res.data) {
+        document.getElementById('hookCodeOutput').innerText = res.data.code;
+        showToast('Hook 代码生成成功');
+      } else {
+        document.getElementById('hookCodeOutput').innerText = '生成失败: ' + res.error;
+      }
+    }
+
+    function copyHookCode() {
+      const code = document.getElementById('hookCodeOutput').innerText;
+      navigator.clipboard.writeText(code).then(() => showToast('源码已成功复制到剪贴板'));
+    }
+
+    // 4. Mod Manager
+    async function refreshInstalledMods() {
+      const gameDir = document.getElementById('targetGameDir').value.trim();
+      const res = await apiPost('/api/mods/list', { game_dir: gameDir });
+      if (res.success && res.data) {
+        document.getElementById('installedModsList').innerText = JSON.stringify(res.data, null, 2);
+      } else {
+        document.getElementById('installedModsList').innerText = '读取清单失败: ' + res.error;
+      }
+    }
+
+    async function confirmRollbackGame() {
+      const gameDir = document.getElementById('targetGameDir').value.trim();
+      if (!gameDir) { showToast('请指定游戏目录'); return; }
+      if (!confirm('⚠️ 警告: 该操作将安全撤销并删除所有已安装的 Mod 文件，恢复纯净状态。是否继续？')) return;
+      showToast('正在执行全量回滚...');
+      const res = await apiPost('/api/mods/rollback', { game_dir: gameDir });
+      if (res.success && res.data) {
+        showToast('回滚执行成功，共移除 ' + (res.data.removed ? res.data.removed.length : 0) + ' 个文件');
+        refreshInstalledMods();
+      } else {
+        showToast('回滚失败: ' + res.error);
+      }
+    }
+
+    // 5. Logs & Self Healing
+    async function fetchRecentLogs() {
+      const gameDir = document.getElementById('targetGameDir').value.trim();
+      const res = await apiPost('/api/logs/read', { game_dir: gameDir, lines: 100 });
+      if (res.success && res.data) {
+        document.getElementById('liveLogText').value = res.data.text || '// 未发现活跃日志文件';
+        showToast('日志读取完成');
+      } else {
+        showToast('读取日志失败: ' + res.error);
+      }
+    }
+
+    async function runLogDiagnosis() {
+      const text = document.getElementById('liveLogText').value.trim();
+      if (!text) { showToast('请先输入或抓取日志内容'); return; }
+      showToast('AI 正在诊断崩溃堆栈...');
+      const res = await apiPost('/api/logs/diagnose', { log_text: text });
+      if (res.success && res.data) {
+        document.getElementById('logDiagnosisResult').innerText = JSON.stringify(res.data, null, 2);
+        showToast('自愈诊断完毕');
+      } else {
+        document.getElementById('logDiagnosisResult').innerText = '诊断失败: ' + res.error;
+      }
+    }
+
+    // 6. Saves Time Machine
+    async function createSaveSnapshot() {
+      const gameDir = document.getElementById('targetGameDir').value.trim();
+      const label = document.getElementById('saveBackupLabel').value.trim() || 'manual_snapshot';
+      if (!gameDir) { showToast('请先指定游戏目录'); return; }
+      showToast('正在创建存档快照...');
+      const res = await apiPost('/api/saves/create', { game_dir: gameDir, label: label });
+      if (res.success && res.data) {
+        showToast('存档快照创建成功！');
+        refreshSaveBackups();
+      } else {
+        showToast('创建快照失败: ' + res.error);
+      }
+    }
+
+    async function refreshSaveBackups() {
+      const gameDir = document.getElementById('targetGameDir').value.trim();
+      const res = await apiPost('/api/saves/list', { game_dir: gameDir });
+      if (res.success && res.data) {
+        document.getElementById('savesTimeline').innerText = JSON.stringify(res.data, null, 2);
+      } else {
+        document.getElementById('savesTimeline').innerText = '拉取存档列表失败: ' + res.error;
+      }
+    }
+
+    // Initial check
+    window.addEventListener('DOMContentLoaded', () => {
+      apiGet('/api/health').then(h => {
+        if (!h.success) {
+          const pill = document.getElementById('connectionStatus');
+          pill.style.background = 'rgba(239, 68, 68, 0.15)';
+          pill.style.color = '#ef4444';
+          pill.children[1].innerText = '离线 / 连接异常';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
