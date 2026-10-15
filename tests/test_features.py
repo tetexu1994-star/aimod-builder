@@ -134,6 +134,31 @@ class TestUnrealAdapter(unittest.TestCase):
             pack.assert_called_once()
             self.assertEqual(out, "/fake/m.pak")
 
+    def test_unreal_pack_uses_P_suffix_and_compression(self):
+        adapter = UnrealAdapter()
+        with tempfile.TemporaryDirectory() as game_dir, tempfile.TemporaryDirectory() as mod_proj:
+            paks = os.path.join(game_dir, "PBZero", "Content", "Paks")
+            os.makedirs(paks, exist_ok=True)
+            open(os.path.join(paks, "global.utoc"), "w").close()
+            adapter.scaffold_pak_mod(mod_proj, "m", "M")
+            open(os.path.join(mod_proj, "override", "x.ini"), "w").close()
+            with mock.patch("agmod.repak.pack_override", return_value="X") as pack:
+                adapter.pack_pak_mod(mod_proj, game_dir, "m")
+            self.assertEqual(os.path.basename(pack.call_args[0][1]), "m_P.pak")
+            self.assertEqual(pack.call_args[1].get("compression"), "gzip")
+
+    def test_unreal_extract_repack_iostore_calls_retoc(self):
+        adapter = UnrealAdapter()
+        with tempfile.TemporaryDirectory() as game_dir:
+            paks = os.path.join(game_dir, "PBZero", "Content", "Paks")
+            os.makedirs(paks, exist_ok=True)
+            with mock.patch("agmod.retoc.to_legacy", return_value="/out") as tl:
+                adapter.extract_iostore(game_dir, "/out")
+            tl.assert_called_once()
+            with mock.patch("agmod.retoc.to_zen", return_value="/x.utoc") as tz:
+                adapter.repack_iostore("/in", "/x.utoc")
+            tz.assert_called_once()
+
     def test_unreal_list_paks_and_configs(self):
         adapter = UnrealAdapter()
         with tempfile.TemporaryDirectory() as game_dir:

@@ -232,9 +232,12 @@ print(string.format("[%s] Initialized successfully!", ModRef))
     def install_pak_mod(self, project_dir: str, game_dir: str, mod_id: str) -> str:
         """Install a built .pak override mod into Content/Paks/~mods/."""
         mod_id = safe_component(mod_id, "mod_id")
-        expected = os.path.join(project_dir, "dist", f"{mod_id}.pak")
+        expected = os.path.join(project_dir, "dist", f"{mod_id}_P.pak")
+        fallback = os.path.join(project_dir, "dist", f"{mod_id}.pak")
         if os.path.isfile(expected):
             pak_files = [expected]
+        elif os.path.isfile(fallback):
+            pak_files = [fallback]
         else:
             pak_files = glob.glob(os.path.join(project_dir, "dist", "*.pak"))
             if not pak_files:
@@ -254,8 +257,8 @@ print(string.format("[%s] Initialized successfully!", ModRef))
         rollback.install_files(game_dir, mod_id, pairs)
         return mods_dir
 
-    def pack_pak_mod(self, project_dir: str, game_dir: str, mod_id: str) -> str:
-        """Pack override/ into a loose dist/<mod_id>.pak archive with repak."""
+    def pack_pak_mod(self, project_dir: str, game_dir: str, mod_id: str, compression: str = "gzip") -> str:
+        """Pack override/ into a loose dist/<mod_id>_P.pak (with _P priority suffix)."""
         mod_id = safe_component(mod_id, "mod_id")
         variant = self._variant(game_dir)
         override_dir = os.path.join(project_dir, "override")
@@ -266,9 +269,9 @@ print(string.format("[%s] Initialized successfully!", ModRef))
             raise RuntimeError("Unreal container type could not be verified; add a game .pak or .utoc marker first")
 
         from .. import repak
-        out_pak = os.path.join(project_dir, "dist", f"{mod_id}.pak")
+        out_pak = os.path.join(project_dir, "dist", f"{mod_id}_P.pak")
         os.makedirs(os.path.dirname(out_pak), exist_ok=True)
-        return repak.pack_override(override_dir, out_pak)
+        return repak.pack_override(override_dir, out_pak, compression=compression)
 
     def unpack_pak(self, game_dir: str, pak_path: str, out_dir: str) -> str:
         """Unpack a loose `.pak` archive for inspection with repak.
@@ -295,6 +298,19 @@ print(string.format("[%s] Initialized successfully!", ModRef))
         if not pak_path.lower().endswith(".pak"):
             raise ValueError("repak can only unpack .pak archives")
         return repak.unpack(pak_path, out_dir)
+
+    def extract_iostore(self, game_dir: str, out_dir: str, asset_filter: str = "", version: str = "") -> str:
+        """Extract UE5 IoStore assets to legacy .uasset/.uexp for editing (retoc to-legacy)."""
+        from .. import retoc
+        paks_dirs = self._content_paks_dirs(game_dir)
+        if not paks_dirs:
+            raise ValueError("no Content/Paks directory found")
+        return retoc.to_legacy(paks_dirs[0], out_dir, asset_filter=asset_filter, version=version)
+
+    def repack_iostore(self, input_dir: str, out_utoc: str, version: str = "") -> str:
+        """Repack legacy assets into an IoStore .utoc (retoc to-zen)."""
+        from .. import retoc
+        return retoc.to_zen(input_dir, out_utoc, version=version)
 
     def _content_paks_dirs(self, game_dir: str) -> list[str]:
         roots = glob.glob(os.path.join(game_dir, "*", "Content", "Paks")) + [

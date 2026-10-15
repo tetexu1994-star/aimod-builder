@@ -405,10 +405,10 @@ def install_unreal_pak_mod(project_dir: str, game_dir: str, mod_id: str) -> str:
 
 
 @mcp.tool()
-def build_unreal_pak_mod(project_dir: str, game_dir: str, mod_id: str) -> str:
-    """Pack override/ into dist/<mod_id>.pak using repak; this does not create IoStore containers."""
+def build_unreal_pak_mod(project_dir: str, game_dir: str, mod_id: str, compression: str = "gzip") -> str:
+    """Pack override/ into a loose dist/<mod_id>_P.pak (repak, gzip by default). IoStore .utoc/.ucas is not created here."""
     adapter = UnrealAdapter()
-    out_pak = adapter.pack_pak_mod(project_dir, game_dir, mod_id)
+    out_pak = adapter.pack_pak_mod(project_dir, game_dir, mod_id, compression=compression)
     return json.dumps({"pak": out_pak, "hint": "then call install_unreal_pak_mod"})
 
 
@@ -419,6 +419,22 @@ def unpack_unreal_pak(game_dir: str, pak_path: str = "", out_dir: str = "") -> s
     out_dir = out_dir or os.path.join(game_dir, "_unpacked")
     out = adapter.unpack_pak(game_dir, pak_path, out_dir)
     return json.dumps({"unpacked_to": out})
+
+
+@mcp.tool()
+def extract_unreal_iostore(game_dir: str, out_dir: str, asset_filter: str = "", version: str = "") -> str:
+    """Extract UE5 IoStore assets to legacy .uasset/.uexp for editing (retoc to-legacy)."""
+    adapter = UnrealAdapter()
+    out = adapter.extract_iostore(game_dir, out_dir, asset_filter=asset_filter, version=version)
+    return json.dumps({"extracted_to": out, "hint": "edit .uasset with UAssetGUI, then repack_unreal_iostore"})
+
+
+@mcp.tool()
+def repack_unreal_iostore(input_dir: str, out_utoc: str, version: str = "") -> str:
+    """Repack legacy assets into an IoStore .utoc (retoc to-zen)."""
+    adapter = UnrealAdapter()
+    out = adapter.repack_iostore(input_dir, out_utoc, version=version)
+    return json.dumps({"utoc": out})
 
 
 @mcp.tool()

@@ -86,14 +86,19 @@ def ensure_repak() -> str:
     return dest_exe
 
 
-def pack_override(override_dir: str, out_pak: str) -> str:
-    """Pack a directory of overridden files into a loose Unreal Engine .pak."""
+def pack_override(override_dir: str, out_pak: str, compression: str = "") -> str:
+    """Pack a directory of overridden files into a loose Unreal Engine .pak.
+
+    `compression` is one of gzip/zlib/zstd/none; empty means repak's default.
+    If a game fails to load the pak, retry with compression="none".
+    """
     repak = ensure_repak()
     os.makedirs(os.path.dirname(out_pak) or ".", exist_ok=True)
-    subprocess.run(
-        [repak, "pack", override_dir, out_pak],
-        check=True, capture_output=True, text=True,
-    )
+    cmd = [repak, "pack"]
+    if compression and compression.lower() != "none":
+        cmd += ["--compression", compression.lower()]
+    cmd += [override_dir, out_pak]
+    subprocess.run(cmd, check=True, capture_output=True, text=True)
     return out_pak
 
 
@@ -106,3 +111,10 @@ def unpack(pak_path: str, out_dir: str) -> str:
         check=True, capture_output=True, text=True,
     )
     return out_dir
+
+
+def info(pak_path: str) -> str:
+    """Print .pak metadata (mount point, entries, version) via `repak info`."""
+    repak = ensure_repak()
+    r = subprocess.run([repak, "info", pak_path], capture_output=True, text=True)
+    return (r.stdout or r.stderr or "").strip()
