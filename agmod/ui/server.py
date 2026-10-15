@@ -208,43 +208,7 @@ def _auto_deploy_mod(
                 f.write("\n".join(cfg_lines) + "\n")
             pairs.append((cfg_source, os.path.join(cfg_dir, f"{mod_id}.cfg")))
 
-            # If dotnet is available, attempt compiling DLL
-            if shutil.which("dotnet") and os.path.isfile(os.path.join(bepin_core, "BepInEx.dll")):
-                try:
-                    proj_staging = tempfile.mkdtemp(prefix="aimod-proj-")
-                    try:
-                        bepinex.scaffold_plugin(proj_staging, game_dir, mod_id, mod_name)
-                        plugin_cs_path = os.path.join(proj_staging, "Plugin.cs")
-                        enhanced_cs = f"""using BepInEx;
-using HarmonyLib;
-
-namespace {mod_id.replace('-', '_')}
-{{
-    [BepInPlugin("{mod_id}", "{mod_name}", "1.0.0")]
-    public class Plugin : BaseUnityPlugin
-    {{
-        private void Awake()
-        {{
-            Harmony.CreateAndPatchAll(typeof(Plugin));
-            Logger.LogInfo($"[AIMod] {mod_name} loaded successfully.");
-        }}
-    }}
-}}
-
-{source_code}
-"""
-                        with open(plugin_cs_path, "w", encoding="utf-8") as f:
-                            f.write(enhanced_cs)
-                        build_res = bepinex.build_plugin_with_diagnostics(proj_staging, game_dir, auto_repair=False)
-                        if build_res.get("success"):
-                            message = f"Mod【{mod_name}】已通过 .NET SDK 编译为插件 DLL 并部署到 BepInEx/plugins 目录！"
-                    finally:
-                        shutil.rmtree(proj_staging, ignore_errors=True)
-                except Exception:
-                    pass
-
-            if not message:
-                message = f"Mod【{mod_name}】已全自动写入 BepInEx 插件目录！"
+            message = f"Mod【{mod_name}】源码与配置已全自动写入 BepInEx 插件目录！"
             if pending_restart:
                 message += "（提示：检测到游戏此前已在运行，请顺手重启一次游戏以装载前置框架）"
 
