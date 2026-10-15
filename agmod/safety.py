@@ -59,6 +59,14 @@ def check_target(pid: int) -> tuple[bool, str]:
     return True, ""
 
 
+def check_game_target(game_dir: str) -> tuple[bool, str]:
+    """Refuse work on game directories while a known anti-cheat is active."""
+    active = active_anticheat()
+    if active:
+        return False, "anti-cheat service is active: " + ", ".join(active)
+    return True, ""
+
+
 def active_anticheat() -> list[str]:
     """Names of any currently-running known anti-cheat services."""
     if psutil is None:

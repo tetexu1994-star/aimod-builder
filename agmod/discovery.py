@@ -13,7 +13,7 @@ import subprocess
 import sys
 from typing import Any, Dict, List, Optional, Set
 
-from agmod import process, registry, saves
+from agmod import process, registry, safety, saves
 
 logger = logging.getLogger("agmod.discovery")
 
@@ -271,6 +271,9 @@ def launch_game(game_dir: str, appid: str = "") -> Dict[str, Any]:
     game_dir = os.path.normpath(game_dir)
     if not os.path.isdir(game_dir):
         return {"success": False, "error": f"Game directory not found: {game_dir}"}
+    allowed, reason = safety.check_game_target(game_dir)
+    if not allowed:
+        return {"success": False, "error": reason}
 
     # 1. Pre-launch safety savegame backup
     try:

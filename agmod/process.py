@@ -102,12 +102,12 @@ def find_primary_executable_path(game_dir: str) -> str | None:
     except OSError:
         pass
 
-    if root_exes:
-        for p in root_exes:
-            fn_low = os.path.basename(p).lower()
-            if fn_low == f"{dir_name}.exe" or fn_low.startswith(dir_name):
-                return p
-        return root_exes[0]
+    root_match = next(
+        (p for p in root_exes if os.path.basename(p).lower() in {f"{dir_name}.exe", f"{dir_name}"}),
+        None,
+    )
+    if root_match:
+        return root_match
 
     # 3, 4, 5: Nested executables (common in Unreal Engine / AAA titles)
     all_exes = _scan_dir_executables(game_dir_abs)
@@ -132,7 +132,7 @@ def find_primary_executable_path(game_dir: str) -> str | None:
     if win64_exes:
         return win64_exes[0]
 
-    return all_exes[0]
+    return root_exes[0] if root_exes else all_exes[0]
 
 
 def find_game_executables(game_dir: str) -> list[str]:
@@ -308,10 +308,6 @@ def get_running_game_processes(game_dir: str) -> list[dict]:
                     # Check 2: Working directory is inside game directory
                     elif cwd and _is_subpath(game_dir_abs, cwd):
                         matched = True
-                    # Check 3: Process name matches known game executables
-                    elif p_name_low and p_name_low in known_exes_lower:
-                        matched = True
-
                     if matched:
                         seen_pids.add(pid)
                         hits.append({
@@ -338,19 +334,6 @@ def get_running_game_processes(game_dir: str) -> list[dict]:
                         pass
         except Exception:
             pass
-
-    # Step 2: If psutil is absent or found 0 hits, fall back to native OS commands
-    if not hits:
-        fallback_hits = []
-        if sys.platform == "win32":
-            fallback_hits = _get_running_processes_tasklist(known_exes_lower)
-        else:
-            fallback_hits = _get_running_processes_ps(known_exes_lower)
-
-        for h in fallback_hits:
-            if h["pid"] not in seen_pids:
-                seen_pids.add(h["pid"])
-                hits.append(h)
 
     return hits
 

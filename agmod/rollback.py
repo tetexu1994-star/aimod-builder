@@ -19,6 +19,7 @@ import time
 from .config import CACHE_ROOT
 from .paths import slugify, safe_join
 from .process import is_game_running
+from .safety import check_game_target
 
 _PROTECTED_REL_DIRS = {
     "",
@@ -188,6 +189,9 @@ def _record_install_locked(game_dir: str, mod_id: str, added_files: list[str], o
 def install_files(game_dir: str, mod_id: str, files: list[tuple[str, str]], check_running: bool = True) -> dict:
     """Install an explicit source/target file set as one reversible transaction."""
     game_dir = os.path.abspath(game_dir)
+    allowed, reason = check_game_target(game_dir)
+    if not allowed:
+        raise RuntimeError(reason)
     if check_running:
         running, processes = is_game_running(game_dir)
         if running:

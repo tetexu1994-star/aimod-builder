@@ -175,6 +175,16 @@ class TestProcessDiscovery(unittest.TestCase):
             exes = find_game_executables(game_dir)
             self.assertEqual(exes[0], "PBZero-Win64-Shipping.exe")
 
+        with tempfile.TemporaryDirectory() as game_dir:
+            # A root launcher must not outrank the actual nested Shipping binary.
+            launcher = os.path.join(game_dir, "Launcher.exe")
+            open(launcher, "w").close()
+            win64 = os.path.join(game_dir, "Game", "Binaries", "Win64")
+            os.makedirs(win64, exist_ok=True)
+            shipping_exe = os.path.join(win64, "Game-Win64-Shipping.exe")
+            open(shipping_exe, "w").close()
+            self.assertEqual(find_primary_executable_path(game_dir), shipping_exe)
+
     def test_unreal_iostore_detect(self):
         from agmod.adapters.unreal import UnrealAdapter
         adapter = UnrealAdapter()

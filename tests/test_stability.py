@@ -121,6 +121,7 @@ class TestStability(unittest.TestCase):
             self.assertTrue(Path(project, "MODDING_PLAN.md").is_file())
             self.assertTrue(Path(project, "scripts", "main.lua").is_file())
             self.assertTrue(validate_project(project)["ok"])
+            self.assertEqual(spec["ecosystem_pattern"]["loader"], "UE4SS")
 
     def test_plan_prebuild_accepts_compiled_entry(self):
         with tempfile.TemporaryDirectory() as game, tempfile.TemporaryDirectory() as project:

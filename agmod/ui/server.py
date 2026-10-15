@@ -8,7 +8,10 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
+import shutil
 import sys
+import tempfile
 import threading
 import time
 import urllib.parse
@@ -22,6 +25,54 @@ from agmod import codegen, discovery, doctor, inspector, llm, log_repair, logs, 
 logger = logging.getLogger("agmod.ui")
 
 INDEX_HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
+
+
+def _lua_string(value: Any) -> str:
+    return json.dumps(str(value), ensure_ascii=False)
+
+
+def _hook_target_parts(target: str) -> tuple[str, str]:
+    target = str(target or "").strip()
+    if ":" in target:
+        class_name, method_name = target.split(":", 1)
+    elif "." in target:
+        class_name, method_name = target.rsplit(".", 1)
+    else:
+        raise ValueError("hook_target must look like Class:Method or Class.Method")
+    if not class_name.strip() or not method_name.strip():
+        raise ValueError("hook_target must include both class and method")
+    return class_name.strip(), method_name.strip()
+
+
+def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict[str, Any]) -> tuple[str, dict]:
+    if engine_id not in {"unity", "unreal", "re-engine", "godot"}:
+        return f"-- Generated placeholder for {mod_name}\n", {}
+    class_name, method_name = _hook_target_parts(hook_target)
+    parameters = []
+    for index, (name, value) in enumerate(params.items()):
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", str(name)):
+            raise ValueError(f"invalid parameter name: {name}")
+        if isinstance(value, bool):
+            type_name = "bool"
+        elif isinstance(value, int):
+            type_name = "int"
+        elif isinstance(value, float):
+            type_name = "float"
+        else:
+            type_name = "object"
+        parameters.append({"name": str(name), "type": type_name, "value": value})
+    result = codegen.generate_hook_from_evidence({
+        "engine": engine_id,
+        "target": {
+            "class_name": class_name,
+            "method_name": method_name,
+            "hook_type": "prefix",
+            "return_type": "void",
+            "parameters": parameters,
+        },
+        "evidence": {"source": "mod_action", "confidence": 0.25},
+    })
+    return result["code"], result.get("target", {})
 
 
 def _read_body_json(handler: BaseHTTPRequestHandler) -> Dict[str, Any]:
@@ -438,6 +489,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         rea_insight = inspector.analyze_reverse_engineering_context(game_dir, user_prompt)
         target_binary = rea_insight.get("target_binary", "Game Binary")
         matched_syms = rea_insight.get("matched_symbols", [])
+        symbol_evidence = rea_insight.get("symbol_evidence", {})
         boundary = rea_insight.get("boundary_scope", {})
         guards = rea_insight.get("exception_guards", [])
 
@@ -445,12 +497,13 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             rea_section = (
                 f"\n【REA 逆向工程与安全边界分析（必须严格遵守）】\n"
                 f"- 目标模块: {target_binary}\n"
-                f"- 命中逆向符号: {', '.join(matched_syms[:4])}\n"
+                f"- 候选逆向符号: {', '.join(matched_syms[:4])}\n"
+                f"- 符号证据状态: {symbol_evidence.get('status', 'suggested')} / {symbol_evidence.get('source', 'heuristic')}\n"
                 f"- 推荐主挂钩点: {rea_insight.get('primary_hook', '')}\n"
                 f"- 安全边界范围: {boundary.get('boundary_warning', '')}\n"
                 f"- 参数约束: min={boundary.get('safe_min')}, max={boundary.get('safe_max')}, step={boundary.get('step')}, default={boundary.get('default_val')}\n"
                 f"- 异常规避原则: {'；'.join(guards)}\n"
-                f"- 核心规范: 你的 hook_target 必须基于上述逆向符号；生成的 tuning_params 滑块范围必须严格处于安全边界内，确保游戏无异常崩溃！\n"
+                f"- 核心规范: 未经验证的符号只能作为候选；生成代码前必须标注证据状态，不能把启发式候选描述成已验证目标。tuning_params 必须遵守边界并在安装前由用户确认。\n"
             )
 
             sys_prompt = (
@@ -595,109 +648,91 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
     def _handle_mod_pin(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
         mod_id = paths.slugify(body.get("mod_id", "pinned_mod"))
-        mod_name = body.get("mod_name", "AI Custom Mod")
+        mod_name = str(body.get("mod_name", "AI Custom Mod"))[:120]
         summary = body.get("summary", "")
         params = body.get("params", {})
-        hook_target = body.get("hook_target", "")
+        hook_target = str(body.get("hook_target", ""))
 
         if not game_dir:
             return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
+        from agmod import safety
+        allowed, reason = safety.check_game_target(game_dir)
+        if not allowed:
+            return HTTPStatus.FORBIDDEN, {"success": False, "error": reason}
+        if not isinstance(params, dict):
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "params must be an object"}
 
         engine_info = registry.detect_engine(game_dir) or {}
         engine_id = engine_info.get("engine_id") or engine_info.get("id", "generic")
 
-        added_files = []
+        try:
+            source_code, normalized_target = _pinned_source(engine_id, mod_name, hook_target, params)
+        except (TypeError, ValueError) as exc:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": str(exc)}
 
-        if engine_id == "unreal":
-            import glob
-            win64_candidates = glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64"))
-            if not win64_candidates:
-                win64_candidates = [os.path.join(game_dir, "Binaries", "Win64")]
-            win64_dir = win64_candidates[0]
+        staging = tempfile.mkdtemp(prefix="aimod-pin-")
+        try:
+            manifest = {
+                "id": mod_id,
+                "name": mod_name,
+                "summary": summary,
+                "hook_target": hook_target,
+                "params": params,
+                "pinned_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            pairs: list[tuple[str, str]] = []
+            if engine_id == "unreal":
+                import glob
+                win64_candidates = glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64"))
+                if not win64_candidates:
+                    win64_candidates = [os.path.join(game_dir, "Binaries", "Win64")]
+                mods_root = os.path.join(win64_candidates[0], "Mods", mod_id)
+                if os.path.exists(os.path.join(win64_candidates[0], "ue4ss", "Mods")):
+                    mods_root = os.path.join(win64_candidates[0], "ue4ss", "Mods", mod_id)
+                stage_files = {"enabled.txt": "1\n", "mod.json": json.dumps(manifest, ensure_ascii=False, indent=2), "scripts/main.lua": source_code}
+                for rel, content in stage_files.items():
+                    source = os.path.join(staging, rel)
+                    os.makedirs(os.path.dirname(source), exist_ok=True)
+                    with open(source, "w", encoding="utf-8") as f:
+                        f.write(content)
+                    pairs.append((source, os.path.join(mods_root, rel)))
+                message = f"虚幻引擎 Mod【{mod_name}】已固化到 UE4SS 插件目录！下次启动游戏将由 UE4SS 自动装载生效。"
+            elif engine_id == "re-engine":
+                ref_folder = os.path.join(game_dir, "reframework", "autorun")
+                mods_root = ref_folder
+                source = os.path.join(staging, f"{mod_id}.lua")
+                with open(source, "w", encoding="utf-8") as f:
+                    f.write(source_code)
+                pairs.append((source, os.path.join(ref_folder, f"{mod_id}.lua")))
+                message = f"RE-Engine Mod【{mod_name}】已成功固化到 reframework/autorun 目录！"
+            elif engine_id == "godot":
+                mods_root = os.path.join(game_dir, "mods-unpacked", f"{paths.slugify(mod_name)}-{mod_id}")
+                source = os.path.join(staging, "mod_main.gd")
+                with open(source, "w", encoding="utf-8") as f:
+                    f.write(source_code)
+                pairs.append((source, os.path.join(mods_root, "mod_main.gd")))
+                message = f"Godot Mod【{mod_name}】已固化到 mods-unpacked 目录！"
+            else:
+                mod_folder = os.path.join(game_dir, "BepInEx", "plugins", mod_id)
+                source = os.path.join(staging, "mod.json")
+                with open(source, "w", encoding="utf-8") as f:
+                    json.dump(manifest, f, ensure_ascii=False, indent=2)
+                pairs.append((source, os.path.join(mod_folder, "mod.json")))
+                message = f"Mod【{mod_name}】已成功固化到游戏目录！下次直接在 Steam 启动游戏依然生效。"
+                mods_root = mod_folder
 
-            mods_root = os.path.join(win64_dir, "Mods", mod_id)
-            if os.path.exists(os.path.join(win64_dir, "ue4ss", "Mods")):
-                mods_root = os.path.join(win64_dir, "ue4ss", "Mods", mod_id)
-
-            scripts_dir = os.path.join(mods_root, "scripts")
-            os.makedirs(scripts_dir, exist_ok=True)
-
-            enabled_file = os.path.join(mods_root, "enabled.txt")
-            with open(enabled_file, "w", encoding="utf-8") as f:
-                f.write("1\n")
-            added_files.append(enabled_file)
-
-            manifest_file = os.path.join(mods_root, "mod.json")
-            with open(manifest_file, "w", encoding="utf-8") as f:
-                json.dump({
-                    "id": mod_id,
-                    "name": mod_name,
-                    "engine": "unreal",
-                    "summary": summary,
-                    "hook_target": hook_target,
-                    "params": params,
-                    "pinned_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-                }, f, indent=2, ensure_ascii=False)
-            added_files.append(manifest_file)
-
-            lua_script = os.path.join(scripts_dir, "main.lua")
-            lua_code = (
-                f"-- {mod_name} (ID: {mod_id})\n"
-                f"-- Pinned by AI Mod Builder for Unreal Engine (UE4SS)\n"
-                f'local ModName = "{mod_name}"\n'
-                f'print(string.format("[%s] Loaded successfully!", ModName))\n\n'
-                f'-- Hook Target: {hook_target or "Dynamic"}\n'
-            )
-            for p_k, p_v in params.items():
-                lua_code += f'local {p_k} = {p_v}\n'
-            lua_code += (
-                f'\nprint(string.format("[%s] Active parameters applied.", ModName))\n'
-            )
-            with open(lua_script, "w", encoding="utf-8") as f:
-                f.write(lua_code)
-            added_files.append(lua_script)
-            mod_folder = mods_root
-            message = f"虚幻引擎 Mod【{mod_name}】已成功固化到 UE4SS 插件目录！下次启动游戏将由 UE4SS 自动装载生效。"
-
-        elif engine_id == "re-engine":
-            ref_folder = os.path.join(game_dir, "reframework", "autorun")
-            os.makedirs(ref_folder, exist_ok=True)
-            lua_script = os.path.join(ref_folder, f"{mod_id}.lua")
-            with open(lua_script, "w", encoding="utf-8") as f:
-                f.write(f"-- REFramework Mod: {mod_name}\nprint('[{mod_name}] Loaded!')\n")
-            added_files.append(lua_script)
-            mod_folder = ref_folder
-            message = f"RE-Engine Mod【{mod_name}】已成功固化到 reframework/autorun 目录！"
-
-        else:
-            mod_folder = os.path.join(game_dir, "BepInEx", "plugins", mod_id)
-            os.makedirs(mod_folder, exist_ok=True)
-            manifest_file = os.path.join(mod_folder, "mod.json")
-            with open(manifest_file, "w", encoding="utf-8") as f:
-                json.dump({
-                    "id": mod_id,
-                    "name": mod_name,
-                    "summary": summary,
-                    "params": params,
-                    "pinned_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-                }, f, indent=2, ensure_ascii=False)
-            added_files.append(manifest_file)
-            message = f"Mod【{mod_name}】已成功固化到游戏目录！下次直接在 Steam 启动游戏依然生效。"
-
-        rollback.record_install(
-            game_dir=game_dir,
-            mod_id=mod_id,
-            added_files=added_files,
-            overwritten_backups={},
-        )
+            rollback.install_files(game_dir, mod_id, pairs)
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
 
         return HTTPStatus.OK, {
             "success": True,
             "data": {
                 "mod_id": mod_id,
                 "mod_name": mod_name,
-                "path": mod_folder,
+                "path": mods_root,
                 "message": message,
+                "hook_target": normalized_target,
             }
         }
 

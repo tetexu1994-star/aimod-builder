@@ -167,6 +167,9 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
     # 2. Identify target binary and real reverse engineered symbols
     matched_symbols = []
     target_binary = "Game Executable"
+    evidence_source = "heuristic"
+    evidence_status = "suggested"
+    evidence_confidence = 0.35
 
     if engine_id == "unreal":
         shippings = glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64", "*-Shipping.exe"))
@@ -197,6 +200,9 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
                 real_found = rea.fast_search_members(dll_p, term, limit=5)
                 if real_found:
                     matched_symbols = real_found
+                    evidence_source = "rea_fast_search"
+                    evidence_status = "observed"
+                    evidence_confidence = 0.75
             except Exception:
                 pass
         else:
@@ -245,6 +251,11 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
         "category": category,
         "target_binary": target_binary,
         "matched_symbols": matched_symbols,
+        "symbol_evidence": {
+            "source": evidence_source,
+            "status": evidence_status,
+            "verified": evidence_status == "verified",
+        },
         "primary_hook": matched_symbols[0] if matched_symbols else "",
         "boundary_scope": {
             "param_label": param_label,
@@ -256,5 +267,5 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
         },
         "exception_guards": exception_guards,
         "implementation_strategy": strategy,
-        "confidence": 0.96,
+        "confidence": evidence_confidence,
     }

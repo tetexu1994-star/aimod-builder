@@ -51,6 +51,47 @@ def _route(engine_id: str, adapter) -> tuple[str, list[str]]:
     return getattr(adapter, "mod_framework", "engine-specific mod framework"), []
 
 
+def _ecosystem_pattern(engine_id: str) -> dict:
+    patterns = {
+        "unity": {
+            "loader": "BepInEx",
+            "loader_profile": "Mono plugin / IL2CPP interop profile",
+            "package_shape": ["loader", "plugin DLL", "config", "assets", "localization"],
+            "implementation": ["Harmony patch", "plugin lifecycle", "config binding", "dependency manifest"],
+        },
+        "unreal": {
+            "loader": "UE4SS",
+            "loader_profile": "UE4/UE5 Lua and reflection profile",
+            "package_shape": ["loader", "enabled.txt", "scripts/main.lua", "assets", "mod.json"],
+            "implementation": ["UFunction hook", "UObject lookup", "config binding", "asset override"],
+        },
+        "re-engine": {
+            "loader": "REFramework",
+            "loader_profile": "RE Engine Lua and SDK profile",
+            "package_shape": ["REFramework", "autorun/*.lua", "config", "assets", "localization"],
+            "implementation": ["sdk.hook", "runtime type lookup", "ImGui controls", "version guard"],
+        },
+        "godot": {
+            "loader": "GodotModLoader",
+            "loader_profile": "Godot 3/4 GDScript profile",
+            "package_shape": ["mod folder", "mod_main.gd", "mod.json", "assets", "localization"],
+            "implementation": ["scene hook", "resource override", "config binding", "runtime compatibility"],
+        },
+        "dotnet-xna": {
+            "loader": "tModLoader or SMAPI",
+            "loader_profile": "game-specific managed loader profile",
+            "package_shape": ["loader", "managed plugin", "config", "assets", "localization"],
+            "implementation": ["loader API", "content registration", "config binding", "dependency manifest"],
+        },
+    }
+    return patterns.get(engine_id, {
+        "loader": "engine-specific loader",
+        "loader_profile": "unverified profile",
+        "package_shape": ["loader", "source", "manifest", "assets"],
+        "implementation": ["inspect community package shape", "record evidence", "verify before install"],
+    })
+
+
 def create_mod_plan(
     game_dir: str,
     request: str,
@@ -109,6 +150,7 @@ def create_mod_plan(
         "customizations": customizations or {},
         "engine": engine,
         "route": route,
+        "ecosystem_pattern": _ecosystem_pattern(engine["id"]),
         "prerequisites": prerequisites,
         "candidate_symbols": candidate_symbols,
         "inspection_keywords": keywords,

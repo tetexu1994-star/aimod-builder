@@ -132,6 +132,8 @@ python -m agmod.ui --port 9000 --no-browser
 
 ## 核心工作流
 
+实现不同引擎 Mod 时，请先阅读 [`MOD_ECOSYSTEM_PLAYBOOK.md`](/Users/tetexu/Downloads/aimodbuilder/MOD_ECOSYSTEM_PLAYBOOK.md)。其中记录了 Nexus Mods / Thunderstore 的 Loader、API、内容 Mod、依赖图和包结构实践，用来约束 AI 生成方案。
+
 ### 0. 从一句话开始：先生成可审查的 Mod 项目
 
 ```

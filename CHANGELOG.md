@@ -2,6 +2,14 @@
 
 ## 2026-10-14
 
+### Architecture Review Follow-up
+
+- Added `MOD_ECOSYSTEM_PLAYBOOK.md` based on Nexus Mods and Thunderstore loader/API/content packages, covering dependency graphs, loader profiles, package shape, config, assets, localization, compatibility and reversible installation.
+- `plan_mod` now records a per-engine ecosystem pattern and expected implementation shape.
+- Added a hard anti-cheat target gate before launch and transactional install.
+- Pinned Mod generation now stages files and uses `rollback.install_files`; supported engines generate code from `generate_hook_from_evidence` instead of writing placeholder scripts.
+- Primary executable selection now prefers the actual nested Shipping binary over an unrelated root launcher, and runtime matching no longer trusts executable names alone.
+
 ### Added
 
 - Added UI Architecture Specification (`UI_ARCHITECTURE.md`) documenting the design principles, six functional workspaces, REST API contracts, security guardrails, and data flows.
