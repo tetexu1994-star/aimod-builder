@@ -101,6 +101,33 @@ def is_blocked_name(name: str) -> bool:
     return name.strip().lower() in BLOCKED
 
 
+# Known single-player titles whose directory may still ship anti-cheat *residual
+# files* (bundled but unused). These may skip the stale-marker check but are still
+# blocked if an anti-cheat process is actually running. Persist new entries by
+# editing this set, or call allowlist_game() at runtime.
+SINGLEPLAYER_ALLOWLIST = {
+    "phantom blade zero",   # 影之刃零（纯单机 UE5）
+    "black myth wukong",    # 黑神话悟空
+    "hollow knight",        # 空洞骑士
+}
+
+
+def is_allowlisted(game_dir: str) -> bool:
+    """True if the game directory is a known single-player title (skips stale markers)."""
+    if not game_dir:
+        return False
+    name = os.path.basename(os.path.normpath(game_dir)).lower()
+    return any(a in name for a in SINGLEPLAYER_ALLOWLIST)
+
+
+def allowlist_game(name: str) -> str:
+    """Add a single-player title to the runtime allowlist (session-scoped)."""
+    key = (name or "").strip().lower()
+    if key:
+        SINGLEPLAYER_ALLOWLIST.add(key)
+    return key
+
+
 def detect_game_anticheat(game_dir: str) -> dict[str, Any]:
     """Inspect game directory for anti-cheat subsystems, protecting user accounts from bans."""
     if not game_dir or not os.path.isdir(game_dir):
@@ -109,13 +136,14 @@ def detect_game_anticheat(game_dir: str) -> dict[str, Any]:
     game_dir_abs = os.path.abspath(game_dir)
     dir_name = os.path.basename(os.path.normpath(game_dir_abs)).lower()
 
-    def _build_res(has_ac: bool, sys_n: str, r_msg: str):
+    def _build_res(has_ac: bool, sys_n: str, r_msg: str, kind: str = "stale_marker"):
         return {
             "has_anticheat": has_ac,
             "system": sys_n,
             "anticheat_system": sys_n,
             "reason": r_msg,
             "anticheat_reason": r_msg,
+            "kind": kind,
         }
 
     # 1. Check known protected game directory names
@@ -125,6 +153,7 @@ def detect_game_anticheat(game_dir: str) -> dict[str, Any]:
                 True,
                 "Online Anti-Cheat Protection",
                 f"游戏 '{dir_name}' (匹配: {blocked_title}) 属于强联网反作弊竞技游戏，已自动屏蔽自定义 Mod 操作以防封号。",
+                kind="blocked_game",
             )
 
     # 2. Check top-level and 2-level deep files and directories
@@ -208,13 +237,19 @@ def check_target(pid: int) -> tuple[bool, str]:
 
 
 def check_game_target(game_dir: str) -> tuple[bool, str]:
-    """Refuse work on game directories that contain anti-cheat or while anti-cheat is active."""
-    # 1. Check directory-level anti-cheat markers
+    """Refuse work on blocked online titles, or while anti-cheat is actively running.
+
+    Stale anti-cheat *files/dirs* inside a known single-player title's directory
+    are tolerated (see SINGLEPLAYER_ALLOWLIST); an actively-running anti-cheat
+    process is never tolerated.
+    """
     ac = detect_game_anticheat(game_dir)
     if ac.get("has_anticheat"):
-        return False, ac.get("reason", f"检测到该游戏受 {ac.get('system', '反作弊')} 保护，禁止修改。")
+        if ac.get("kind") == "stale_marker" and is_allowlisted(game_dir):
+            pass  # single-player title with residual markers; fall through to process check
+        else:
+            return False, ac.get("reason", f"检测到该游戏受 {ac.get('system', '反作弊')} 保护，禁止修改。")
 
-    # 2. Check running anti-cheat services on the host
     active = active_anticheat()
     if active:
         return False, "检测到宿主机正运行反作弊服务: " + ", ".join(active) + "，为防封禁已自动拦截 Mod 操作。"

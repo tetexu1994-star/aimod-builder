@@ -423,6 +423,31 @@ class TestAntiCheatDetection(unittest.TestCase):
             self.assertFalse(allowed)
             self.assertIn("反作弊", reason)
 
+    def test_singleplayer_allowlist_skips_stale_markers(self):
+        from agmod import safety
+
+        with tempfile.TemporaryDirectory() as base_dir:
+            # 白名单单机游戏带 EAC 残留目录 → detect 仍报 has_anticheat，但 check_game_target 放行
+            pz = os.path.join(base_dir, "Phantom Blade Zero")
+            os.makedirs(os.path.join(pz, "EasyAntiCheat"))
+            info = safety.detect_game_anticheat(pz)
+            self.assertTrue(info["has_anticheat"])
+            self.assertEqual(info["kind"], "stale_marker")
+            allowed, reason = safety.check_game_target(pz)
+            self.assertTrue(allowed, reason)
+
+            # 非白名单游戏带 EAC 残留 → 拦
+            other = os.path.join(base_dir, "Some Online Game")
+            os.makedirs(os.path.join(other, "EasyAntiCheat"))
+            allowed2, _ = safety.check_game_target(other)
+            self.assertFalse(allowed2)
+
+    def test_allowlist_game_runtime(self):
+        from agmod import safety
+        safety.allowlist_game("My Solo Game")
+        self.assertIn("my solo game", safety.SINGLEPLAYER_ALLOWLIST)
+        self.assertTrue(safety.is_allowlisted("C:/Games/My Solo Game"))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
