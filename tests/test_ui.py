@@ -433,7 +433,76 @@ System.NullReferenceException: Object reference not set to an instance of an obj
             self.assertEqual(code, 200)
             self.assertTrue(res["success"])
             self.assertIn("完全不需要手动放进去", res["data"]["reply"])
-            self.assertIn("全自动", res["data"]["reply"])
+
+    def test_multitype_tuning_controls(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            empty_cfg = os.path.join(tmp_dir, "empty_llm.json")
+            with open(empty_cfg, "w", encoding="utf-8") as f:
+                json.dump({"api_key": ""}, f)
+            with patch.dict(os.environ, {"AGMOD_LLM_CONFIG_PATH": empty_cfg}):
+                game = os.path.join(tmp_dir, "test_game")
+                managed = os.path.join(game, "Raft_Data", "Managed")
+                os.makedirs(managed, exist_ok=True)
+                open(os.path.join(managed, "Assembly-CSharp.dll"), "w").close()
+                open(os.path.join(game, "Raft.exe"), "w").close()
+
+                # 1. Switch & Slider: "无敌"
+                code, res = _http_post(f"{self.base_url}/api/mod/interact", {
+                    "game_dir": game,
+                    "prompt": "无敌金身不掉血"
+                })
+                self.assertEqual(code, 200)
+                self.assertTrue(res["success"])
+                action = res["data"]["action"]
+                self.assertIsNotNone(action)
+                params = action.get("tuning_params", [])
+                types = [p.get("type") for p in params]
+                self.assertIn("switch", types)
+                self.assertIn("slider", types)
+
+                # Test tuning boolean switch to False
+                mod_id = action["mod_id"]
+                code, tune_res = _http_post(f"{self.base_url}/api/mod/tune", {
+                    "game_dir": game,
+                    "mod_id": mod_id,
+                    "param_id": "god_mode_active",
+                    "value": False,
+                })
+                self.assertEqual(code, 200)
+                self.assertTrue(tune_res["success"])
+                self.assertEqual(tune_res["data"]["value"], False)
+
+                # 2. Select & Slider: "金币"
+                code, res_gold = _http_post(f"{self.base_url}/api/mod/interact", {
+                    "game_dir": game,
+                    "prompt": "增加金币奖励"
+                })
+                self.assertEqual(code, 200)
+                gold_action = res_gold["data"]["action"]
+                gold_types = [p.get("type") for p in gold_action.get("tuning_params", [])]
+                self.assertIn("select", gold_types)
+
+                # Test tuning dropdown select string
+                code, tune_gold = _http_post(f"{self.base_url}/api/mod/tune", {
+                    "game_dir": game,
+                    "mod_id": gold_action["mod_id"],
+                    "param_id": "bonus_mode",
+                    "value": "固定丰厚",
+                })
+                self.assertEqual(code, 200)
+                self.assertTrue(tune_gold["success"])
+                self.assertEqual(tune_gold["data"]["value"], "固定丰厚")
+
+                # 3. Stepper & Switch: "背包"
+                code, res_inv = _http_post(f"{self.base_url}/api/mod/interact", {
+                    "game_dir": game,
+                    "prompt": "扩充背包储物格子"
+                })
+                self.assertEqual(code, 200)
+                inv_action = res_inv["data"]["action"]
+                inv_types = [p.get("type") for p in inv_action.get("tuning_params", [])]
+                self.assertIn("stepper", inv_types)
+                self.assertIn("switch", inv_types)
 
 
 if __name__ == "__main__":

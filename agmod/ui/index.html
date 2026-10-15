@@ -807,10 +807,171 @@
       justify-content: space-between;
       gap: 14px;
       font-size: 13px;
+      padding: 4px 6px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.015);
+    }
+    .tuning-label-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tuning-label {
+      font-weight: 500;
+      color: var(--text-main);
+    }
+    .tuning-status-badge {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-dim);
+      transition: all 0.2s;
+    }
+    .tuning-status-badge.active {
+      background: var(--emerald-bg);
+      color: var(--emerald);
+      font-weight: 600;
+    }
+    .tuning-val-pill {
+      font-size: 12px;
+      padding: 1px 7px;
+      border-radius: 4px;
+      background: rgba(99, 102, 241, 0.12);
+      color: var(--primary);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      font-family: var(--mono);
+      min-width: 38px;
+      text-align: center;
+    }
+    .tuning-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      max-width: 260px;
+    }
+    .range-bound {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      min-width: 20px;
+      text-align: center;
     }
     .tuning-item input[type="range"] {
       flex: 1;
       accent-color: var(--primary);
+      cursor: pointer;
+    }
+    /* Toggle Switch */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.15);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 24px;
+      border: 1px solid var(--border);
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      bottom: 2px;
+      background-color: #ffffff;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 50%;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background-color: var(--primary);
+      border-color: var(--primary);
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+    }
+    /* Select Dropdown */
+    .tuning-select {
+      background: var(--bg-card-inner);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      min-width: 110px;
+    }
+    .tuning-select:hover {
+      border-color: var(--border-hover);
+    }
+    .tuning-select:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 2px var(--primary-glow);
+    }
+    /* Stepper Number */
+    .stepper-controls {
+      display: inline-flex;
+      align-items: center;
+      background: var(--bg-card-inner);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .stepper-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+    }
+    .stepper-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--primary);
+    }
+    .stepper-btn:active {
+      background: rgba(255, 255, 255, 0.15);
+    }
+    .tuning-number-input {
+      width: 50px;
+      text-align: center;
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 600;
+      outline: none;
+      -moz-appearance: textfield;
+    }
+    .tuning-number-input::-webkit-outer-spin-button,
+    .tuning-number-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
     }
     .action-card-footer {
       display: flex;
@@ -1812,12 +1973,74 @@
         if (action.tuning_params && action.tuning_params.length > 0) {
           tuningHtml = action.tuning_params.map((p, paramIndex) => {
             const fieldId = `val-${actionIndex}-${safeDomId(p.id, `p${paramIndex}`)}`;
+            const pType = (p.type || '').toLowerCase();
+            const isSwitch = pType === 'switch' || pType === 'toggle' || typeof p.value === 'boolean';
+            const isSelect = pType === 'select' || pType === 'dropdown' || (Array.isArray(p.options) && p.options.length > 0);
+            const isStepper = pType === 'stepper' || pType === 'number';
+
+            if (isSwitch) {
+              const checked = p.value === true || p.value === 'true' || p.value === 1 || p.value === '1';
+              return `
+                <div class="tuning-item tuning-item-switch">
+                  <div class="tuning-label-group">
+                    <span class="tuning-label">${escapeHtml(p.label)}</span>
+                    <span class="tuning-status-badge ${checked ? 'active' : ''}" id="${fieldId}">${checked ? '已开启' : '已关闭'}</span>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" ${checked ? 'checked' : ''} data-control-type="switch" data-action-index="${actionIndex}" data-param-index="${paramIndex}" data-value-target="${fieldId}">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              `;
+            }
+
+            if (isSelect) {
+              const rawOpts = Array.isArray(p.options) ? p.options : ['默认选项'];
+              const options = rawOpts.map(opt => (typeof opt === 'object' && opt !== null) ? { value: opt.value ?? opt.id, label: opt.label ?? opt.name ?? opt.value } : { value: String(opt), label: String(opt) });
+              const currentVal = p.value !== undefined ? String(p.value) : (options[0]?.value ?? '');
+              return `
+                <div class="tuning-item tuning-item-select">
+                  <span class="tuning-label">${escapeHtml(p.label)}</span>
+                  <select class="tuning-select" data-control-type="select" data-action-index="${actionIndex}" data-param-index="${paramIndex}" data-value-target="${fieldId}">
+                    ${options.map(opt => `<option value="${escapeHtml(opt.value)}" ${opt.value === currentVal ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('')}
+                  </select>
+                </div>
+              `;
+            }
+
+            if (isStepper) {
+              const minVal = p.min !== undefined ? Number(p.min) : 0;
+              const maxVal = p.max !== undefined ? Number(p.max) : 9999;
+              const stepVal = p.step !== undefined ? Number(p.step) : 1;
+              const numVal = Number(p.value !== undefined ? p.value : minVal);
+              return `
+                <div class="tuning-item tuning-item-stepper">
+                  <span class="tuning-label">${escapeHtml(p.label)}</span>
+                  <div class="stepper-controls">
+                    <button type="button" class="stepper-btn stepper-dec" data-action-index="${actionIndex}" data-param-index="${paramIndex}" data-step="${stepVal}" data-min="${minVal}" data-max="${maxVal}" data-input-target="${fieldId}">−</button>
+                    <input type="number" class="tuning-number-input" id="${fieldId}" min="${minVal}" max="${maxVal}" step="${stepVal}" value="${numVal}" data-control-type="number" data-action-index="${actionIndex}" data-param-index="${paramIndex}">
+                    <button type="button" class="stepper-btn stepper-inc" data-action-index="${actionIndex}" data-param-index="${paramIndex}" data-step="${stepVal}" data-min="${minVal}" data-max="${maxVal}" data-input-target="${fieldId}">+</button>
+                  </div>
+                </div>
+              `;
+            }
+
+            // Default: Slider
+            const min = Number(p.min !== undefined ? p.min : 0);
+            const max = Number(p.max !== undefined ? p.max : 10);
+            const step = Number(p.step !== undefined ? p.step : 0.1);
+            const val = Number(p.value !== undefined ? p.value : (min + max) / 2);
             return `
-            <div class="tuning-item">
-              <span>${escapeHtml(p.label)}: <strong id="${fieldId}">${escapeHtml(p.value)}</strong></span>
-              <input type="range" min="${Number(p.min)}" max="${Number(p.max)}" step="${Number(p.step)}" value="${Number(p.value)}" data-action-index="${actionIndex}" data-param-index="${paramIndex}" data-value-target="${fieldId}">
-            </div>
-          `;
+              <div class="tuning-item tuning-item-slider">
+                <span class="tuning-label">${escapeHtml(p.label)}</span>
+                <div class="tuning-slider-row">
+                  <span class="range-bound">${min}</span>
+                  <input type="range" class="tuning-range" min="${min}" max="${max}" step="${step}" value="${val}" data-control-type="slider" data-action-index="${actionIndex}" data-param-index="${paramIndex}" data-value-target="${fieldId}">
+                  <span class="range-bound">${max}</span>
+                  <strong id="${fieldId}" class="tuning-val-pill">${val}</strong>
+                </div>
+              </div>
+            `;
           }).join('');
         }
 
@@ -1864,13 +2087,68 @@
       msg.querySelectorAll('[data-pin-action]').forEach(button => {
         button.addEventListener('click', () => pinActionIndex(Number(button.dataset.pinAction)));
       });
-      msg.querySelectorAll('input[data-action-index][data-param-index]').forEach(input => {
+
+      // 1. Slider inputs
+      msg.querySelectorAll('input[data-control-type="slider"]').forEach(input => {
         input.addEventListener('input', () => {
           const valueTarget = document.getElementById(input.dataset.valueTarget);
           if (valueTarget) valueTarget.textContent = input.value;
-          const item = activeActions[Number(input.dataset.actionIndex)];
-          const param = item?.tuning_params?.[Number(input.dataset.paramIndex)];
-          if (item && param) tuneActionIndex(Number(input.dataset.actionIndex), Number(input.dataset.paramIndex), input.value);
+          const actionIdx = Number(input.dataset.actionIndex);
+          const paramIdx = Number(input.dataset.paramIndex);
+          tuneActionIndex(actionIdx, paramIdx, parseFloat(input.value));
+        });
+      });
+
+      // 2. Switch toggle checkboxes
+      msg.querySelectorAll('input[data-control-type="switch"]').forEach(input => {
+        input.addEventListener('change', () => {
+          const valueTarget = document.getElementById(input.dataset.valueTarget);
+          const checked = input.checked;
+          if (valueTarget) {
+            valueTarget.textContent = checked ? '已开启' : '已关闭';
+            valueTarget.classList.toggle('active', checked);
+          }
+          const actionIdx = Number(input.dataset.actionIndex);
+          const paramIdx = Number(input.dataset.paramIndex);
+          tuneActionIndex(actionIdx, paramIdx, checked);
+        });
+      });
+
+      // 3. Dropdown selects
+      msg.querySelectorAll('select[data-control-type="select"]').forEach(select => {
+        select.addEventListener('change', () => {
+          const actionIdx = Number(select.dataset.actionIndex);
+          const paramIdx = Number(select.dataset.paramIndex);
+          tuneActionIndex(actionIdx, paramIdx, select.value);
+        });
+      });
+
+      // 4. Stepper number inputs & buttons
+      msg.querySelectorAll('input[data-control-type="number"]').forEach(input => {
+        input.addEventListener('change', () => {
+          const actionIdx = Number(input.dataset.actionIndex);
+          const paramIdx = Number(input.dataset.paramIndex);
+          tuneActionIndex(actionIdx, paramIdx, Number(input.value));
+        });
+      });
+      msg.querySelectorAll('.stepper-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const actionIdx = Number(btn.dataset.actionIndex);
+          const paramIdx = Number(btn.dataset.paramIndex);
+          const step = Number(btn.dataset.step || 1);
+          const min = Number(btn.dataset.min !== undefined ? btn.dataset.min : -Infinity);
+          const max = Number(btn.dataset.max !== undefined ? btn.dataset.max : Infinity);
+          const input = document.getElementById(btn.dataset.inputTarget);
+          if (!input) return;
+          let currentVal = Number(input.value || 0);
+          if (btn.classList.contains('stepper-inc')) {
+            currentVal = Math.min(max, currentVal + step);
+          } else {
+            currentVal = Math.max(min, currentVal - step);
+          }
+          currentVal = Math.round(currentVal * 1000) / 1000;
+          input.value = currentVal;
+          tuneActionIndex(actionIdx, paramIdx, currentVal);
         });
       });
       container.appendChild(msg);
@@ -1966,8 +2244,18 @@
       const param = act?.tuning_params?.[paramIndex];
       if (!act || !param) return;
       if (!act.params) act.params = {};
-      const numVal = parseFloat(val);
-      act.params[param.id] = isNaN(numVal) ? val : numVal;
+
+      let parsedVal = val;
+      if (typeof val === 'boolean') {
+        parsedVal = val;
+      } else if (typeof val === 'number') {
+        parsedVal = val;
+      } else {
+        const numVal = parseFloat(val);
+        parsedVal = (isNaN(numVal) || String(numVal) !== String(val).trim()) ? val : numVal;
+      }
+      act.params[param.id] = parsedVal;
+      param.value = parsedVal;
 
       clearTimeout(tuneDebounceTimer);
       tuneDebounceTimer = setTimeout(async () => {
@@ -1980,13 +2268,14 @@
               game_dir: currentGame.game_dir,
               mod_id: act.mod_id,
               param_id: param.id,
-              value: isNaN(numVal) ? val : numVal,
+              value: parsedVal,
               hook_target: act.hook_target || ''
             })
           });
           const res = await resp.json();
           if (res.success) {
-            showToast(`⚡ 已实时同步 [${param.label || param.id}] = ${val}`, 'success');
+            const displayVal = typeof parsedVal === 'boolean' ? (parsedVal ? '已开启' : '已关闭') : parsedVal;
+            showToast(`⚡ 已实时同步 [${param.label || param.id}] = ${displayVal}`, 'success');
           }
         } catch (e) {
           console.warn('Realtime tune sync error:', e);

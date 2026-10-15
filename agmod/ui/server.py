@@ -65,6 +65,8 @@ def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict
             type_name = "int"
         elif isinstance(value, float):
             type_name = "float"
+        elif isinstance(value, str):
+            type_name = "string"
         else:
             type_name = "object"
         parameters.append({"name": str(name), "type": type_name, "value": value})
@@ -782,7 +784,11 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
 
         # If LLM is NOT configured, verify if this is a predefined quick preset vs freeform query
         if not has_llm:
-            preset_keywords = ["移速", "速", "二段跳", "跳", "金币", "钱", "无敌", "减伤", "伤害", "剑气", "speed", "jump", "gold", "shield", "attack"]
+            preset_keywords = [
+                "移速", "速", "快", "二段跳", "跳", "金币", "钱", "无敌", "锁血", "金身",
+                "减伤", "伤害", "剑气", "背包", "格", "包", "储物", "容量",
+                "speed", "jump", "gold", "shield", "attack", "inventory", "slot"
+            ]
             is_preset_intent = any(k in prompt_lower for k in preset_keywords) and len(user_prompt) <= 30
             is_question_or_freeform = (
                 any(q in prompt_lower for q in ["你", "啥", "什么", "怎么", "如何", "调了", "为什么", "是谁", "？", "?", "help", "hello", "hi", "帮助", "干了"])
@@ -835,7 +841,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 f"1. 【全自动写入与零人工操作】：本系统（AI Mod Builder）拥有全自动脚手架、代码生成、编译与文件落盘引擎。所有 Mod、前置框架（如 BepInEx / UE4SS / REFramework）及配置文件均由本系统全自动写入游戏目录并配置完成。严禁指示玩家手动创建、修改、编译、复制或拖拽文件到 plugins 目录！若玩家询问是否需要手动放进去，明确告知系统已经全自动写入落盘，无需任何手动操作。\n"
                 f"2. 【严禁输出大段代码】：严禁在回复中输出长篇源码（严禁输出完整的 C# 类、C++ 或 Lua 代码文件，更不要提供 Visual Studio 编译教程）。用户是普通玩家，不需要阅读代码。请保持回复简明轻快（3-5 句内），聚焦于 Mod 的游戏效果、安全边界保障以及如何体验。\n"
                 f"3. 【隐藏内部逆向术语】：不要向用户堆砌逆向工程术语（如 REA、反编译模块名、置信度百分比等），只用玩家听得懂的语言解释功能与安全边界（例如：已对物理移速做防穿模安全保护）。\n"
-                f"4. 【动作结构输出】：回复末尾必须包含一个 ```json:mod_action ``` 代码块，包含可调参数与动作结构，以便前端直接绑定实时滑块控制：\n"
+                f"4. 【动作结构输出】：回复末尾必须包含一个 ```json:mod_action ``` 代码块，包含可调参数与动作结构，以便前端直接绑定实时控制控件：\n"
                 f"```json:mod_action\n"
                 f"{{\n"
                 f'  "mod_id": "safe_slug_id",\n'
@@ -843,7 +849,11 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 f'  "summary": "一句话功能描述",\n'
                 f'  "category": "player|combat|economy|visual",\n'
                 f'  "tuning_params": [\n'
-                f'    {{"id": "param_1", "label": "{boundary.get("param_label", "参数调节")}", "type": "slider", "min": {boundary.get("safe_min", 1.0)}, "max": {boundary.get("safe_max", 5.0)}, "step": {boundary.get("step", 0.1)}, "value": {boundary.get("default_val", 2.0)}}}\n'
+                f'    // 请按需选择最匹配的控件类型（支持以下 4 种）：\n'
+                f'    // 1. 滑块: {{"id": "speed", "label": "{boundary.get("param_label", "参数调节")}", "type": "slider", "min": {boundary.get("safe_min", 1.0)}, "max": {boundary.get("safe_max", 5.0)}, "step": {boundary.get("step", 0.1)}, "value": {boundary.get("default_val", 2.0)}}}\n'
+                f'    // 2. 开关: {{"id": "god_mode", "label": "无敌金身", "type": "switch", "value": true}}\n'
+                f'    // 3. 下拉: {{"id": "element", "label": "属性模式", "type": "select", "options": ["火", "冰", "雷", "毒"], "value": "火"}}\n'
+                f'    // 4. 计数器: {{"id": "capacity", "label": "背包格子数量", "type": "stepper", "min": 10, "max": 100, "step": 10, "value": 40}}\n'
                 f'  ],\n'
                 f'  "hook_target": "{rea_insight.get("primary_hook", "Class:Method")}",\n'
                 f'  "can_pin": true\n'
@@ -894,7 +904,16 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             category = rea_insight.get("category", "player")
 
             if engine_id == "unreal":
-                if any(k in prompt_lower for k in ["速", "快", "speed", "run"]):
+                if any(k in prompt_lower for k in ["血", "命", "hp", "health", "无敌", "金身", "锁血", "霸体", "防打"]):
+                    mod_id = "invincible_shield"
+                    mod_name = "金钟罩 · 刀枪不入 (Invincible Guard)"
+                    summary = "受到攻击减免 100% 伤害并生成霸体护体"
+                    tuning = [
+                        {"id": "invincible_active", "label": "无敌金身开关", "type": "switch", "value": True},
+                        {"id": "damage_reduction", "label": "护甲减免比例", "type": "slider", "min": 50, "max": 100, "step": 5, "value": 100},
+                    ]
+                    target = primary_hook if primary_hook != "GameLogic:Update" else "ACharacter:TakeDamage"
+                elif any(k in prompt_lower for k in ["速", "快", "speed", "run"]):
                     mod_id = "swift_stride"
                     mod_name = "疾风瞬影 · 移速提升 (Swift Stride)"
                     summary = "角色疾驰移动速度提升 100%"
@@ -904,20 +923,29 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                     mod_id = "air_step_jump"
                     mod_name = "踏雪无痕 · 空中二段跳 (Air Step Jump)"
                     summary = "解锁绝妙空中连环二段跳跃与滞空机动"
-                    tuning = [{"id": "jump_impulse", "label": "腾空跃力", "type": "slider", "min": 1.0, "max": 3.0, "step": 0.1, "value": 1.5}]
+                    tuning = [
+                        {"id": "double_jump_enabled", "label": "连环跳跃开关", "type": "switch", "value": True},
+                        {"id": "jump_impulse", "label": "腾空跃力", "type": "slider", "min": 1.0, "max": 3.0, "step": 0.1, "value": 1.5},
+                    ]
                     target = primary_hook if primary_hook != "GameLogic:Update" else "ACharacter:JumpMaxCount"
-                elif any(k in prompt_lower for k in ["钱", "金", "coin", "gold", "money"]):
+                elif any(k in prompt_lower for k in ["钱", "金币", "金钱", "coin", "gold", "money"]):
                     mod_id = "infinite_gold"
                     mod_name = "金玉满堂 · 掉落倍率 (Gold Multiplier)"
                     summary = "击败敌人金钱掉落倍率提高 5 倍"
-                    tuning = [{"id": "gold_multi", "label": "掉落倍率", "type": "slider", "min": 2, "max": 20, "step": 1, "value": 5}]
+                    tuning = [
+                        {"id": "reward_mode", "label": "掉落机制", "type": "select", "options": ["多倍掉落", "击杀大奖", "免金钱消耗"], "value": "多倍掉落"},
+                        {"id": "gold_multi", "label": "掉落倍率", "type": "slider", "min": 2, "max": 20, "step": 1, "value": 5},
+                    ]
                     target = primary_hook if primary_hook != "GameLogic:Update" else "InventoryComponent:AddCurrency"
-                elif any(k in prompt_lower for k in ["血", "命", "hp", "health", "无敌"]):
-                    mod_id = "invincible_shield"
-                    mod_name = "金钟罩 · 刀枪不入 (Invincible Guard)"
-                    summary = "受到攻击减免 100% 伤害并生成霸体护体"
-                    tuning = [{"id": "damage_reduction", "label": "护甲减免比例", "type": "slider", "min": 50, "max": 100, "step": 5, "value": 100}]
-                    target = primary_hook if primary_hook != "GameLogic:Update" else "ACharacter:TakeDamage"
+                elif any(k in prompt_lower for k in ["包", "格", "slot", "inventory", "容量"]):
+                    mod_id = "expanded_inventory"
+                    mod_name = "乾坤袋 · 空间扩充 (Expanded Inventory)"
+                    summary = "随身背包扩展额外储物格，并支持自动整理"
+                    tuning = [
+                        {"id": "auto_sort", "label": "自动整理背包", "type": "switch", "value": True},
+                        {"id": "slot_count", "label": "扩增格子数", "type": "stepper", "min": 10, "max": 100, "step": 10, "value": 40},
+                    ]
+                    target = primary_hook if primary_hook != "GameLogic:Update" else "InventoryComponent:SetCapacity"
                 else:
                     mod_id = f"custom_mod_{int(time.time())}"
                     mod_name = f"增强特性: {user_prompt[:12]}"
@@ -925,30 +953,51 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                     tuning = [{"id": "effect_intensity", "label": "效果强度", "type": "slider", "min": 1, "max": 10, "step": 1, "value": 2}]
                     target = primary_hook if primary_hook != "GameLogic:Update" else "ACharacter:Tick"
             else:
-                if any(k in prompt_lower for k in ["速", "快", "speed", "run"]):
+                if any(k in prompt_lower for k in ["血", "命", "hp", "health", "无敌", "金身", "锁血", "霸体", "防打"]):
+                    mod_id = "god_mode"
+                    mod_name = "护甲金身 (God Mode / Shield)"
+                    summary = "受到攻击时减免伤害并提供无敌护盾"
+                    tuning = [
+                        {"id": "god_mode_active", "label": "无敌锁血开关", "type": "switch", "value": True},
+                        {"id": "damage_reduction", "label": "减伤比例", "type": "slider", "min": 50, "max": 100, "step": 5, "value": 100},
+                    ]
+                    target = primary_hook if primary_hook != "GameLogic:Update" else "PlayerData.TakeDamage"
+                elif any(k in prompt_lower for k in ["速", "快", "speed", "run"]):
                     mod_id = "speed_boost"
                     mod_name = "急速奔跑 (Speed Boost)"
                     summary = "角色移动速度提升 100%"
-                    tuning = [{"id": "multiplier", "label": "移速倍率", "type": "slider", "min": 1.0, "max": 5.0, "step": 0.1, "value": 2.0}]
+                    tuning = [
+                        {"id": "sprint_always", "label": "始终疾跑", "type": "switch", "value": False},
+                        {"id": "multiplier", "label": "移速倍率", "type": "slider", "min": 1.0, "max": 5.0, "step": 0.1, "value": 2.0},
+                    ]
                     target = primary_hook if primary_hook != "GameLogic:Update" else ("HeroController.MoveSpeed" if "hollow" in game_name.lower() else "PlayerController.Movement")
                 elif any(k in prompt_lower for k in ["跳", "jump"]):
                     mod_id = "double_jump"
                     mod_name = "空中二段跳 (Air Jump)"
                     summary = "解锁空中二段跳跃与机动性提升"
-                    tuning = [{"id": "jump_height", "label": "跳跃力度", "type": "slider", "min": 0.5, "max": 3.0, "step": 0.1, "value": 1.5}]
+                    tuning = [
+                        {"id": "double_jump_enabled", "label": "空中二段跳开关", "type": "switch", "value": True},
+                        {"id": "jump_height", "label": "跳跃力度", "type": "slider", "min": 0.5, "max": 3.0, "step": 0.1, "value": 1.5},
+                    ]
                     target = primary_hook if primary_hook != "GameLogic:Update" else "HeroController.CanDoubleJump"
-                elif any(k in prompt_lower for k in ["钱", "金", "coin", "gold", "money"]):
+                elif any(k in prompt_lower for k in ["钱", "金币", "金钱", "coin", "gold", "money"]):
                     mod_id = "infinite_gold"
                     mod_name = "金钱丰裕 (Gold Multiplier)"
                     summary = "获得金钱奖励翻 5 倍"
-                    tuning = [{"id": "gold_multi", "label": "掉落倍率", "type": "slider", "min": 2, "max": 20, "step": 1, "value": 5}]
+                    tuning = [
+                        {"id": "bonus_mode", "label": "奖励模式", "type": "select", "options": ["翻倍掉落", "固定丰厚", "免扣除购买"], "value": "翻倍掉落"},
+                        {"id": "gold_multi", "label": "掉落倍率", "type": "slider", "min": 2, "max": 20, "step": 1, "value": 5},
+                    ]
                     target = primary_hook if primary_hook != "GameLogic:Update" else "CurrencyManager.AddGeo"
-                elif any(k in prompt_lower for k in ["血", "命", "hp", "health", "无敌"]):
-                    mod_id = "god_mode"
-                    mod_name = "护甲金身 (God Mode / Shield)"
-                    summary = "受到攻击时减免伤害并提供无敌护盾"
-                    tuning = [{"id": "damage_reduction", "label": "减伤比例", "type": "slider", "min": 50, "max": 100, "step": 5, "value": 100}]
-                    target = primary_hook if primary_hook != "GameLogic:Update" else "PlayerData.TakeDamage"
+                elif any(k in prompt_lower for k in ["包", "格", "slot", "inventory", "容量"]):
+                    mod_id = "expanded_inventory"
+                    mod_name = "储物拓展 (Expanded Inventory)"
+                    summary = "随身行囊与储物箱格位扩充"
+                    tuning = [
+                        {"id": "auto_sort", "label": "自动收纳整理", "type": "switch", "value": True},
+                        {"id": "slot_count", "label": "扩增格子数", "type": "stepper", "min": 10, "max": 100, "step": 10, "value": 30},
+                    ]
+                    target = primary_hook if primary_hook != "GameLogic:Update" else "Inventory.SetSlotCount"
                 else:
                     mod_id = f"{category}_{int(time.time())}"
                     mod_name = f"{engine_name} 增强特性"
