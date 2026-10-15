@@ -66,19 +66,38 @@ def collect_symbol_evidence(game_dir: str, engine_id: str, query: str, limit: in
 
     if engine_id == "unity":
         import glob
-        managed = glob.glob(os.path.join(game_dir, "*_Data", "Managed", "Assembly-CSharp.dll"))
-        if managed:
+        # Search Assembly-CSharp.dll or game-specific managed/interop DLLs
+        managed_dlls = (
+            glob.glob(os.path.join(game_dir, "*_Data", "Managed", "Assembly-CSharp*.dll"))
+            + glob.glob(os.path.join(game_dir, "*_data", "Managed", "Assembly-CSharp*.dll"))
+            + glob.glob(os.path.join(game_dir, "BepInEx", "interop", "*.dll"))
+            + glob.glob(os.path.join(game_dir, "MelonLoader", "Il2CppAssemblies", "*.dll"))
+            + glob.glob(os.path.join(game_dir, "DummyDll", "Assembly-CSharp*.dll"))
+        )
+        for target_dll in managed_dlls[:3]:
             try:
-                for raw in rea.fast_search_members(managed[0], query, limit=limit):
-                    candidate = SymbolCandidate(raw[:240], "rea_fast_search", "observed", 0.82, managed[0], signature=raw[:500])
+                for raw in rea.fast_search_members(target_dll, query, limit=limit):
+                    candidate = SymbolCandidate(raw[:240], "rea_fast_search", "observed", 0.82, target_dll, signature=raw[:500])
                     candidate.hook_target = normalize_hook_target(candidate.to_dict(), "unity", source="rea_fast_search", status="observed", confidence=0.82)
                     candidates.append(candidate)
+                    if len(candidates) >= limit:
+                        break
             except Exception as exc:
-                errors.append(f"REA managed search failed: {exc}")
+                errors.append(f"REA search in {os.path.basename(target_dll)} failed: {exc}")
+            if len(candidates) >= limit:
+                break
 
     artifact_roots = [game_dir]
     if engine_id == "unreal":
         artifact_roots += [os.path.join(game_dir, "ue4ss"), os.path.join(game_dir, "UE4SS")]
+    elif engine_id == "unity":
+        artifact_roots += [
+            os.path.join(game_dir, "BepInEx", "interop"),
+            os.path.join(game_dir, "MelonLoader", "Il2CppAssemblies"),
+            os.path.join(game_dir, "il2cpp_dump"),
+            os.path.join(game_dir, "cpp2il_out"),
+            os.path.join(game_dir, "DummyDll"),
+        ]
     elif engine_id == "re-engine":
         artifact_roots += [os.path.join(game_dir, "reframework")]
     elif engine_id == "godot":

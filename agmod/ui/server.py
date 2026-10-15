@@ -543,11 +543,29 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 f"- 钩子目标请遵循虚幻引擎 UClass/UFunction 规范，例如 `ACharacter:TakeDamage`、`UCharacterMovementComponent:SetMaxWalkSpeed`、`APlayerController:ClientRestart` 等。\n"
             )
         elif engine_id == "unity":
-            framework_name = "BepInEx 6 / HarmonyX C# 运行时注入"
-            engine_prompt_addon = "- Unity 引擎专有架构：支持 Harmony 前缀/后缀补丁（例如 PlayerController.Update）。\n"
+            is_il2cpp = bool(
+                os.path.exists(os.path.join(game_dir, "GameAssembly.dll"))
+                or glob.glob(os.path.join(game_dir, "*_Data", "il2cpp_data"))
+                or glob.glob(os.path.join(game_dir, "*_data", "il2cpp_data"))
+            )
+            flavor = "IL2CPP (Cpp2IL / BepInEx-IL2CPP)" if is_il2cpp else "Mono (HarmonyX / BepInEx)"
+            framework_name = f"Unity {flavor} 运行时注入"
+            engine_prompt_addon = (
+                f"- Unity 引擎专有架构（{flavor}）：支持 Harmony 前缀/后缀补丁（Prefix / Postfix）。\n"
+                f"- 钩子目标请遵循 C# 类名与方法名规范，例如 `PlayerController:Update`、`HeroController:TakeDamage`、`CharacterMotor:Move` 等。\n"
+                f"- 【Unity 专有安全边界规范】\n"
+                f"  1. UnityEngine.Object 空引用校验必须使用 `obj != null`（触发原生 C++ 存活校验），严禁使用 `ReferenceEquals`。\n"
+                f"  2. 刚体与移动边界：必须限制最大速度与加速度，避免速度过大在离散物理更新时穿透 BoxCollider/MeshCollider 跌落虚空。\n"
+                f"  3. 时间缩放守卫：Time.timeScale 严格限制在 [0.01, 10.0]，严禁设置为 0 或负数以防 FixedUpdate 除零死锁。\n"
+                f"  4. Harmony 拦截守卫：Prefix 必须使用 try-catch 包裹，return true 确保原游戏逻辑正常执行，仅在完全重载时设 __result 并 return false。\n"
+            )
         elif engine_id == "re-engine":
-            framework_name = "REFramework (Lua 脚本 / Native DLL)"
-            engine_prompt_addon = "- RE 引擎专有架构：支持 REFramework Lua Hook 与 SDK 浏览。\n"
+            framework_name = "REFramework (Lua 脚本 / Capcom RE 运行时 SDK)"
+            engine_prompt_addon = (
+                "- Capcom RE 引擎专有架构：支持 REFramework Lua Hook 与 SDK 原生类型绑定。\n"
+                "- 钩子目标请遵循 Class.Method 命名规范（例如 `via.motion.MotionHelper.set_Speed`）。\n"
+                "- 必须通过 SDK 校验指针有效性，防止无效托管对象引用导致游戏闪退。\n"
+            )
         else:
             framework_name = f"{engine_name} 运行时注入"
             engine_prompt_addon = ""

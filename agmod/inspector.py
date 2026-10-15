@@ -229,22 +229,48 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
         strategy = f"通过 UE4SS (Lua Hooking) 拦截 {matched_symbols[0]}，在虚幻引擎 UObject 运行时安全重载目标属性"
 
     elif engine_id == "unity":
-        csharp_dlls = glob.glob(os.path.join(game_dir, "*_Data", "Managed", "Assembly-CSharp.dll"))
-        if not csharp_dlls:
-            csharp_dlls = glob.glob(os.path.join(game_dir, "*_data", "Managed", "Assembly-CSharp.dll"))
-        if csharp_dlls:
-            target_binary = "Assembly-CSharp.dll"
-            dll_p = csharp_dlls[0]
+        is_il2cpp = bool(
+            os.path.exists(os.path.join(game_dir, "GameAssembly.dll"))
+            or glob.glob(os.path.join(game_dir, "*_Data", "il2cpp_data"))
+            or glob.glob(os.path.join(game_dir, "*_data", "il2cpp_data"))
+        )
+
+        csharp_dlls = (
+            glob.glob(os.path.join(game_dir, "*_Data", "Managed", "Assembly-CSharp*.dll"))
+            + glob.glob(os.path.join(game_dir, "*_data", "Managed", "Assembly-CSharp*.dll"))
+            + glob.glob(os.path.join(game_dir, "BepInEx", "interop", "*.dll"))
+            + glob.glob(os.path.join(game_dir, "MelonLoader", "Il2CppAssemblies", "*.dll"))
+            + glob.glob(os.path.join(game_dir, "DummyDll", "Assembly-CSharp*.dll"))
+        )
+
+        if is_il2cpp:
+            target_binary = "GameAssembly.dll (IL2CPP + global-metadata.dat)"
+            if csharp_dlls and not matched_symbols:
+                for dll_p in csharp_dlls[:2]:
+                    try:
+                        real_found = rea.fast_search_members(dll_p, term, limit=5)
+                        if real_found:
+                            matched_symbols = real_found
+                            evidence_source = "rea_il2cpp_interop_search"
+                            evidence_status = "observed"
+                            evidence_confidence = 0.80
+                            break
+                    except Exception:
+                        pass
+        elif csharp_dlls:
+            target_binary = os.path.basename(csharp_dlls[0])
             if not matched_symbols:
-                try:
-                    real_found = rea.fast_search_members(dll_p, term, limit=5)
-                    if real_found:
-                        matched_symbols = real_found
-                        evidence_source = "rea_fast_search"
-                        evidence_status = "observed"
-                        evidence_confidence = 0.75
-                except Exception:
-                    pass
+                for dll_p in csharp_dlls[:2]:
+                    try:
+                        real_found = rea.fast_search_members(dll_p, term, limit=5)
+                        if real_found:
+                            matched_symbols = real_found
+                            evidence_source = "rea_managed_search"
+                            evidence_status = "observed"
+                            evidence_confidence = 0.85
+                            break
+                    except Exception:
+                        pass
         else:
             target_binary = "UnityPlayer.dll"
 
@@ -258,7 +284,20 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
                 "generic_enhancement": ["GameManager.Update", "PlayerController.Update", "Time.timeScale"],
             }
             matched_symbols = symbols_map.get(category, symbols_map["generic_enhancement"])
-        strategy = f"通过 BepInEx / HarmonyX 为 {matched_symbols[0]} 创建动态挂钩，进行参数热注入"
+
+        if is_il2cpp:
+            strategy = f"通过 Cpp2IL / Il2CppDumper 逆向提取符号表，利用 BepInEx-IL2CPP / MelonLoader 拦截 {matched_symbols[0]}"
+            exception_guards.extend([
+                "IL2CPP 运行时类型安全：IL2CPP 剥离了反射，必须通过 Cpp2IL 生成的 DummyDll 或偏移地址进行挂钩",
+                "IL2CPP 垃圾回收驻留：传递给原生 C++ 指针的托管委托必须保活，防止 GC 回收触发 AccessViolation 闪退",
+            ])
+        else:
+            strategy = f"通过 BepInEx 6 / HarmonyX 对 {matched_symbols[0]} 部署前缀/后缀补丁，在托管运行时热重载参数"
+            exception_guards.extend([
+                "UnityEngine.Object 生命周期守卫：必须使用 obj != null（触发底层 C++ 原生存活校验），禁止使用 ReferenceEquals",
+                "物理穿模防护：刚体/控制器速度需在 FixedUpdate 中限制在安全阈值，防止高速碰撞穿透 BoxCollider 坠落虚空",
+                "Harmony 前缀补丁保护：Prefix 方法内应加入 try-catch 包裹，return true 保证游戏原逻辑不被截断",
+            ])
 
     elif engine_id == "re-engine":
         target_binary = "reframework/autorun"

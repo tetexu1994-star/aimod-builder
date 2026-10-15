@@ -221,6 +221,38 @@ class TestInspector(unittest.TestCase):
             self.assertIn("伤害", res_def["boundary_scope"]["param_label"])
             self.assertTrue(len(res_def["exception_guards"]) > 0)
 
+    def test_analyze_reverse_engineering_unity_mono(self):
+        from agmod.inspector import analyze_reverse_engineering_context
+        with tempfile.TemporaryDirectory() as game_dir:
+            managed_dir = os.path.join(game_dir, "MyGame_Data", "Managed")
+            os.makedirs(managed_dir)
+            open(os.path.join(managed_dir, "Assembly-CSharp.dll"), "wb").close()
+
+            res = analyze_reverse_engineering_context(game_dir, "主角移动速度增加 100%")
+            self.assertEqual(res["category"], "movement_speed")
+            self.assertEqual(res["engine_id"], "unity")
+            self.assertIn("Assembly-CSharp.dll", res["target_binary"])
+            self.assertIn("Harmony", res["implementation_strategy"])
+            guards_text = " ".join(res["exception_guards"])
+            self.assertIn("FixedUpdate", guards_text)
+            self.assertIn("UnityEngine.Object", guards_text)
+
+    def test_analyze_reverse_engineering_unity_il2cpp(self):
+        from agmod.inspector import analyze_reverse_engineering_context
+        with tempfile.TemporaryDirectory() as game_dir:
+            meta_dir = os.path.join(game_dir, "Game_Data", "il2cpp_data", "Metadata")
+            os.makedirs(meta_dir)
+            open(os.path.join(meta_dir, "global-metadata.dat"), "wb").close()
+            open(os.path.join(game_dir, "GameAssembly.dll"), "wb").close()
+
+            res = analyze_reverse_engineering_context(game_dir, "受到伤害减免 100% 刀枪不入")
+            self.assertEqual(res["category"], "combat_defense")
+            self.assertEqual(res["engine_id"], "unity")
+            self.assertIn("IL2CPP", res["target_binary"])
+            self.assertIn("Cpp2IL", res["implementation_strategy"])
+            guards_text = " ".join(res["exception_guards"])
+            self.assertIn("IL2CPP", guards_text)
+
 
 class TestProcessDiscovery(unittest.TestCase):
     def test_find_game_executables(self):
