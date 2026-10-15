@@ -38,6 +38,15 @@ def find_retoc() -> str | None:
     return local if os.path.isfile(local) else None
 
 
+def _download(url: str, dest: str) -> None:
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp, open(dest, "wb") as f:
+        shutil.copyfileobj(resp, f)
+
+
 def ensure_retoc() -> str:
     """Return the retoc executable path, auto-downloading it (with SHA-256 check)."""
     existing = find_retoc()
@@ -50,8 +59,8 @@ def ensure_retoc() -> str:
     zip_path = os.path.join(_tools_dir(), "retoc.zip")
     sha_path = os.path.join(_tools_dir(), "retoc.zip.sha256")
     try:
-        urllib.request.urlretrieve(RETOC_ZIP_URL, zip_path)
-        urllib.request.urlretrieve(RETOC_SHA256_URL, sha_path)
+        _download(RETOC_ZIP_URL, zip_path)
+        _download(RETOC_SHA256_URL, sha_path)
         with open(sha_path, "r", encoding="utf-8") as f:
             parts = f.read(256).split()
         if not parts or len(parts[0]) != 64:
