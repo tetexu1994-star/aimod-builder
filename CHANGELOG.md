@@ -2,11 +2,21 @@
 
 ## 2026-10-15
 
+### Whole-repository hardening review
+
+- Corrected the Unreal tooling boundary: repak reads/writes loose `.pak` only; `.utoc/.ucas` extraction requires FModel/CUE4Parse, and IoStore games must prove `Content/Paks/~mods` support before installation.
+- Added checksum verification for the downloaded repak binary, fixed its unpack CLI invocation, and made pak projects first-class in planning, post-build validation and distribution packaging.
+- Disabled UE4SS hook pinning for detected UE5 IoStore layouts instead of silently installing an unreliable loader path.
+- Expanded anti-cheat detection into bounded deep directory scans and made process-scan failures fail closed.
+- Game discovery now exposes effective blocking separately from raw anti-cheat markers, so allowlisted single-player titles are not falsely disabled in the UI.
+- Removed dynamic inline handlers and escaped untrusted game/model strings in the local UI.
+- Added all new probe and Unreal pak tools to `verify.py` and expanded regression coverage.
+
 ### UE5 (IoStore) pak modding path
 
-- Added UE4/UE5 variant detection: `detect_engine` now returns `variant` (`ue5` for IoStore `.utoc`/`.ucas`, `ue4` for legacy `.pak`).
+- Added Unreal container-route detection: `detect_engine` returns `variant` (`ue5` for IoStore `.utoc`/`.ucas`, `ue4` for legacy `.pak`); this is a packaging marker, not a binary proof of the engine release.
 - Added a first-class pak file-override modding path for Unreal: `scaffold_unreal_pak_mod`, `build_unreal_pak_mod`, `install_unreal_pak_mod`, and `unpack_unreal_pak`.
-- Added `agmod/repak.py`, which auto-downloads the repak CLI (Windows, GitHub release) and wraps pack/unpack, so UE5 IoStore modding needs no manual tooling.
+- Added `agmod/repak.py`, which downloads the repak CLI with SHA-256 verification and wraps loose `.pak` pack/unpack. IoStore `.utoc/.ucas` extraction remains a FModel/CUE4Parse step.
 - Demoted UE4SS to a UE4-only recommendation; UE5 now defaults to pak override.
 - Dropped the misleading `phantom_air_jump` demo name; Unreal scaffolds emit a clean `override/` directory.
 

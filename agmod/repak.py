@@ -1,11 +1,13 @@
-"""repak (UE5 IoStore pak tool) discovery, auto-download, and pack/unpack wrapper.
+"""repak (.pak archive tool) discovery, checksum-verified download, and CLI wrapper.
 
-repak is the community-standard tool for packing/unpacking UE5's IoStore
-(.utoc/.ucas) archives. This module auto-downloads the Windows binary on first
-use, so a user never has to install anything manually to build a pak override.
+repak reads and writes Unreal Engine `.pak` archives. It does **not** parse
+IoStore `.utoc/.ucas` containers; those still require FModel/CUE4Parse or a
+game-specific extractor. The Windows release is downloaded with its published
+SHA-256 before it is cached.
 """
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import subprocess
@@ -18,6 +20,7 @@ REPAK_ZIP_URL = (
     f"https://github.com/trumank/repak/releases/download/{REPAK_VERSION}/"
     "repak_cli-x86_64-pc-windows-msvc.zip"
 )
+REPAK_SHA256_URL = REPAK_ZIP_URL + ".sha256"
 
 
 def _tools_dir() -> str:
@@ -46,17 +49,37 @@ def ensure_repak() -> str:
 
     dest_exe = os.path.join(_tools_dir(), "repak.exe")
     zip_path = os.path.join(_tools_dir(), "repak.zip")
+    sha_path = os.path.join(_tools_dir(), "repak.zip.sha256")
     try:
         urllib.request.urlretrieve(REPAK_ZIP_URL, zip_path)
+        urllib.request.urlretrieve(REPAK_SHA256_URL, sha_path)
+        with open(sha_path, "r", encoding="utf-8") as f:
+            parts = f.read(256).split()
+        if not parts or len(parts[0]) != 64:
+            raise RuntimeError("repak checksum file is malformed")
+        expected = parts[0].lower()
+        actual = hashlib.sha256()
+        with open(zip_path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                actual.update(chunk)
+        if actual.hexdigest().lower() != expected:
+            raise RuntimeError("repak download checksum mismatch")
         with zipfile.ZipFile(zip_path) as z:
-            candidate = next((n for n in z.namelist() if n.lower().endswith(".exe")), None)
+            candidate = next(
+                (
+                    n for n in z.namelist()
+                    if os.path.basename(n).lower() in {"repak.exe", "repak_cli.exe"}
+                ),
+                None,
+            )
             if not candidate:
                 raise RuntimeError("no .exe found in repak archive")
             with z.open(candidate) as src, open(dest_exe, "wb") as out:
                 shutil.copyfileobj(src, out)
     finally:
-        if os.path.exists(zip_path):
-            os.remove(zip_path)
+        for temp_path in (zip_path, sha_path):
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
 
     if not os.path.isfile(dest_exe):
         raise RuntimeError("repak download failed; install repak manually and put it on PATH")
@@ -64,7 +87,7 @@ def ensure_repak() -> str:
 
 
 def pack_override(override_dir: str, out_pak: str) -> str:
-    """Pack a directory of overridden files into a .pak (UE5 IoStore)."""
+    """Pack a directory of overridden files into a loose Unreal Engine .pak."""
     repak = ensure_repak()
     os.makedirs(os.path.dirname(out_pak) or ".", exist_ok=True)
     subprocess.run(
@@ -75,11 +98,11 @@ def pack_override(override_dir: str, out_pak: str) -> str:
 
 
 def unpack(pak_path: str, out_dir: str) -> str:
-    """Unpack a .pak/.utoc archive into a directory for inspection."""
+    """Unpack a .pak archive into a directory for inspection."""
     repak = ensure_repak()
     os.makedirs(out_dir, exist_ok=True)
     subprocess.run(
-        [repak, "unpack", pak_path, out_dir],
+        [repak, "unpack", pak_path, "--output", out_dir],
         check=True, capture_output=True, text=True,
     )
     return out_dir

@@ -173,6 +173,7 @@ def scan_installed_games(extra_dirs: Optional[List[str]] = None) -> List[Dict[st
                 is_running, procs = process.is_game_running(game_dir)
                 exes = process.find_game_executables(game_dir)
                 ac_info = safety.detect_game_anticheat(game_dir)
+                ac_allowed, ac_reason = safety.check_game_target(game_dir)
 
                 games.append({
                     "id": f"steam_{appid}",
@@ -188,8 +189,9 @@ def scan_installed_games(extra_dirs: Optional[List[str]] = None) -> List[Dict[st
                     "running_pid": procs[0]["pid"] if procs else None,
                     "executables": exes,
                     "has_anticheat": ac_info.get("has_anticheat", False),
+                    "anticheat_blocked": not ac_allowed,
                     "anticheat_system": ac_info.get("system", ""),
-                    "anticheat_reason": ac_info.get("reason", ""),
+                    "anticheat_reason": ac_reason or ac_info.get("reason", ""),
                 })
 
         # 1b. Fallback: scan common folder directly for games without active acf
@@ -220,6 +222,7 @@ def scan_installed_games(extra_dirs: Optional[List[str]] = None) -> List[Dict[st
                 engine_info = registry.detect_engine(sub_dir) or {}
                 is_running, procs = process.is_game_running(sub_dir)
                 ac_info = safety.detect_game_anticheat(sub_dir)
+                ac_allowed, ac_reason = safety.check_game_target(sub_dir)
 
                 games.append({
                     "id": f"folder_{sub}",
@@ -235,8 +238,9 @@ def scan_installed_games(extra_dirs: Optional[List[str]] = None) -> List[Dict[st
                     "running_pid": procs[0]["pid"] if procs else None,
                     "executables": exes,
                     "has_anticheat": ac_info.get("has_anticheat", False),
+                    "anticheat_blocked": not ac_allowed,
                     "anticheat_system": ac_info.get("system", ""),
-                    "anticheat_reason": ac_info.get("reason", ""),
+                    "anticheat_reason": ac_reason or ac_info.get("reason", ""),
                 })
 
     # 2. Extra custom directories
@@ -253,6 +257,8 @@ def scan_installed_games(extra_dirs: Optional[List[str]] = None) -> List[Dict[st
             engine_info = registry.detect_engine(ed) or {}
             is_running, procs = process.is_game_running(ed)
             base_name = os.path.basename(os.path.normpath(ed))
+            ac_info = safety.detect_game_anticheat(ed)
+            ac_allowed, ac_reason = safety.check_game_target(ed)
 
             games.append({
                 "id": f"custom_{base_name}",
@@ -267,6 +273,10 @@ def scan_installed_games(extra_dirs: Optional[List[str]] = None) -> List[Dict[st
                 "is_running": is_running,
                 "running_pid": procs[0]["pid"] if procs else None,
                 "executables": exes,
+                "has_anticheat": ac_info.get("has_anticheat", False),
+                "anticheat_blocked": not ac_allowed,
+                "anticheat_system": ac_info.get("system", ""),
+                "anticheat_reason": ac_reason or ac_info.get("reason", ""),
             })
 
     # Sort running games first, then by name

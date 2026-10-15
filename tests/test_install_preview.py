@@ -19,6 +19,7 @@ class TestInstallPreview(unittest.TestCase):
         with tempfile.TemporaryDirectory() as game, tempfile.TemporaryDirectory() as source:
             core = Path(game, "BepInEx", "core")
             core.mkdir(parents=True)
+            (core / "BepInEx.dll").write_bytes(b"")
             (Path(game, "BepInEx") / "version.txt").write_text("5.4.23.0", encoding="utf-8")
             src = Path(source, "GoldPlus.dll")
             src.write_bytes(b"mod")
@@ -36,6 +37,7 @@ class TestInstallPreview(unittest.TestCase):
         with tempfile.TemporaryDirectory() as game, tempfile.TemporaryDirectory() as source:
             core = Path(game, "BepInEx", "core")
             core.mkdir(parents=True)
+            (core / "BepInEx.dll").write_bytes(b"")
             (Path(game, "BepInEx") / "version.txt").write_text("5.4.23.0", encoding="utf-8")
             existing = Path(game, "BepInEx", "plugins", "GoldPlus.dll")
             existing.parent.mkdir(parents=True)
@@ -70,6 +72,7 @@ class TestInstallPreview(unittest.TestCase):
         with tempfile.TemporaryDirectory() as game:
             core = Path(game, "BepInEx", "core")
             core.mkdir(parents=True)
+            (core / "BepInEx.dll").write_bytes(b"")
             (Path(game, "BepInEx") / "version.txt").write_text("5.4.22.0", encoding="utf-8")
             result = install_preview.preview_install(game, "gold-plus", [], package_spec=self._package(game))
             self.assertFalse(result["ready"])

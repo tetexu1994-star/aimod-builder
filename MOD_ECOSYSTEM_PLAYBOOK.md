@@ -94,4 +94,5 @@ The implementation should never jump directly from a user prompt to a guessed ho
 - `plan_mod` emits `package-spec.json`, and `validate_project` checks both the source project and its distribution shape.
 - `pack.package_mod` carries dependency metadata and declared layers into the distributable ZIP.
 - `agmod/install_preview.py` produces the pre-install tree diff and blocks unsafe targets, ownership conflicts and missing/incompatible required dependencies.
+- Unreal `.pak` packaging is kept separate from IoStore `.utoc/.ucas` extraction; loose-pak loading is a per-game compatibility check, not a guaranteed UE5 capability.
 - Runtime installation and real Windows game verification remain intentionally separate release gates.

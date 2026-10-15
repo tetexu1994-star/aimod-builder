@@ -2,9 +2,10 @@
 
 Two distinct modding paths:
   - UE4SS (Lua scripting): reliable for UE4, experimental on UE5 — NOT the default.
-  - pak override mods (repak / UnrealPak -> Content/Paks/~mods/): the reliable,
-    compiler-free route for both UE4 and UE5 (including IoStore .utoc/.ucas titles
-    like Phantom Blade Zero).
+  - loose `.pak` override mods (repak / UnrealPak -> Content/Paks/~mods/): a
+    compiler-free route where the game still loads loose paks. IoStore
+    `.utoc/.ucas` containers must be extracted with FModel/CUE4Parse; repak does
+    not read or write those containers.
 """
 from __future__ import annotations
 
@@ -86,8 +87,8 @@ class UnrealAdapter(BaseAdapter):
         variant = self._variant(game_dir)
         if variant == "ue5":
             guidance = (
-                "UE5 (IoStore)：推荐 pak 文件覆盖 mod —— 用 repak 解包/打包 .utoc/.ucas，"
-                "把生成的 .pak 放入 Content/Paks/~mods/。UE4SS Lua 对 UE5 不稳定，不作为默认。"
+                "UE5 (IoStore)：资源定位需 FModel/CUE4Parse 解包 .utoc/.ucas；repak 只处理 .pak。"
+                "若游戏确认支持 loose pak，可把覆盖包放入 Content/Paks/~mods/。UE4SS Lua 不作为默认。"
             )
         else:
             guidance = (
@@ -157,6 +158,8 @@ print(string.format("[%s] Initialized successfully!", ModRef))
     def install_mod(self, project_dir: str, game_dir: str, mod_id: str) -> str:
         """Install a UE4SS Lua mod into Binaries/Win64/ue4ss/Mods/<mod_id>/."""
         mod_id = safe_component(mod_id, "mod_id")
+        if self._variant(game_dir) == "ue5":
+            raise RuntimeError("UE4SS install is not supported for the detected UE5 IoStore layout; use a verified loose .pak override instead")
         target_candidates = glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64"))
         if not target_candidates:
             target_candidates = [os.path.join(game_dir, "Binaries", "Win64")]
@@ -192,7 +195,7 @@ print(string.format("[%s] Initialized successfully!", ModRef))
         mod_version: str = "1.0.0",
         author: str = "AI Mod Agent",
     ) -> str:
-        """Generate a pak file-override mod skeleton (works for UE4 and UE5 IoStore)."""
+        """Generate a loose `.pak` override skeleton; game support must be verified."""
         mod_id = safe_component(mod_id, "mod_id")
         os.makedirs(project_dir, exist_ok=True)
 
@@ -214,12 +217,14 @@ print(string.format("[%s] Initialized successfully!", ModRef))
 
 ## 流程
 
-1. 解包游戏资源定位要改的文件（UE4 用 FModel，UE5 IoStore 用 repak / CUE4Parse）。
+1. 解包游戏资源定位要改的文件（`.pak` 用 repak；UE5 IoStore `.utoc/.ucas` 用 FModel / CUE4Parse）。
 2. 把修改后的文件按游戏内相对路径放进 `override/`。
 3. 打包成 `.pak`：
-   - UE5 (IoStore)：`repak pack override {mod_id}.pak`
-   - UE4：`UnrealPak.exe {mod_id}.pak -Create=filelist.txt`
+   - `.pak`：`repak pack override {mod_id}.pak`
+   - 也可使用游戏/引擎自带的 `UnrealPak.exe`。
 4. 把生成的 `.pak` 放到 `dist/`，然后点「安装」自动装入 `Content/Paks/~mods/`。
+
+> IoStore-only 游戏不一定加载 loose `.pak`。安装前必须在目标游戏版本上确认 `~mods` 覆盖有效。
 """)
 
         return project_dir
@@ -227,13 +232,19 @@ print(string.format("[%s] Initialized successfully!", ModRef))
     def install_pak_mod(self, project_dir: str, game_dir: str, mod_id: str) -> str:
         """Install a built .pak override mod into Content/Paks/~mods/."""
         mod_id = safe_component(mod_id, "mod_id")
-        pak_files = glob.glob(os.path.join(project_dir, "dist", "*.pak"))
-        if not pak_files:
-            pak_files = glob.glob(os.path.join(project_dir, "*.pak"))
+        expected = os.path.join(project_dir, "dist", f"{mod_id}.pak")
+        if os.path.isfile(expected):
+            pak_files = [expected]
+        else:
+            pak_files = glob.glob(os.path.join(project_dir, "dist", "*.pak"))
+            if not pak_files:
+                pak_files = glob.glob(os.path.join(project_dir, "*.pak"))
         if not pak_files:
             raise ValueError("no built .pak found in dist/; run repak/UnrealPak to pack first")
+        if len(pak_files) > 1:
+            raise ValueError("multiple .pak files found; keep only the built mod package in dist/")
 
-        paks_dirs = glob.glob(os.path.join(game_dir, "*", "Content", "Paks"))
+        paks_dirs = self._content_paks_dirs(game_dir)
         if not paks_dirs:
             paks_dirs = [os.path.join(game_dir, "Content", "Paks")]
         mods_dir = os.path.join(paks_dirs[0], "~mods")
@@ -244,18 +255,15 @@ print(string.format("[%s] Initialized successfully!", ModRef))
         return mods_dir
 
     def pack_pak_mod(self, project_dir: str, game_dir: str, mod_id: str) -> str:
-        """Pack the override/ directory into dist/<mod_id>.pak (UE5 IoStore via repak)."""
+        """Pack override/ into a loose dist/<mod_id>.pak archive with repak."""
         mod_id = safe_component(mod_id, "mod_id")
         variant = self._variant(game_dir)
         override_dir = os.path.join(project_dir, "override")
         if not os.path.isdir(override_dir) or not os.listdir(override_dir):
             raise ValueError("override/ is empty; add overridden files first")
 
-        if variant == "ue4":
-            raise RuntimeError(
-                "UE4 titles use the game's own UnrealPak.exe to pack; "
-                "run it manually, or target a UE5 (IoStore) title for auto-packing"
-            )
+        if variant not in {"ue4", "ue5"}:
+            raise RuntimeError("Unreal container type could not be verified; add a game .pak or .utoc marker first")
 
         from .. import repak
         out_pak = os.path.join(project_dir, "dist", f"{mod_id}.pak")
@@ -263,24 +271,42 @@ print(string.format("[%s] Initialized successfully!", ModRef))
         return repak.pack_override(override_dir, out_pak)
 
     def unpack_pak(self, game_dir: str, pak_path: str, out_dir: str) -> str:
-        """Unpack a game pak archive for inspection (UE5 IoStore via repak).
+        """Unpack a loose `.pak` archive for inspection with repak.
 
-        If `pak_path` is empty, auto-locate the primary archive (a `global.utoc`
-        or the largest `.pak`).
+        If `pak_path` is empty, use the largest `.pak`. IoStore `.utoc/.ucas`
+        containers are rejected because repak cannot parse them.
         """
         from .. import repak
         if pak_path:
-            if not os.path.isabs(pak_path):
-                pak_path = os.path.join(game_dir, pak_path)
+            game_root = os.path.realpath(game_dir)
+            candidate = os.path.abspath(os.path.join(game_root, pak_path))
+            if os.path.commonpath([game_root, os.path.realpath(candidate)]) != game_root:
+                raise ValueError("pak_path escapes game_dir")
+            pak_path = candidate
         else:
-            paks = self.list_paks(game_dir)
+            paks = [os.path.join(game_dir, p) for p in self.list_paks(game_dir) if p.lower().endswith(".pak")]
             if not paks:
-                raise ValueError("no pak archives found in the game directory")
-            utoc = [p for p in paks if p.endswith(".utoc")]
-            pak_path = os.path.join(game_dir, (utoc or paks)[0])
+                raise ValueError("no loose .pak archive found; IoStore .utoc/.ucas requires FModel/CUE4Parse")
+            pak_path = max(paks, key=os.path.getsize)
         if not os.path.isfile(pak_path):
             raise ValueError(f"pak archive not found: {pak_path}")
+        if pak_path.lower().endswith((".utoc", ".ucas")):
+            raise ValueError("IoStore .utoc/.ucas is not supported by repak; use FModel/CUE4Parse")
+        if not pak_path.lower().endswith(".pak"):
+            raise ValueError("repak can only unpack .pak archives")
         return repak.unpack(pak_path, out_dir)
+
+    def _content_paks_dirs(self, game_dir: str) -> list[str]:
+        roots = glob.glob(os.path.join(game_dir, "*", "Content", "Paks")) + [
+            os.path.join(game_dir, "Content", "Paks"),
+            os.path.join(game_dir, "*", "*", "Content", "Paks"),
+        ]
+        found = []
+        for pattern in roots:
+            for path in glob.glob(pattern) if "*" in pattern else [pattern]:
+                if os.path.isdir(path):
+                    found.append(path)
+        return sorted(set(found), key=lambda p: (os.path.dirname(p).lower().endswith("engine"), p.lower()))
 
     def list_paks(self, game_dir: str) -> list[str]:
         """Return relative paths of all pak/IoStore archives in the game directory."""
@@ -288,6 +314,9 @@ print(string.format("[%s] Initialized successfully!", ModRef))
         result = []
         patterns = [
             os.path.join("*", "Content", "Paks", pat)
+            for pat in ("*.pak", "*.utoc", "*.ucas")
+        ] + [
+            os.path.join("*", "*", "Content", "Paks", pat)
             for pat in ("*.pak", "*.utoc", "*.ucas")
         ] + [
             os.path.join("Content", "Paks", pat)

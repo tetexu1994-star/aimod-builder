@@ -532,14 +532,30 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         engine_id = engine_info.get("engine_id") or engine_info.get("id", "generic")
         game_name = os.path.basename(os.path.normpath(game_dir))
 
+        if engine_id == "unreal" and engine_info.get("variant") == "ue5":
+            boundary = inspector.analyze_reverse_engineering_context(game_dir, user_prompt)
+            return HTTPStatus.OK, {
+                "success": True,
+                "data": {
+                    "reply": (
+                        "检测到 UE5 IoStore 布局。当前不会直接生成 UE4SS 热挂钩，因为该路径在 UE5 上不稳定，"
+                        "且 repak 不能解析 `.utoc/.ucas`。请先用 FModel/CUE4Parse 定位资源，再走 loose `.pak` 覆盖；"
+                        "安装前必须确认目标游戏版本支持 `Content/Paks/~mods`。"
+                    ),
+                    "action": None,
+                    "rea_insight": boundary,
+                    "capability_boundary": "ue5-iostore-pak-only",
+                },
+            }
+
         # Check if LLM is configured
         cfg = llm.load_config()
         has_llm = bool(str(cfg.get("api_key") or "").strip() or "localhost" in cfg.get("api_endpoint", "") or "127.0.0.1" in cfg.get("api_endpoint", ""))
 
         if engine_id == "unreal":
-            framework_name = "UE4SS (Unreal Engine Lua Hooking / UObject 反射) 与 Pak 资源挂载"
+            framework_name = "UE4SS Lua（UE4）/ loose .pak 覆盖（需逐游戏验证）"
             engine_prompt_addon = (
-                f"- 虚幻引擎专有架构（UE4/UE5）：支持 UE4SS (Lua Hooking) 与 .pak 文件装载。\n"
+                f"- UE4 可使用 UE4SS Lua；UE5 IoStore 仅考虑经验证的 loose .pak 覆盖，不宣称可解包 .utoc/.ucas。\n"
                 f"- 钩子目标请遵循虚幻引擎 UClass/UFunction 规范，例如 `ACharacter:TakeDamage`、`UCharacterMovementComponent:SetMaxWalkSpeed`、`APlayerController:ClientRestart` 等。\n"
             )
         elif engine_id == "unity":
@@ -776,6 +792,12 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
 
         engine_info = registry.detect_engine(game_dir) or {}
         engine_id = engine_info.get("engine_id") or engine_info.get("id", "generic")
+        if engine_id == "unreal" and engine_info.get("variant") == "ue5":
+            return HTTPStatus.CONFLICT, {
+                "success": False,
+                "error": "UE5 IoStore hook pinning is disabled; use the verified loose .pak workflow instead",
+                "capability_boundary": "ue5-iostore-pak-only",
+            }
 
         try:
             source_code, normalized_target = _pinned_source(engine_id, mod_name, hook_target, params)

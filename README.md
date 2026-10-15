@@ -47,10 +47,10 @@ game-mod-agent/
 | `diagnose_build_error` | **编译报错诊断器**：解析 CSxxxx 错误并生成针对性修复代码建议 | 无 |
 | `scaffold_ue4ss_mod` | 生成 UE4SS Lua Mod 工程（**仅 UE4 稳定**） | 无 |
 | `install_ue4ss_mod` | 安装 UE4SS Lua Mod 至游戏目录（带回滚日志记录） | 无 |
-| `scaffold_unreal_pak_mod` | **生成 Unreal pak 文件覆盖 Mod 骨架（UE4/UE5 通用）** | 无 |
-| `build_unreal_pak_mod` | 用 repak 打包 `override/` 为 .pak（**UE5 IoStore 自动下载 repak**） | 网络 |
+| `scaffold_unreal_pak_mod` | 生成 Unreal loose `.pak` 覆盖骨架（需逐游戏验证加载能力） | 无 |
+| `build_unreal_pak_mod` | 用 repak 打包 `override/` 为 loose `.pak`（不会生成 IoStore） | 网络 |
 | `install_unreal_pak_mod` | 安装 .pak 至 `Content/Paks/~mods/`（带回滚记录） | 无 |
-| `unpack_unreal_pak` | 用 repak 解包游戏资源，定位要覆盖的文件 | 网络 |
+| `unpack_unreal_pak` | 用 repak 解包 `.pak`；`.utoc/.ucas` 需 FModel/CUE4Parse | 网络 |
 | `scaffold_tmod_mod` | 生成 tModLoader mod 骨架（Terraria） | 无 |
 | `build_tmod_mod` | 编译 tModLoader mod | .NET 6 SDK |
 | `install_tmod_mod` | 安装 tModLoader mod 至游戏目录（带回滚日志记录） | 无 |
@@ -165,7 +165,7 @@ python -m agmod.ui --port 9000 --no-browser
 ### 2. 持久化 Mod：Unity (BepInEx) vs Unreal (pak 覆盖 / UE4SS)
 
 - **Unity 游戏**：`scaffold_mod` 生成 C# Harmony 切面工程，`build_mod` 编译装入。
-- **虚幻引擎 UE5（含影之刃零等 IoStore 大作）**：走 pak 文件覆盖——`scaffold_unreal_pak_mod` 生成 `override/` 骨架，`build_unreal_pak_mod` 自动下载 repak 打包成 .pak，`install_unreal_pak_mod` 装入 `Content/Paks/~mods/`。
+- **虚幻引擎 UE5 IoStore**：先用 FModel/CUE4Parse 定位/解包 `.utoc/.ucas`，再用 `scaffold_unreal_pak_mod` + `build_unreal_pak_mod` 生成 loose `.pak`。只有目标游戏版本确认支持 `Content/Paks/~mods` 时才安装；repak 不解析 IoStore。
 - **虚幻引擎 UE4**：`scaffold_ue4ss_mod` 生成 UE4SS Lua 脚本（`scripts/main.lua`），动态 Hook UFunction/UObject，`install_ue4ss_mod` 部署生效。
 
 ## 安全红线

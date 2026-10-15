@@ -108,7 +108,7 @@ class TestUnrealAdapter(unittest.TestCase):
             with self.assertRaises(ValueError):
                 adapter.pack_pak_mod(mod_proj, game_dir, "m")
 
-    def test_unreal_pack_pak_ue4_rejected(self):
+    def test_unreal_pack_pak_ue4_calls_repak(self):
         adapter = UnrealAdapter()
         with tempfile.TemporaryDirectory() as game_dir, tempfile.TemporaryDirectory() as mod_proj:
             paks = os.path.join(game_dir, "Content", "Paks")
@@ -116,8 +116,10 @@ class TestUnrealAdapter(unittest.TestCase):
             open(os.path.join(paks, "game.pak"), "w").close()
             adapter.scaffold_pak_mod(mod_proj, "m", "M")
             open(os.path.join(mod_proj, "override", "x.ini"), "w").close()
-            with self.assertRaises(RuntimeError):
-                adapter.pack_pak_mod(mod_proj, game_dir, "m")
+            with mock.patch("agmod.repak.pack_override", return_value="/fake/m.pak") as pack:
+                out = adapter.pack_pak_mod(mod_proj, game_dir, "m")
+            pack.assert_called_once()
+            self.assertEqual(out, "/fake/m.pak")
 
     def test_unreal_pack_pak_ue5_calls_repak(self):
         adapter = UnrealAdapter()
@@ -409,6 +411,28 @@ class TestAntiCheatDetection(unittest.TestCase):
             self.assertFalse(allowed)
             self.assertIn("反作弊", reason)
 
+    def test_deep_anticheat_component_is_detected(self):
+        from agmod import safety
+
+        with tempfile.TemporaryDirectory() as game_dir:
+            component_dir = os.path.join(game_dir, "Engine", "Binaries", "ThirdParty", "EasyAntiCheat", "Win64")
+            os.makedirs(component_dir)
+            open(os.path.join(component_dir, "easyanticheat_x64.dll"), "wb").close()
+            info = safety.detect_game_anticheat(game_dir)
+            self.assertTrue(info["has_anticheat"])
+            self.assertEqual(info["anticheat_system"], "EasyAntiCheat")
+
+    def test_anticheat_process_scan_fails_closed(self):
+        from agmod import safety
+
+        with tempfile.TemporaryDirectory() as game_dir:
+            broken_psutil = mock.Mock()
+            broken_psutil.process_iter.side_effect = RuntimeError("process scan unavailable")
+            with mock.patch.object(safety, "psutil", broken_psutil):
+                allowed, reason = safety.check_game_target(game_dir)
+            self.assertFalse(allowed)
+            self.assertIn("安全策略拒绝继续", reason)
+
     def test_detect_blocked_game_names(self):
         from agmod import safety
 
@@ -447,6 +471,18 @@ class TestAntiCheatDetection(unittest.TestCase):
         safety.allowlist_game("My Solo Game")
         self.assertIn("my solo game", safety.SINGLEPLAYER_ALLOWLIST)
         self.assertTrue(safety.is_allowlisted("C:/Games/My Solo Game"))
+
+    def test_discovery_keeps_raw_marker_but_does_not_block_allowlisted_solo_game(self):
+        from agmod import discovery, safety
+
+        with tempfile.TemporaryDirectory() as base_dir:
+            game_dir = os.path.join(base_dir, "Phantom Blade Zero")
+            os.makedirs(os.path.join(game_dir, "EasyAntiCheat"))
+            with mock.patch.object(safety, "_active_anticheat_status", return_value=([], "")):
+                games = discovery.scan_installed_games(extra_dirs=[game_dir])
+            self.assertEqual(len(games), 1)
+            self.assertTrue(games[0]["has_anticheat"])
+            self.assertFalse(games[0]["anticheat_blocked"])
 
 
 if __name__ == "__main__":

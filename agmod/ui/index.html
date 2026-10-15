@@ -1250,6 +1250,24 @@
       setTimeout(() => toast.remove(), 3500);
     }
 
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function safeDomId(value, fallback = 'field') {
+      const safe = String(value ?? '').replace(/[^A-Za-z0-9_-]/g, '_');
+      return safe || fallback;
+    }
+
+    function isAnticheatBlocked(game) {
+      return Boolean(game?.anticheat_blocked ?? game?.has_anticheat);
+    }
+
     function toggleTheme() {
       const current = document.documentElement.getAttribute('data-theme') || 'dark';
       const target = current === 'dark' ? 'light' : 'dark';
@@ -1334,15 +1352,15 @@
         };
 
         const coverHtml = g.cover_url
-          ? `<img src="${g.cover_url}" alt="${g.name}" onerror="this.parentElement.innerHTML='<div class=\\'cover-placeholder\\'>🎮</div>'">`
+          ? `<img src="${escapeHtml(g.cover_url)}" alt="${escapeHtml(g.name)}" data-cover-fallback="1">`
           : `<div class="cover-placeholder">🎮</div>`;
 
         const statusHtml = g.is_running
-          ? `<div class="game-card-status running"><span class="pulse-dot"></span> 运行中 (PID: ${g.running_pid})</div>`
+          ? `<div class="game-card-status running"><span class="pulse-dot"></span> 运行中 (PID: ${escapeHtml(g.running_pid)})</div>`
           : `<div class="game-card-status">● 未运行</div>`;
 
-        const anticheatHtml = g.has_anticheat
-          ? `<div style="position:absolute; top:8px; left:8px; background:rgba(220,38,38,0.9); color:#fff; font-size:11px; font-weight:700; padding:2px 7px; border-radius:4px; z-index:2; backdrop-filter:blur(4px); display:flex; align-items:center; gap:4px;"><span>🛡️</span><span>${g.anticheat_system || '反作弊保护'}</span></div>`
+        const anticheatHtml = isAnticheatBlocked(g)
+          ? `<div style="position:absolute; top:8px; left:8px; background:rgba(220,38,38,0.9); color:#fff; font-size:11px; font-weight:700; padding:2px 7px; border-radius:4px; z-index:2; backdrop-filter:blur(4px); display:flex; align-items:center; gap:4px;"><span>🛡️</span><span>${escapeHtml(g.anticheat_system || '反作弊保护')}</span></div>`
           : '';
 
         card.innerHTML = `
@@ -1352,14 +1370,25 @@
             ${statusHtml}
           </div>
           <div class="game-card-body">
-            <div class="game-card-title">${g.name}</div>
-            <div class="game-card-engine">${g.engine_name || '通用引擎'}</div>
+            <div class="game-card-title">${escapeHtml(g.name)}</div>
+            <div class="game-card-engine">${escapeHtml(g.engine_name || '通用引擎')}</div>
             <div class="game-card-actions">
-              <span style="font-size:12px; color:var(--text-muted);">${g.source === 'steam' ? 'Steam 游戏' : '本地目录'}</span>
-              <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); selectGameAndAdvance(${JSON.stringify(g).replace(/"/g, '&quot;')})">选择并下一步 →</button>
+              <span style="font-size:12px; color:var(--text-muted);">${escapeHtml(g.source === 'steam' ? 'Steam 游戏' : '本地目录')}</span>
+              <button type="button" class="btn btn-sm btn-primary" data-select-game="1">选择并下一步 →</button>
             </div>
           </div>
         `;
+        const cover = card.querySelector('[data-cover-fallback]');
+        if (cover) cover.onerror = () => {
+          const placeholder = document.createElement('div');
+          placeholder.className = 'cover-placeholder';
+          placeholder.textContent = '🎮';
+          cover.replaceWith(placeholder);
+        };
+        card.querySelector('[data-select-game]').onclick = (event) => {
+          event.stopPropagation();
+          selectGameAndAdvance(g);
+        };
         grid.appendChild(card);
       });
     }
@@ -1511,7 +1540,7 @@
       document.getElementById('studio-game-title').textContent = game.name;
       const pill = document.getElementById('studio-running-pill');
       if (game.is_running) {
-        pill.innerHTML = `<span class="pulse-dot"></span><span>已连接 PID: ${game.running_pid || 'Active'}</span>`;
+        pill.innerHTML = `<span class="pulse-dot"></span><span>已连接 PID: ${escapeHtml(game.running_pid || 'Active')}</span>`;
         pill.style.background = 'var(--emerald-bg)';
         pill.style.color = 'var(--emerald)';
       } else {
@@ -1525,7 +1554,7 @@
       const btnSend = document.getElementById('btn-send');
       const pillsBar = document.getElementById('chat-pills-bar');
 
-      if (game.has_anticheat) {
+      if (isAnticheatBlocked(game)) {
         if (acBanner) {
           acBanner.style.display = 'flex';
           const acName = document.getElementById('anticheat-system-name');
@@ -1560,7 +1589,7 @@
       container.innerHTML = '';
       chatHistory = [];
 
-      if (game.has_anticheat) {
+      if (isAnticheatBlocked(game)) {
         appendAIMessage(
           `🛡️ **反作弊安全保护生效中**\n\n` +
           `检测到 **${game.name}** 受 **${game.anticheat_system || '反作弊系统'}** 保护。\n\n` +
@@ -1587,7 +1616,7 @@
       msg.className = 'msg msg-user';
       msg.innerHTML = `
         <div class="msg-avatar">你</div>
-        <div class="msg-content">${text.replace(/</g, '&lt;')}</div>
+        <div class="msg-content">${escapeHtml(text)}</div>
       `;
       container.appendChild(msg);
       container.scrollTop = container.scrollHeight;
@@ -1611,10 +1640,10 @@
 
       let reaHtml = '';
       if (reaInsight) {
-        const syms = reaInsight.matched_symbols ? reaInsight.matched_symbols.slice(0, 3).map(s => `<code style="font-family:var(--mono); background:rgba(99,102,241,0.1); color:var(--primary); padding:1px 4px; border-radius:3px;">${s}</code>`).join(' ') : '';
-        const guardsText = (reaInsight.exception_guards || []).join(' · ');
-        const boundaryText = reaInsight.boundary_scope?.boundary_warning || '已完成数值范围与物理碰撞安全约束';
-        const binName = reaInsight.target_binary || 'Game Target';
+        const syms = reaInsight.matched_symbols ? reaInsight.matched_symbols.slice(0, 3).map(s => `<code style="font-family:var(--mono); background:rgba(99,102,241,0.1); color:var(--primary); padding:1px 4px; border-radius:3px;">${escapeHtml(s)}</code>`).join(' ') : '';
+        const guardsText = escapeHtml((reaInsight.exception_guards || []).join(' · '));
+        const boundaryText = escapeHtml(reaInsight.boundary_scope?.boundary_warning || '已完成数值范围与物理碰撞安全约束');
+        const binName = escapeHtml(reaInsight.target_binary || 'Game Target');
 
         reaHtml = `
           <div class="rea-card">
@@ -1654,30 +1683,34 @@
           });
         }
         activeActions.push(action);
+        const actionIndex = activeActions.length - 1;
         renderSidebarContent();
 
         let tuningHtml = '';
         if (action.tuning_params && action.tuning_params.length > 0) {
-          tuningHtml = action.tuning_params.map(p => `
+          tuningHtml = action.tuning_params.map((p, paramIndex) => {
+            const fieldId = `val-${actionIndex}-${safeDomId(p.id, `p${paramIndex}`)}`;
+            return `
             <div class="tuning-item">
-              <span>${p.label}: <strong id="val-${p.id}">${p.value}</strong></span>
-              <input type="range" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.value}" oninput="document.getElementById('val-${p.id}').textContent = this.value; onParamTune('${action.mod_id}', '${p.id}', this.value)">
+              <span>${escapeHtml(p.label)}: <strong id="${fieldId}">${escapeHtml(p.value)}</strong></span>
+              <input type="range" min="${Number(p.min)}" max="${Number(p.max)}" step="${Number(p.step)}" value="${Number(p.value)}" data-action-index="${actionIndex}" data-param-index="${paramIndex}" data-value-target="${fieldId}">
             </div>
-          `).join('');
+          `;
+          }).join('');
         }
 
         actionHtml = `
           <div class="action-card">
             <div class="action-card-header">
-              <span>✨ ${action.mod_name}</span>
+              <span>✨ ${escapeHtml(action.mod_name)}</span>
               <span style="font-size:11px; background:var(--emerald-bg); color:var(--emerald); padding:2px 7px; border-radius:4px;">🟢 实时生效中</span>
             </div>
-            <div style="font-size:12px; color:var(--text-muted);">${action.summary}</div>
+            <div style="font-size:12px; color:var(--text-muted);">${escapeHtml(action.summary)}</div>
             ${tuningHtml ? `<div class="tuning-group">${tuningHtml}</div>` : ''}
             <div class="action-card-footer">
               <span style="font-size:11px; color:var(--text-dim);">手感满意？</span>
               <div style="display:flex; gap:8px;">
-                <button class="btn btn-sm btn-primary" onclick="pinMod('${action.mod_id}', '${action.mod_name}', '${action.summary}', '${action.hook_target || ''}')">📌 固化为永久 Mod</button>
+                <button type="button" class="btn btn-sm btn-primary" data-pin-action="${actionIndex}">📌 固化为永久 Mod</button>
                 <button class="btn btn-sm" onclick="showToast('已撤回此项热修改', 'info')">↩️ 撤销</button>
               </div>
             </div>
@@ -1693,6 +1726,18 @@
           ${actionHtml}
         </div>
       `;
+      msg.querySelectorAll('[data-pin-action]').forEach(button => {
+        button.addEventListener('click', () => pinActionIndex(Number(button.dataset.pinAction)));
+      });
+      msg.querySelectorAll('input[data-action-index][data-param-index]').forEach(input => {
+        input.addEventListener('input', () => {
+          const valueTarget = document.getElementById(input.dataset.valueTarget);
+          if (valueTarget) valueTarget.textContent = input.value;
+          const item = activeActions[Number(input.dataset.actionIndex)];
+          const param = item?.tuning_params?.[Number(input.dataset.paramIndex)];
+          if (item && param) tuneActionIndex(Number(input.dataset.actionIndex), Number(input.dataset.paramIndex), input.value);
+        });
+      });
       container.appendChild(msg);
       container.scrollTop = container.scrollHeight;
       chatHistory.push({ role: 'assistant', content: markdownText });
@@ -1720,7 +1765,7 @@
         showToast('请先选择游戏', 'error');
         return;
       }
-      if (currentGame.has_anticheat) {
+      if (isAnticheatBlocked(currentGame)) {
         showToast('该游戏受反作弊系统保护，禁止自定义 Mod 操作以防封号', 'warning');
         return;
       }
@@ -1764,7 +1809,7 @@
           btn.disabled = false;
           btn.textContent = '发送生成';
         }
-        if (!currentGame.has_anticheat) {
+        if (!isAnticheatBlocked(currentGame)) {
           input.disabled = false;
           input.focus();
         }
@@ -1778,6 +1823,21 @@
         act.params[paramId] = parseFloat(val) || val;
       }
       showToast(`已实时调节 [${paramId}] = ${val}`, 'info');
+    }
+
+    function tuneActionIndex(actionIndex, paramIndex, val) {
+      const act = activeActions[actionIndex];
+      const param = act?.tuning_params?.[paramIndex];
+      if (!act || !param) return;
+      if (!act.params) act.params = {};
+      act.params[param.id] = parseFloat(val) || val;
+      showToast(`已实时调节 [${param.id}] = ${val}`, 'info');
+    }
+
+    function pinActionIndex(actionIndex) {
+      const act = activeActions[actionIndex];
+      if (!act) return;
+      return pinMod(act.mod_id, act.mod_name, act.summary, act.hook_target || '');
     }
 
     async function pinMod(modId, modName, summary, hookTarget = '') {
@@ -1839,15 +1899,18 @@
         container.innerHTML = activeActions.map((act, idx) => `
           <div class="mod-item-card">
             <div class="mod-item-header">
-              <span>${act.mod_name}</span>
+              <span>${escapeHtml(act.mod_name)}</span>
               <span style="font-size:11px; color:var(--emerald);">● 生效中</span>
             </div>
-            <div style="font-size:12px; color:var(--text-muted);">${act.summary}</div>
+            <div style="font-size:12px; color:var(--text-muted);">${escapeHtml(act.summary)}</div>
             <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:6px;">
-              <button class="btn btn-sm btn-primary" onclick="pinMod('${act.mod_id}', '${act.mod_name}', '${act.summary}', '${act.hook_target || ''}')">📌 固化为 Mod</button>
+              <button type="button" class="btn btn-sm btn-primary" data-pin-index="${idx}">📌 固化为 Mod</button>
             </div>
           </div>
         `).join('');
+        container.querySelectorAll('[data-pin-index]').forEach(button => {
+          button.addEventListener('click', () => pinActionIndex(Number(button.dataset.pinIndex)));
+        });
       } else if (currentSidebarTab === 'mods') {
         if (installedMods.length === 0) {
           container.innerHTML = `
@@ -1860,15 +1923,18 @@
         container.innerHTML = installedMods.map(m => `
           <div class="mod-item-card">
             <div class="mod-item-header">
-              <span>${m.name || m.id}</span>
+              <span>${escapeHtml(m.name || m.id)}</span>
               <span style="font-size:11px; color:var(--primary);">已安装</span>
             </div>
-            <div style="font-size:12px; color:var(--text-muted);">${m.description || m.path || ''}</div>
+            <div style="font-size:12px; color:var(--text-muted);">${escapeHtml(m.description || m.path || '')}</div>
             <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:6px;">
-              <button class="btn btn-sm" onclick="uninstallMod('${m.id}')" style="color:var(--rose);">卸载</button>
+              <button type="button" class="btn btn-sm" data-uninstall-mod="${escapeHtml(m.id)}" style="color:var(--rose);">卸载</button>
             </div>
           </div>
         `).join('');
+        container.querySelectorAll('[data-uninstall-mod]').forEach(button => {
+          button.addEventListener('click', () => uninstallMod(button.dataset.uninstallMod));
+        });
       } else if (currentSidebarTab === 'saves') {
         container.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -1938,14 +2004,17 @@
           listDiv.innerHTML = backups.map(b => `
             <div class="mod-item-card" style="margin-bottom:8px;">
               <div class="mod-item-header">
-                <span>🛡️ ${b.backup_id}</span>
+                <span>🛡️ ${escapeHtml(b.backup_id)}</span>
               </div>
-              <div style="font-size:11px; color:var(--text-muted);">${b.created_at || ''} (${b.file_count || 0} 个文件)</div>
+              <div style="font-size:11px; color:var(--text-muted);">${escapeHtml(b.created_at || '')} (${escapeHtml(b.file_count || 0)} 个文件)</div>
               <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:6px;">
-                <button class="btn btn-sm" onclick="restoreSave('${b.backup_id}')">还原此备份</button>
+                <button type="button" class="btn btn-sm" data-restore-save="${escapeHtml(b.backup_id)}">还原此备份</button>
               </div>
             </div>
           `).join('');
+          listDiv.querySelectorAll('[data-restore-save]').forEach(button => {
+            button.addEventListener('click', () => restoreSave(button.dataset.restoreSave));
+          });
         }
       } catch (e) {}
     }

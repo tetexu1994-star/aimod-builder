@@ -68,14 +68,25 @@ def inspect_feature(game_dir: str, keyword: str) -> dict:
         }
 
     elif engine_id == "unreal":
-        recommended_route = {
-            "type": "unreal_ue4ss_lua",
-            "runtime_hack": "Use scan_start on process memory for raw scalar values.",
-            "persistent_mod": (
-                f"Use scaffold_ue4ss_mod(...) to create a Lua hook in scripts/main.lua. "
-                f"Look for UProperty or UFunction related to '{keyword}' (e.g. Set{keyword.capitalize()} or Get{keyword.capitalize()})."
-            ),
-        }
+        variant = engine_info.get("variant", "")
+        if variant == "ue5":
+            recommended_route = {
+                "type": "unreal_loose_pak",
+                "runtime_hack": "Use scan_start on process memory for temporary scalar values only.",
+                "persistent_mod": (
+                    "Use scaffold_unreal_pak_mod/build_unreal_pak_mod for a loose .pak override after "
+                    "FModel/CUE4Parse extraction; verify the game loads Content/Paks/~mods before install."
+                ),
+            }
+        else:
+            recommended_route = {
+                "type": "unreal_ue4ss_lua",
+                "runtime_hack": "Use scan_start on process memory for raw scalar values.",
+                "persistent_mod": (
+                    f"Use scaffold_ue4ss_mod(...) to create a Lua hook in scripts/main.lua. "
+                    f"Look for UProperty or UFunction related to '{keyword}' (e.g. Set{keyword.capitalize()} or Get{keyword.capitalize()})."
+                ),
+            }
 
     elif engine_id == "dotnet-xna":
         recommended_route = {
@@ -226,7 +237,10 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
         }
         if not matched_symbols:
             matched_symbols = symbols_map.get(category, symbols_map["generic_enhancement"])
-        strategy = f"通过 UE4SS (Lua Hooking) 拦截 {matched_symbols[0]}，在虚幻引擎 UObject 运行时安全重载目标属性"
+        if engine_info.get("variant") == "ue5":
+            strategy = "UE5 IoStore 不默认走 UE4SS Hook；先用 FModel/CUE4Parse 定位资源，再验证 loose .pak 覆盖路径"
+        else:
+            strategy = f"通过 UE4SS (Lua Hooking) 拦截 {matched_symbols[0]}，在虚幻引擎 UObject 运行时安全重载目标属性"
 
     elif engine_id == "unity":
         is_il2cpp = bool(

@@ -364,7 +364,7 @@ def diagnose_build_error(compiler_output: str, return_code: int = 0) -> str:
 
 @mcp.tool()
 def scaffold_ue4ss_mod(project_dir: str, mod_id: str, mod_name: str, mod_version: str = "1.0.0", author: str = "AI Mod Agent") -> str:
-    """Generate a UE4SS Lua Mod skeleton. Reliable for UE4; prefer scaffold_unreal_pak_mod for UE5/IoStore."""
+    """Generate a UE4SS Lua Mod skeleton for UE4; UE5 IoStore uses a separately verified .pak workflow."""
     adapter = UnrealAdapter()
     adapter.scaffold_mod(project_dir, mod_id, mod_name, mod_version, author)
     return json.dumps({
@@ -385,14 +385,14 @@ def install_ue4ss_mod(project_dir: str, game_dir: str, mod_id: str) -> str:
 
 @mcp.tool()
 def scaffold_unreal_pak_mod(project_dir: str, mod_id: str, mod_name: str, mod_version: str = "1.0.0", author: str = "AI Mod Agent") -> str:
-    """Generate a pak file-override mod skeleton (works for UE4 and UE5/IoStore like Phantom Blade Zero)."""
+    """Generate a loose .pak override skeleton; IoStore extraction and game loading support must be verified."""
     adapter = UnrealAdapter()
     adapter.scaffold_pak_mod(project_dir, mod_id, mod_name, mod_version, author)
     return json.dumps({
         "project_dir": project_dir,
         "engine": "unreal",
         "framework": "pak",
-        "hint": "Put overridden files under override/ keeping in-game paths, then pack to .pak (repak for UE5, UnrealPak for UE4) into dist/, then install_unreal_pak_mod",
+        "hint": "Extract with FModel/CUE4Parse when needed, keep game-relative paths under override/, pack a loose .pak into dist/, verify ~mods support, then install",
     })
 
 
@@ -406,7 +406,7 @@ def install_unreal_pak_mod(project_dir: str, game_dir: str, mod_id: str) -> str:
 
 @mcp.tool()
 def build_unreal_pak_mod(project_dir: str, game_dir: str, mod_id: str) -> str:
-    """Pack the override/ directory into dist/<mod_id>.pak (UE5 IoStore via auto-downloaded repak)."""
+    """Pack override/ into dist/<mod_id>.pak using repak; this does not create IoStore containers."""
     adapter = UnrealAdapter()
     out_pak = adapter.pack_pak_mod(project_dir, game_dir, mod_id)
     return json.dumps({"pak": out_pak, "hint": "then call install_unreal_pak_mod"})
@@ -414,7 +414,7 @@ def build_unreal_pak_mod(project_dir: str, game_dir: str, mod_id: str) -> str:
 
 @mcp.tool()
 def unpack_unreal_pak(game_dir: str, pak_path: str = "", out_dir: str = "") -> str:
-    """Unpack a game pak archive for inspection (UE5 IoStore via repak). Empty pak_path auto-locates the primary archive."""
+    """Unpack a loose .pak archive with repak. IoStore .utoc/.ucas requires FModel/CUE4Parse."""
     adapter = UnrealAdapter()
     out_dir = out_dir or os.path.join(game_dir, "_unpacked")
     out = adapter.unpack_pak(game_dir, pak_path, out_dir)
@@ -423,7 +423,7 @@ def unpack_unreal_pak(game_dir: str, pak_path: str = "", out_dir: str = "") -> s
 
 @mcp.tool()
 def list_unreal_paks(game_dir: str) -> str:
-    """List all pak/IoStore archives in an Unreal game directory."""
+    """List .pak archives and IoStore marker files; only .pak files can be unpacked by repak."""
     adapter = UnrealAdapter()
     return json.dumps(adapter.list_paks(game_dir), ensure_ascii=False)
 

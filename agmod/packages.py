@@ -75,20 +75,26 @@ def _dependency(
 
 def _installed_loader(game_dir: str, engine_id: str) -> tuple[str, str]:
     """Return a conservative (status, evidence) pair for the local loader."""
+    if not game_dir:
+        return "missing", ""
+    def has_marker(path: str, names: tuple[str, ...]) -> bool:
+        return os.path.isdir(path) and any(os.path.isfile(os.path.join(path, name)) for name in names)
+
     checks = {
-        "unity": ([os.path.join(game_dir, "BepInEx", "core")], "BepInEx/core"),
+        "unity": ([os.path.join(game_dir, "BepInEx", "core")], "BepInEx/core", ("BepInEx.dll", "BepInEx.Core.dll", "0Harmony.dll")),
         "unreal": (
             glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64", "ue4ss"))
             + [os.path.join(game_dir, "Binaries", "Win64", "ue4ss"), os.path.join(game_dir, "ue4ss")],
             "Binaries/Win64/ue4ss",
+            ("UE4SS.dll", "ue4ss.dll", "dwmapi.dll"),
         ),
-        "re-engine": ([os.path.join(game_dir, "reframework")], "reframework/"),
-        "godot": ([os.path.join(game_dir, "mods-unpacked")], "mods-unpacked/"),
-        "dotnet-xna": ([os.path.join(game_dir, "ModLoader")], "ModLoader/"),
+        "re-engine": ([os.path.join(game_dir, "reframework")], "reframework/", (os.path.join(os.pardir, "dinput8.dll"), "reframework.dll")),
+        "godot": ([os.path.join(game_dir, "mods-unpacked")], "mods-unpacked/", ()),
+        "dotnet-xna": ([os.path.join(game_dir, "ModLoader")], "ModLoader/", ()),
     }
-    paths, label = checks.get(engine_id, ([], ""))
+    paths, label, markers = checks.get(engine_id, ([], "", ()))
     for path in paths:
-        if path and os.path.isdir(path):
+        if path and (not markers or has_marker(path, markers)):
             return "installed", f"local loader directory: {label}"
     return "missing", ""
 
@@ -168,6 +174,8 @@ def check_dependency_compatibility(game_dir: str, package_spec: dict) -> dict:
     compatibility_record = package_spec.get("compatibility", {}) if isinstance(package_spec.get("compatibility"), dict) else {}
     if str(compatibility_record.get("game_version", "")).strip().lower() in {"", "record before release"}:
         warnings.append("game version has not been recorded in compatibility.json")
+    if package_spec.get("dependency_profile_status") == "game-specific-loose-pak":
+        warnings.append("IoStore game support for loose .pak overrides must be verified on the target game version")
     checks: list[dict] = []
     for dep in resolved["dependencies"]:
         required = bool(dep.get("required"))
@@ -235,7 +243,9 @@ def build_package_spec(
     profile = _PROFILES.get(engine_id, {})
     loader = profile.get("loader")
     dependencies = []
-    if loader:
+    unreal_patterns = ("Content/Paks/*.utoc", "Content/Paks/*.ucas", "*/Content/Paks/*.utoc", "*/Content/Paks/*.ucas", "*/*/Content/Paks/*.utoc", "*/*/Content/Paks/*.ucas")
+    unreal_iostore = engine_id == "unreal" and bool(game_dir) and any(glob.glob(os.path.join(game_dir, pattern)) for pattern in unreal_patterns)
+    if loader and not unreal_iostore:
         dependencies.append(_dependency(loader[0], loader[1], loader[2], "loader", distribution_version=loader[3]))
         dependencies.extend(_dependency(*api, kind="runtime-api", required=False, distribution=False, provided_by=loader[1]) for api in profile.get("apis", ()))
     overrides = customizations.get("dependency_versions", {}) if isinstance(customizations, dict) else {}
@@ -244,20 +254,20 @@ def build_package_spec(
         "id": mod_id,
         "name": mod_name,
         "version": version,
-        "engine": {"id": engine_id},
+        "engine": {"id": engine_id, "variant": "ue5-iostore" if unreal_iostore else ""},
         "customizations": customizations or {},
         "dependency_versions": overrides,
         "dependencies": dependencies,
         "artifact_groups": _artifact_groups(),
         "compatibility": {
             "game_version": "record before release",
-            "loader_version": loader[2] if loader else "",
+            "loader_version": loader[2] if loader and not unreal_iostore else "",
             "api_version": "",
             "platform": "win64",
             "anti_cheat": "unsupported",
             "verification": "profile-pinned; verify against the installed game and loader before release",
         },
-        "dependency_profile_status": "known" if loader else "unverified",
+        "dependency_profile_status": "game-specific-loose-pak" if unreal_iostore else "known" if loader else "unverified",
         "validation": ["dependency resolution", "artifact completeness", "package contents", "install preview"],
     }
     spec["dependency_plan"] = resolve_package_dependencies(game_dir, spec)

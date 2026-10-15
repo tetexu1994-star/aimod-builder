@@ -134,6 +134,28 @@ class TestPackagePlanning(unittest.TestCase):
             self.assertTrue(result["valid"])
             self.assertTrue({"package-spec.json", "compatibility.json", "config/default.json", "localization/en-US.json", "docs/INSTALL.md"}.issubset(set(result["payload_files"])))
 
+    def test_ue5_iostore_plan_uses_verified_pak_boundary(self):
+        with tempfile.TemporaryDirectory() as game, tempfile.TemporaryDirectory() as project:
+            Path(game, "Game.uproject").write_text("{}", encoding="utf-8")
+            paks = Path(game, "Game", "Content", "Paks")
+            paks.mkdir(parents=True)
+            (paks / "global.utoc").write_bytes(b"")
+            spec = create_mod_plan(game, "增加金币", project, mod_id="gold-plus", mod_name="Gold Plus")
+            self.assertIn("loose .pak override", spec["route"])
+            self.assertTrue(Path(project, "override").is_dir())
+            self.assertFalse(Path(project, "scripts", "main.lua").exists())
+            self.assertTrue(validate_project(project)["ok"])
+            self.assertEqual(spec["dependency_plan"]["dependencies"], [])
+
+            dist = Path(project, "dist")
+            dist.mkdir()
+            (dist / "gold-plus.pak").write_bytes(b"PAK")
+            self.assertTrue(validate_project(project, stage="post_build")["ok"])
+            package_path = package_mod(project)
+            result = validate_package(package_path)
+            self.assertTrue(result["valid"])
+            self.assertIn("dist/gold-plus.pak", result["payload_files"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

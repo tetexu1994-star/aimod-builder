@@ -207,6 +207,48 @@ def detect_game_anticheat(game_dir: str) -> dict[str, Any]:
                     f"检测到反作弊文件 '{entry}' ({sys_name})，已自动拦截自定义 Mod 操作。",
                 )
 
+    # Deep scan for components commonly installed below Engine/Binaries or
+    # platform launcher directories. Keep it bounded so large game trees do not
+    # stall discovery.
+    visited_dirs = 0
+    visited_files = 0
+    for base, dirs, files in os.walk(game_dir_abs, followlinks=False):
+        visited_dirs += 1
+        if visited_dirs > 2000:
+            break
+        rel_path = os.path.relpath(base, game_dir_abs)
+        rel_depth = 0 if rel_path == "." else len(rel_path.split(os.sep))
+        for name in list(dirs):
+            low = name.lower()
+            if low in ANTICHEAT_DIR_NAMES:
+                sys_name = ANTICHEAT_DIR_NAMES[low]
+                rel = os.path.relpath(os.path.join(base, name), game_dir_abs)
+                return _build_res(
+                    True,
+                    sys_name,
+                    f"检测到深层反作弊目录 '{rel}' ({sys_name})，已自动拦截自定义 Mod 操作。",
+                )
+        dirs[:] = [
+            d for d in dirs
+            if rel_depth < 6 and not os.path.islink(os.path.join(base, d))
+        ]
+        for name in files:
+            visited_files += 1
+            if visited_files > 10000:
+                break
+            low = name.lower()
+            full_p = os.path.join(base, name)
+            if low in ANTICHEAT_FILE_PATTERNS and os.path.isfile(full_p):
+                sys_name = ANTICHEAT_FILE_PATTERNS[low]
+                rel = os.path.relpath(full_p, game_dir_abs)
+                return _build_res(
+                    True,
+                    sys_name,
+                    f"检测到深层反作弊组件 '{rel}' ({sys_name})，已自动拦截自定义 Mod 操作。",
+                )
+        if visited_files > 10000:
+            break
+
     return _build_res(False, "", "")
 
 
@@ -230,7 +272,9 @@ def check_target(pid: int) -> tuple[bool, str]:
         return False, f"process {pid} is not running or cannot be inspected"
     if is_blocked_name(name):
         return False, f"target process '{name}' is anti-cheat; refusing to touch it"
-    active = active_anticheat()
+    active, scan_error = _active_anticheat_status()
+    if scan_error:
+        return False, "无法完整检查反作弊进程，安全策略拒绝继续: " + scan_error
     if active:
         return False, "anti-cheat service is active: " + ", ".join(active)
     return True, ""
@@ -250,25 +294,27 @@ def check_game_target(game_dir: str) -> tuple[bool, str]:
         else:
             return False, ac.get("reason", f"检测到该游戏受 {ac.get('system', '反作弊')} 保护，禁止修改。")
 
-    active = active_anticheat()
+    active, scan_error = _active_anticheat_status()
+    if scan_error:
+        return False, "无法完整检查反作弊进程，安全策略拒绝继续: " + scan_error
     if active:
         return False, "检测到宿主机正运行反作弊服务: " + ", ".join(active) + "，为防封禁已自动拦截 Mod 操作。"
     return True, ""
 
 
-def active_anticheat() -> list[str]:
-    """Names of any currently-running known anti-cheat services."""
+def _active_anticheat_status() -> tuple[list[str], str]:
     out = set()
-    if psutil is not None:
-        for p in psutil.process_iter(["name"]):
-            try:
-                n = (p.info.get("name") or "").lower()
-            except Exception:
-                continue
-            if n in BLOCKED:
-                out.add(p.info["name"])
-    else:
-        try:
+    error = ""
+    try:
+        if psutil is not None:
+            for p in psutil.process_iter(["name"]):
+                try:
+                    name = p.info.get("name") or ""
+                    if name.lower() in BLOCKED:
+                        out.add(name)
+                except Exception:
+                    continue
+        else:
             from agmod import process
             if sys.platform == "win32":
                 hits = process._get_running_processes_tasklist(BLOCKED)
@@ -278,6 +324,11 @@ def active_anticheat() -> list[str]:
                 hits = process._get_running_processes_ps(BLOCKED)
                 for h in hits:
                     out.add(h["name"])
-        except Exception:
-            pass
-    return sorted(out)
+    except Exception as exc:
+        error = str(exc)
+    return sorted(out), error
+
+
+def active_anticheat() -> list[str]:
+    """Names of any currently-running known anti-cheat services."""
+    return _active_anticheat_status()[0]

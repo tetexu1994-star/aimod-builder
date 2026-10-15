@@ -23,7 +23,7 @@ ENGINE_PROFILES = {
             {"title": "改画质/性能/按键", "route": "config", "difficulty": "简单",
              "how": "用 list_unreal_configs 找 Saved/Config/Windows/ 下的 GameUserSettings.ini / Input.ini，改完走 ini/pak 覆盖"},
             {"title": "改数值/换资源", "route": "pak", "difficulty": "中等",
-             "how": "unpack_unreal_pak 解包定位资源 → 改 → build_unreal_pak_mod 打包 → install_unreal_pak_mod 装入 ~mods/"},
+             "how": "FModel/CUE4Parse 解包 .utoc/.ucas 定位资源 → 修改 → build_unreal_pak_mod 打 loose .pak → 确认游戏支持 ~mods 后安装"},
             {"title": "临时改内存数值", "route": "memory", "difficulty": "中等",
              "how": "scan_start/scan_next 扫描目标数值 → write_memory（重启失效）"},
             {"title": "改逻辑/加功能/Hook", "route": "hook", "difficulty": "难",

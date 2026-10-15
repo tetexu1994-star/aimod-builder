@@ -3,7 +3,7 @@
 Produces `Author-ModName-Version.zip` containing:
   - manifest.json (Thunderstore schema: name, version_number, description,
     website_url, dependencies)
-  - the built DLL(s) from the project's output dir
+  - built DLL(s), scripts, or a loose `.pak` from the project's output dirs
 
 Uploading to Nexus Mods / Thunderstore / mod.io is a separate step (Nexus needs
 an API key, Thunderstore uploads via the app or API); this just produces a
@@ -22,6 +22,7 @@ from .paths import safe_join
 
 _BUILD_DIRS = [
     "out",
+    "dist",
     os.path.join("bin", "Release", "net472"),
     os.path.join("bin", "Release", "net6.0"),
 ]
@@ -54,6 +55,7 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
     }
 
     dlls: dict[str, str] = {}
+    paks: dict[str, str] = {}
     for d in _BUILD_DIRS:
         d = os.path.join(project_dir, d)
         if not os.path.isdir(d):
@@ -61,6 +63,8 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
         for fn in sorted(os.listdir(d)):
             if fn.endswith(".dll"):
                 dlls.setdefault(fn, os.path.join(d, fn))
+            elif fn.lower().endswith(".pak"):
+                paks.setdefault(fn, os.path.join(d, fn))
     entry_file = None
     if m.entry:
         entry_path = safe_join(project_dir, m.entry)
@@ -68,8 +72,8 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
             entry_file = entry_path
         elif os.path.basename(m.entry) not in dlls:
             raise ValueError(f"manifest entry not found: {m.entry}")
-    if not dlls and not (m.engine in {"unreal", "re-engine", "godot"} and entry_file):
-        raise ValueError("no built DLL or entry script found; run build_mod/build_tmod_mod before packaging")
+    if not dlls and not paks and not (m.engine in {"unreal", "re-engine", "godot"} and entry_file):
+        raise ValueError("no built DLL, .pak, or entry script found; build the mod before packaging")
 
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2))
@@ -79,6 +83,8 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
                 z.write(metadata_path, metadata)
         for fn in sorted(dlls):
             z.write(dlls[fn], fn)
+        for fn in sorted(paks):
+            z.write(paks[fn], f"dist/{fn}")
         for group in ("config", "assets", "localization", "docs"):
             group_dir = os.path.join(project_dir, group)
             if not os.path.isdir(group_dir):
@@ -164,7 +170,7 @@ def validate_package(package_path: str) -> dict:
             if not payloads:
                 errors.append("archive contains no mod payload files (dll, scripts, assets)")
 
-            has_code = any(n.endswith((".dll", ".lua", ".cs", ".tmod", ".gd")) for n in payloads)
+            has_code = any(n.lower().endswith((".dll", ".lua", ".cs", ".tmod", ".gd", ".pak")) for n in payloads)
             if not has_code:
                 warnings.append("archive has no executable DLL or script files")
 

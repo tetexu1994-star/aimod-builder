@@ -57,6 +57,9 @@ class TestUIServer(unittest.TestCase):
         self.assertIn("button.btn:disabled", html)
         self.assertIn('class="step-item', html)
         self.assertNotIn('<div class="step-item', html)
+        self.assertNotIn("onclick=\"pinMod('${", html)
+        self.assertIn("function escapeHtml(value)", html)
+        self.assertIn("function isAnticheatBlocked(game)", html)
 
     @classmethod
     def setUpClass(cls):
@@ -199,6 +202,7 @@ System.NullReferenceException: Object reference not set to an instance of an obj
             Path(tmp_game, "UnityPlayer.dll").write_text("dummy", encoding="utf-8")
             core = Path(tmp_game, "BepInEx", "core")
             core.mkdir(parents=True)
+            (core / "BepInEx.dll").write_bytes(b"")
             Path(tmp_game, "BepInEx", "version.txt").write_text("5.4.23.0", encoding="utf-8")
             source = Path(tmp_source, "Demo.dll")
             source.write_bytes(b"demo")
@@ -317,6 +321,28 @@ System.NullReferenceException: Object reference not set to an instance of an obj
                 "params": {}
             })
             self.assertEqual(code, 403)
+            self.assertFalse(pin_res["success"])
+
+    def test_ue5_iostore_uses_pak_capability_boundary(self):
+        with tempfile.TemporaryDirectory() as game:
+            Path(game, "Game.uproject").write_text("{}", encoding="utf-8")
+            paks = Path(game, "Game", "Content", "Paks")
+            paks.mkdir(parents=True)
+            (paks / "global.utoc").write_bytes(b"")
+            code, res = _http_post(f"{self.base_url}/api/mod/interact", {"game_dir": game, "prompt": "增加金币"})
+            self.assertEqual(code, 200)
+            self.assertIsNone(res["data"]["action"])
+            self.assertEqual(res["data"]["capability_boundary"], "ue5-iostore-pak-only")
+
+            code, pin_res = _http_post(f"{self.base_url}/api/mod/pin", {
+                "game_dir": game,
+                "mod_id": "bad-hook",
+                "mod_name": "Bad Hook",
+                "summary": "test",
+                "params": {},
+                "hook_target": "ACharacter:TakeDamage",
+            })
+            self.assertEqual(code, 409)
             self.assertFalse(pin_res["success"])
 
     def test_launch_ui_function(self):
