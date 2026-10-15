@@ -262,19 +262,20 @@ def launch_game(game_dir: str, appid: str = "") -> Dict[str, Any]:
         pass
 
     # 2. Prioritize direct game executable launch (safer for modding and avoids Steam protocol crash)
-    exes = process.find_game_executables(game_dir)
-    if exes:
-        main_exe = os.path.join(game_dir, exes[0])
+    main_exe = process.find_primary_executable_path(game_dir)
+    if main_exe and os.path.isfile(main_exe):
+        exe_cwd = os.path.dirname(main_exe)
+        exe_name = os.path.basename(main_exe)
         try:
             if sys.platform == "win32":
                 os.startfile(main_exe)
             else:
-                subprocess.Popen([main_exe], cwd=game_dir)
+                subprocess.Popen([main_exe], cwd=exe_cwd)
             return {
                 "success": True,
                 "method": "direct_executable",
                 "exe": main_exe,
-                "message": f"游戏主程序已安全启动: {exes[0]}",
+                "message": f"游戏主程序已安全启动: {exe_name}",
             }
         except Exception as e:
             logger.warning("Direct launch failed, attempting fallback: %s", e)

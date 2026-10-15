@@ -47,11 +47,13 @@ class UnrealAdapter(BaseAdapter):
         # Direct markers
         if glob.glob(os.path.join(game_dir, "*.uproject")):
             return True
-        if os.path.isdir(os.path.join(game_dir, "Engine", "Binaries")):
+        if os.path.isdir(os.path.join(game_dir, "Engine", "Binaries")) or os.path.isdir(os.path.join(game_dir, "Engine")):
             return True
         if glob.glob(os.path.join(game_dir, "*", "Content", "Paks")):
             return True
-        if glob.glob(os.path.join(game_dir, "Content", "Paks", "*.pak")):
+        if glob.glob(os.path.join(game_dir, "Content", "Paks", "*.pak")) or glob.glob(os.path.join(game_dir, "Content", "Paks", "*.ucas")):
+            return True
+        if glob.glob(os.path.join(game_dir, "*", "Content", "Paks", "*.pak")) or glob.glob(os.path.join(game_dir, "*", "Content", "Paks", "*.ucas")):
             return True
         if glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64", "*-Shipping.exe")):
             return True

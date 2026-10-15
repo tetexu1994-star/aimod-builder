@@ -32,11 +32,87 @@ _IGNORED_EXES = {
 }
 
 
+def find_primary_executable_path(game_dir: str) -> str | None:
+    """Find the full absolute path of the primary game executable.
+
+    Prioritizes:
+    1. Root executable matching directory name (e.g. PBZero.exe)
+    2. Any executable directly in the root directory (level 0 launcher)
+    3. Nested Shipping executable (e.g. */Binaries/Win64/*-Shipping.exe)
+    4. Any executable inside a Binaries/Win64/ folder
+    5. First valid executable found anywhere in game_dir
+    """
+    if not os.path.isdir(game_dir):
+        return None
+
+    game_dir_abs = os.path.abspath(game_dir)
+    dir_name = os.path.basename(os.path.normpath(game_dir)).lower()
+
+    # 1 & 2: Root level executables
+    root_exes = []
+    try:
+        for fn in os.listdir(game_dir_abs):
+            p = os.path.join(game_dir_abs, fn)
+            if os.path.isfile(p):
+                low = fn.lower()
+                if low.endswith(".exe") and low not in _IGNORED_EXES:
+                    root_exes.append(p)
+                elif sys.platform != "win32" and not low.endswith((".dll", ".so", ".dylib", ".txt", ".json", ".pck", ".pak")):
+                    if os.access(p, os.X_OK):
+                        root_exes.append(p)
+    except OSError:
+        pass
+
+    if root_exes:
+        for p in root_exes:
+            fn_low = os.path.basename(p).lower()
+            if fn_low == f"{dir_name}.exe" or fn_low.startswith(dir_name):
+                return p
+        return root_exes[0]
+
+    # 3, 4, 5: Nested executables (common in Unreal Engine / AAA titles)
+    shippings = []
+    win64_exes = []
+    all_exes = []
+
+    for root, _, files in os.walk(game_dir_abs):
+        for fn in files:
+            low = fn.lower()
+            if low.endswith(".exe") and low not in _IGNORED_EXES:
+                full_p = os.path.join(root, fn)
+                all_exes.append(full_p)
+                if "-shipping.exe" in low:
+                    shippings.append(full_p)
+                elif "binaries" in root.lower() and "win64" in root.lower():
+                    win64_exes.append(full_p)
+            elif sys.platform != "win32" and not low.endswith((".dll", ".so", ".dylib", ".txt", ".json", ".pck", ".pak")):
+                full_p = os.path.join(root, fn)
+                if os.access(full_p, os.X_OK) and not os.path.isdir(full_p):
+                    all_exes.append(full_p)
+
+    if shippings:
+        for p in shippings:
+            if dir_name in os.path.basename(p).lower():
+                return p
+        return shippings[0]
+
+    if win64_exes:
+        return win64_exes[0]
+
+    if all_exes:
+        return all_exes[0]
+
+    return None
+
+
 def find_game_executables(game_dir: str) -> list[str]:
     """Find primary game executable names inside game_dir."""
     if not os.path.isdir(game_dir):
         return []
     exes = set()
+    primary = find_primary_executable_path(game_dir)
+    primary_name = os.path.basename(primary) if primary else None
+
     for root, _, files in os.walk(game_dir):
         for fn in files:
             low = fn.lower()
@@ -46,7 +122,12 @@ def find_game_executables(game_dir: str) -> list[str]:
                 p = os.path.join(root, fn)
                 if os.access(p, os.X_OK) and not os.path.isdir(p):
                     exes.add(fn)
-    return sorted(exes)
+
+    res = sorted(exes)
+    if primary_name and primary_name in res:
+        res.remove(primary_name)
+        res.insert(0, primary_name)
+    return res
 
 
 def _is_subpath(parent: str, child: str) -> bool:

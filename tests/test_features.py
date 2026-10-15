@@ -132,6 +132,37 @@ class TestProcessDiscovery(unittest.TestCase):
             self.assertIn("processes", status)
             self.assertIsInstance(status["processes"], list)
 
+    def test_find_primary_executable_path(self):
+        from agmod.process import find_primary_executable_path, find_game_executables
+        with tempfile.TemporaryDirectory() as game_dir:
+            # 1. Root exe matching dir name
+            exe_root = os.path.join(game_dir, "Game.exe")
+            open(exe_root, "w").close()
+            p = find_primary_executable_path(game_dir)
+            self.assertEqual(p, exe_root)
+
+        with tempfile.TemporaryDirectory() as game_dir:
+            # 2. Nested Unreal Engine Win64 Shipping exe
+            win64 = os.path.join(game_dir, "PBZero", "Binaries", "Win64")
+            os.makedirs(win64, exist_ok=True)
+            shipping_exe = os.path.join(win64, "PBZero-Win64-Shipping.exe")
+            open(shipping_exe, "w").close()
+            p = find_primary_executable_path(game_dir)
+            self.assertEqual(p, shipping_exe)
+
+            exes = find_game_executables(game_dir)
+            self.assertEqual(exes[0], "PBZero-Win64-Shipping.exe")
+
+    def test_unreal_iostore_detect(self):
+        from agmod.adapters.unreal import UnrealAdapter
+        adapter = UnrealAdapter()
+        with tempfile.TemporaryDirectory() as game_dir:
+            paks = os.path.join(game_dir, "PBZero", "Content", "Paks")
+            os.makedirs(paks, exist_ok=True)
+            open(os.path.join(paks, "global.utoc"), "w").close()
+            open(os.path.join(paks, "global.ucas"), "w").close()
+            self.assertTrue(adapter.detect(game_dir))
+
 
 class TestGodotAdapter(unittest.TestCase):
     def test_godot_lifecycle(self):

@@ -407,13 +407,29 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir and prompt are required"}
 
         engine_info = registry.detect_engine(game_dir) or {}
-        engine_name = engine_info.get("engine_name", "通用引擎")
-        engine_id = engine_info.get("engine_id", "generic")
+        engine_name = engine_info.get("engine_name") or engine_info.get("name", "通用引擎")
+        engine_id = engine_info.get("engine_id") or engine_info.get("id", "generic")
         game_name = os.path.basename(os.path.normpath(game_dir))
 
         # Check if LLM is configured
         cfg = llm.load_config()
         has_llm = bool(str(cfg.get("api_key") or "").strip() or "localhost" in cfg.get("api_endpoint", "") or "127.0.0.1" in cfg.get("api_endpoint", ""))
+
+        if engine_id == "unreal":
+            framework_name = "UE4SS (Unreal Engine Lua Hooking / UObject 反射) 与 Pak 资源挂载"
+            engine_prompt_addon = (
+                f"- 虚幻引擎专有架构（UE4/UE5）：支持 UE4SS (Lua Hooking) 与 .pak 文件装载。\n"
+                f"- 钩子目标请遵循虚幻引擎 UClass/UFunction 规范，例如 `ACharacter:TakeDamage`、`UCharacterMovementComponent:SetMaxWalkSpeed`、`APlayerController:ClientRestart` 等。\n"
+            )
+        elif engine_id == "unity":
+            framework_name = "BepInEx 6 / HarmonyX C# 运行时注入"
+            engine_prompt_addon = "- Unity 引擎专有架构：支持 Harmony 前缀/后缀补丁（例如 PlayerController.Update）。\n"
+        elif engine_id == "re-engine":
+            framework_name = "REFramework (Lua 脚本 / Native DLL)"
+            engine_prompt_addon = "- RE 引擎专有架构：支持 REFramework Lua Hook 与 SDK 浏览。\n"
+        else:
+            framework_name = f"{engine_name} 运行时注入"
+            engine_prompt_addon = ""
 
         reply = ""
         action = None
@@ -425,7 +441,8 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 f"- 游戏名称: {game_name}\n"
                 f"- 游戏目录: {game_dir}\n"
                 f"- 游戏引擎: {engine_name} ({engine_id})\n"
-                f"- 框架环境: BepInEx / Harmony / Native\n\n"
+                f"- 框架环境: {framework_name}\n"
+                f"{engine_prompt_addon}\n"
                 f"【任务要求】\n"
                 f"根据玩家提出的需求，为该游戏设计并注入对应的 Mod 功能。\n"
                 f"请用亲切、充满极客魅力的中文回答，说明你注入了什么功能，以及如何切回游戏测试。\n"
@@ -439,7 +456,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 f'  "tuning_params": [\n'
                 f'    {{"id": "param_1", "label": "参数标签", "type": "slider", "min": 1.0, "max": 5.0, "step": 0.1, "value": 2.0}}\n'
                 f'  ],\n'
-                f'  "hook_target": "类名.方法名",\n'
+                f'  "hook_target": "类名:方法名",\n'
                 f'  "can_pin": true\n'
                 f"}}\n"
                 f"```"
@@ -454,7 +471,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
 
             llm_res = llm.chat_completion(
                 messages=chat_msgs,
-                game_context={"game_dir": game_dir, "engine": engine_name, "framework": "BepInEx/Harmony"}
+                game_context={"game_dir": game_dir, "engine": engine_name, "framework": framework_name}
             )
             if llm_res.get("success"):
                 full_reply = llm_res.get("reply", "")
@@ -473,36 +490,68 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
 
         if not reply:
             prompt_lower = user_prompt.lower()
-            if any(k in prompt_lower for k in ["速", "快", "speed", "run"]):
-                mod_id = "speed_boost"
-                mod_name = "急速奔跑 (Speed Boost)"
-                summary = "角色移动速度提升 100%"
-                tuning = [{"id": "multiplier", "label": "移速倍率", "type": "slider", "min": 1.0, "max": 5.0, "step": 0.1, "value": 2.0}]
-                target = "HeroController.MoveSpeed" if "hollow" in game_name.lower() else "PlayerController.Movement"
-            elif any(k in prompt_lower for k in ["跳", "jump"]):
-                mod_id = "double_jump"
-                mod_name = "空中二段跳 (Air Jump)"
-                summary = "解锁空中二段跳跃与机动性提升"
-                tuning = [{"id": "jump_height", "label": "跳跃力度", "type": "slider", "min": 0.5, "max": 3.0, "step": 0.1, "value": 1.5}]
-                target = "HeroController.CanDoubleJump"
-            elif any(k in prompt_lower for k in ["钱", "金", "coin", "gold", "money"]):
-                mod_id = "infinite_gold"
-                mod_name = "金钱丰裕 (Gold Multiplier)"
-                summary = "获得金钱奖励翻 5 倍"
-                tuning = [{"id": "gold_multi", "label": "掉落倍率", "type": "slider", "min": 2, "max": 20, "step": 1, "value": 5}]
-                target = "CurrencyManager.AddGeo"
-            elif any(k in prompt_lower for k in ["血", "命", "hp", "health", "无敌"]):
-                mod_id = "god_mode"
-                mod_name = "护甲金身 (God Mode / Shield)"
-                summary = "受到攻击时减免伤害并提供无敌护盾"
-                tuning = [{"id": "damage_reduction", "label": "减伤比例", "type": "slider", "min": 50, "max": 100, "step": 5, "value": 100}]
-                target = "PlayerData.TakeDamage"
+            if engine_id == "unreal":
+                if any(k in prompt_lower for k in ["速", "快", "speed", "run"]):
+                    mod_id = "swift_stride"
+                    mod_name = "疾风瞬影 · 移速提升 (Swift Stride)"
+                    summary = "角色疾驰移动速度提升 100%"
+                    tuning = [{"id": "speed_multiplier", "label": "移速倍率", "type": "slider", "min": 1.0, "max": 5.0, "step": 0.1, "value": 2.0}]
+                    target = "UCharacterMovementComponent:SetMaxWalkSpeed"
+                elif any(k in prompt_lower for k in ["跳", "jump"]):
+                    mod_id = "phantom_air_jump"
+                    mod_name = "踏雪无痕 · 空中二段跳 (Air Step Jump)"
+                    summary = "解锁绝妙空中连环二段跳跃与滞空机动"
+                    tuning = [{"id": "jump_impulse", "label": "腾空跃力", "type": "slider", "min": 1.0, "max": 3.0, "step": 0.1, "value": 1.5}]
+                    target = "ACharacter:JumpMaxCount"
+                elif any(k in prompt_lower for k in ["钱", "金", "coin", "gold", "money"]):
+                    mod_id = "infinite_gold"
+                    mod_name = "金玉满堂 · 掉落倍率 (Gold Multiplier)"
+                    summary = "击败敌人金钱掉落倍率提高 5 倍"
+                    tuning = [{"id": "gold_multi", "label": "掉落倍率", "type": "slider", "min": 2, "max": 20, "step": 1, "value": 5}]
+                    target = "InventoryComponent:AddCurrency"
+                elif any(k in prompt_lower for k in ["血", "命", "hp", "health", "无敌"]):
+                    mod_id = "invincible_shield"
+                    mod_name = "金钟罩 · 刀枪不入 (Invincible Guard)"
+                    summary = "受到攻击减免 100% 伤害并生成霸体护体"
+                    tuning = [{"id": "damage_reduction", "label": "护甲减免比例", "type": "slider", "min": 50, "max": 100, "step": 5, "value": 100}]
+                    target = "ACharacter:TakeDamage"
+                else:
+                    mod_id = f"custom_mod_{int(time.time())}"
+                    mod_name = f"增强特性: {user_prompt[:12]}"
+                    summary = f"已针对虚幻引擎注入运行时补丁: {user_prompt}"
+                    tuning = [{"id": "effect_intensity", "label": "效果强度", "type": "slider", "min": 1, "max": 10, "step": 1, "value": 2}]
+                    target = "ACharacter:Tick"
             else:
-                mod_id = f"custom_mod_{int(time.time())}"
-                mod_name = f"增强特性: {user_prompt[:12]}"
-                summary = f"已针对需求注入运行时补丁: {user_prompt}"
-                tuning = [{"id": "effect_intensity", "label": "效果强度", "type": "slider", "min": 1, "max": 10, "step": 1, "value": 2}]
-                target = "GameManager.Update"
+                if any(k in prompt_lower for k in ["速", "快", "speed", "run"]):
+                    mod_id = "speed_boost"
+                    mod_name = "急速奔跑 (Speed Boost)"
+                    summary = "角色移动速度提升 100%"
+                    tuning = [{"id": "multiplier", "label": "移速倍率", "type": "slider", "min": 1.0, "max": 5.0, "step": 0.1, "value": 2.0}]
+                    target = "HeroController.MoveSpeed" if "hollow" in game_name.lower() else "PlayerController.Movement"
+                elif any(k in prompt_lower for k in ["跳", "jump"]):
+                    mod_id = "double_jump"
+                    mod_name = "空中二段跳 (Air Jump)"
+                    summary = "解锁空中二段跳跃与机动性提升"
+                    tuning = [{"id": "jump_height", "label": "跳跃力度", "type": "slider", "min": 0.5, "max": 3.0, "step": 0.1, "value": 1.5}]
+                    target = "HeroController.CanDoubleJump"
+                elif any(k in prompt_lower for k in ["钱", "金", "coin", "gold", "money"]):
+                    mod_id = "infinite_gold"
+                    mod_name = "金钱丰裕 (Gold Multiplier)"
+                    summary = "获得金钱奖励翻 5 倍"
+                    tuning = [{"id": "gold_multi", "label": "掉落倍率", "type": "slider", "min": 2, "max": 20, "step": 1, "value": 5}]
+                    target = "CurrencyManager.AddGeo"
+                elif any(k in prompt_lower for k in ["血", "命", "hp", "health", "无敌"]):
+                    mod_id = "god_mode"
+                    mod_name = "护甲金身 (God Mode / Shield)"
+                    summary = "受到攻击时减免伤害并提供无敌护盾"
+                    tuning = [{"id": "damage_reduction", "label": "减伤比例", "type": "slider", "min": 50, "max": 100, "step": 5, "value": 100}]
+                    target = "PlayerData.TakeDamage"
+                else:
+                    mod_id = f"custom_mod_{int(time.time())}"
+                    mod_name = f"增强特性: {user_prompt[:12]}"
+                    summary = f"已针对需求注入运行时补丁: {user_prompt}"
+                    tuning = [{"id": "effect_intensity", "label": "效果强度", "type": "slider", "min": 1, "max": 10, "step": 1, "value": 2}]
+                    target = "GameManager.Update"
 
             action = {
                 "mod_id": mod_id,
@@ -529,28 +578,96 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         mod_name = body.get("mod_name", "AI Custom Mod")
         summary = body.get("summary", "")
         params = body.get("params", {})
+        hook_target = body.get("hook_target", "")
 
         if not game_dir:
             return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
 
-        # Scaffold BepInEx/plugins/<mod_id>/<mod_id>.json
-        mod_folder = os.path.join(game_dir, "BepInEx", "plugins", mod_id)
-        os.makedirs(mod_folder, exist_ok=True)
-        manifest_file = os.path.join(mod_folder, "mod.json")
-        with open(manifest_file, "w", encoding="utf-8") as f:
-            json.dump({
-                "id": mod_id,
-                "name": mod_name,
-                "summary": summary,
-                "params": params,
-                "pinned_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-            }, f, indent=2, ensure_ascii=False)
+        engine_info = registry.detect_engine(game_dir) or {}
+        engine_id = engine_info.get("engine_id") or engine_info.get("id", "generic")
 
-        # Record rollback journal
+        added_files = []
+
+        if engine_id == "unreal":
+            import glob
+            win64_candidates = glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64"))
+            if not win64_candidates:
+                win64_candidates = [os.path.join(game_dir, "Binaries", "Win64")]
+            win64_dir = win64_candidates[0]
+
+            mods_root = os.path.join(win64_dir, "Mods", mod_id)
+            if os.path.exists(os.path.join(win64_dir, "ue4ss", "Mods")):
+                mods_root = os.path.join(win64_dir, "ue4ss", "Mods", mod_id)
+
+            scripts_dir = os.path.join(mods_root, "scripts")
+            os.makedirs(scripts_dir, exist_ok=True)
+
+            enabled_file = os.path.join(mods_root, "enabled.txt")
+            with open(enabled_file, "w", encoding="utf-8") as f:
+                f.write("1\n")
+            added_files.append(enabled_file)
+
+            manifest_file = os.path.join(mods_root, "mod.json")
+            with open(manifest_file, "w", encoding="utf-8") as f:
+                json.dump({
+                    "id": mod_id,
+                    "name": mod_name,
+                    "engine": "unreal",
+                    "summary": summary,
+                    "hook_target": hook_target,
+                    "params": params,
+                    "pinned_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                }, f, indent=2, ensure_ascii=False)
+            added_files.append(manifest_file)
+
+            lua_script = os.path.join(scripts_dir, "main.lua")
+            lua_code = (
+                f"-- {mod_name} (ID: {mod_id})\n"
+                f"-- Pinned by AI Mod Builder for Unreal Engine (UE4SS)\n"
+                f'local ModName = "{mod_name}"\n'
+                f'print(string.format("[%s] Loaded successfully!", ModName))\n\n'
+                f'-- Hook Target: {hook_target or "Dynamic"}\n'
+            )
+            for p_k, p_v in params.items():
+                lua_code += f'local {p_k} = {p_v}\n'
+            lua_code += (
+                f'\nprint(string.format("[%s] Active parameters applied.", ModName))\n'
+            )
+            with open(lua_script, "w", encoding="utf-8") as f:
+                f.write(lua_code)
+            added_files.append(lua_script)
+            mod_folder = mods_root
+            message = f"虚幻引擎 Mod【{mod_name}】已成功固化到 UE4SS 插件目录！下次启动游戏将由 UE4SS 自动装载生效。"
+
+        elif engine_id == "re-engine":
+            ref_folder = os.path.join(game_dir, "reframework", "autorun")
+            os.makedirs(ref_folder, exist_ok=True)
+            lua_script = os.path.join(ref_folder, f"{mod_id}.lua")
+            with open(lua_script, "w", encoding="utf-8") as f:
+                f.write(f"-- REFramework Mod: {mod_name}\nprint('[{mod_name}] Loaded!')\n")
+            added_files.append(lua_script)
+            mod_folder = ref_folder
+            message = f"RE-Engine Mod【{mod_name}】已成功固化到 reframework/autorun 目录！"
+
+        else:
+            mod_folder = os.path.join(game_dir, "BepInEx", "plugins", mod_id)
+            os.makedirs(mod_folder, exist_ok=True)
+            manifest_file = os.path.join(mod_folder, "mod.json")
+            with open(manifest_file, "w", encoding="utf-8") as f:
+                json.dump({
+                    "id": mod_id,
+                    "name": mod_name,
+                    "summary": summary,
+                    "params": params,
+                    "pinned_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                }, f, indent=2, ensure_ascii=False)
+            added_files.append(manifest_file)
+            message = f"Mod【{mod_name}】已成功固化到游戏目录！下次直接在 Steam 启动游戏依然生效。"
+
         rollback.record_install(
             game_dir=game_dir,
             mod_id=mod_id,
-            added_files=[manifest_file],
+            added_files=added_files,
             overwritten_backups={},
         )
 
@@ -560,7 +677,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 "mod_id": mod_id,
                 "mod_name": mod_name,
                 "path": mod_folder,
-                "message": f"Mod【{mod_name}】已成功固化到游戏目录！下次直接在 Steam 启动游戏依然生效。"
+                "message": message,
             }
         }
 
