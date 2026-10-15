@@ -23,15 +23,27 @@ _IGNORED_EXES = {
     "unitycrashhandler32.exe",
     "unitycrashhandler64.exe",
     "crashreportclient.exe",
+    "crashreport.exe",
+    "crashreporter.exe",
     "unins000.exe",
     "unins001.exe",
     "uninstall.exe",
     "vcredist_x64.exe",
     "vcredist_x86.exe",
     "dxwebsetup.exe",
+    "dxsetup.exe",
     "vc_redist.x64.exe",
     "vc_redist.x86.exe",
+    "installer.exe",
 }
+
+def is_ignored_executable_name(fn: str) -> bool:
+    low = fn.lower()
+    if low in _IGNORED_EXES:
+        return True
+    if any(k in low for k in ("crashreport", "crashhandler", "unins00", "uninstall", "redist", "dxsetup", "patch.", "installermessage")):
+        return True
+    return False
 
 _SKIP_DIR_NAMES = {
     "content", "paks", "streamingassets", "assetbundles", "assets",
@@ -68,7 +80,7 @@ def _scan_dir_executables(game_dir: str) -> list[str]:
 
         for fn in files:
             low = fn.lower()
-            if low.endswith(".exe") and low not in _IGNORED_EXES:
+            if low.endswith(".exe") and not is_ignored_executable_name(fn):
                 found_paths.append(os.path.join(root, fn))
             elif sys.platform != "win32" and not low.endswith((".dll", ".so", ".dylib", ".txt", ".json", ".pck", ".pak")):
                 p = os.path.join(root, fn)
@@ -101,7 +113,7 @@ def find_primary_executable_path(game_dir: str) -> str | None:
             p = os.path.join(game_dir_abs, fn)
             if os.path.isfile(p):
                 low = fn.lower()
-                if low.endswith(".exe") and low not in _IGNORED_EXES:
+                if low.endswith(".exe") and not is_ignored_executable_name(fn):
                     root_exes.append(p)
                 elif sys.platform != "win32" and not low.endswith((".dll", ".so", ".dylib", ".txt", ".json", ".pck", ".pak")):
                     if os.access(p, os.X_OK):
@@ -155,7 +167,7 @@ def find_game_executables(game_dir: str) -> list[str]:
     try:
         for fn in os.listdir(game_dir_abs):
             low = fn.lower()
-            if low.endswith(".exe") and low not in _IGNORED_EXES:
+            if low.endswith(".exe") and not is_ignored_executable_name(fn):
                 exes.add(fn)
             elif sys.platform != "win32" and not low.endswith((".dll", ".so", ".dylib", ".txt", ".json", ".pck", ".pak")):
                 p = os.path.join(game_dir_abs, fn)

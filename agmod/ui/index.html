@@ -1644,9 +1644,11 @@
           const procs = res.data.running_processes || res.data.processes || [];
           const pid = procs[0]?.pid || 'Active';
           const name = procs[0]?.name || currentGame.name;
+          const wasRunning = currentGame.is_running;
           currentGame.is_running = true;
           currentGame.running_pid = pid;
 
+          // Update Stage 2 Gatekeeper elements
           const statusText = document.getElementById('gatekeeper-status-text');
           if (statusText) {
             statusText.textContent = `🟢 游戏进程已就绪: ${name} (PID: ${pid})，正在接入 AI 工作台...`;
@@ -1657,18 +1659,40 @@
             pulseDot.style.background = 'var(--emerald)';
           }
 
-          if (processPollTimer) {
-            clearInterval(processPollTimer);
-            processPollTimer = null;
+          // Update Stage 3 Studio elements
+          const pill = document.getElementById('studio-running-pill');
+          if (pill) {
+            pill.innerHTML = `<span class="pulse-dot"></span><span>已连接 PID: ${escapeHtml(pid)}</span>`;
+            pill.style.background = 'var(--emerald-bg)';
+            pill.style.color = 'var(--emerald)';
+          }
+          const launchBtn = document.getElementById('studio-launch-btn');
+          if (launchBtn) {
+            launchBtn.textContent = '🟢 游戏运行中';
+            launchBtn.disabled = true;
           }
 
-          if (!silent) {
-            showToast(`🟢 游戏进程已连接 (${name} PID: ${pid})！自动进入 AI 创作工作台`, 'success');
+          if (!silent && !wasRunning) {
+            showToast(`🟢 游戏进程已连接 (${name} PID: ${pid})！`, 'success');
           }
-          setTimeout(() => {
-            if (currentStage === 2) goToStage(3);
-          }, 400);
+          if (currentStage === 2) {
+            setTimeout(() => goToStage(3), 400);
+          }
           return true;
+        } else if (res.success && !res.data.is_running) {
+          currentGame.is_running = false;
+          currentGame.running_pid = null;
+          const pill = document.getElementById('studio-running-pill');
+          if (pill) {
+            pill.innerHTML = `<span>○ 离线编写模式</span>`;
+            pill.style.background = 'rgba(255, 255, 255, 0.05)';
+            pill.style.color = 'var(--text-muted)';
+          }
+          const launchBtn = document.getElementById('studio-launch-btn');
+          if (launchBtn) {
+            launchBtn.textContent = '▶ 启动游戏';
+            launchBtn.disabled = false;
+          }
         }
       } catch (e) {
         console.warn('Process check error:', e);
@@ -1694,8 +1718,15 @@
           const statusText = document.getElementById('gatekeeper-status-text');
           if (statusText) statusText.textContent = '游戏已启动，正在探测连接主程序进程...';
           setTimeout(() => checkProcessStatus(true, true), 800);
-          setTimeout(() => checkProcessStatus(true, true), 2000);
-          setTimeout(() => checkProcessStatus(true, true), 3500);
+
+          let attempts = 0;
+          const pollInterval = setInterval(async () => {
+            attempts++;
+            const found = await checkProcessStatus(true, true);
+            if (found || attempts >= 15 || !currentGame) {
+              clearInterval(pollInterval);
+            }
+          }, 2000);
         } else {
           showToast('启动出错: ' + res.error, 'error');
         }
@@ -1706,9 +1737,7 @@
 
     function startProcessPolling(game) {
       if (processPollTimer) clearInterval(processPollTimer);
-      // Immediate probe with force refresh
       checkProcessStatus(true, true);
-      // Polling interval
       processPollTimer = setInterval(() => {
         if (!currentGame || currentStage !== 2) {
           if (processPollTimer) clearInterval(processPollTimer);
@@ -1716,6 +1745,18 @@
         }
         checkProcessStatus(true);
       }, 1500);
+    }
+
+    function startStudioProcessPolling(game) {
+      if (processPollTimer) clearInterval(processPollTimer);
+      checkProcessStatus(true, true);
+      processPollTimer = setInterval(() => {
+        if (!currentGame || currentStage < 3) {
+          if (processPollTimer) clearInterval(processPollTimer);
+          return;
+        }
+        checkProcessStatus(true);
+      }, 2500);
     }
 
     async function manualProcessRefresh() {
@@ -1729,7 +1770,6 @@
 
     async function forceConnectToStudio() {
       if (!currentGame) return;
-      // Probe process once more
       await checkProcessStatus(true, true);
       if (!currentGame.running_pid) {
         currentGame.running_pid = 'Active';
@@ -1796,6 +1836,18 @@
       }
       loadGameMods(game);
       loadGameSaves(game);
+
+      const launchBtn = document.getElementById('studio-launch-btn');
+      if (launchBtn) {
+        if (game.is_running) {
+          launchBtn.textContent = '🟢 游戏运行中';
+          launchBtn.disabled = true;
+        } else {
+          launchBtn.textContent = '▶ 启动游戏';
+          launchBtn.disabled = false;
+        }
+      }
+      startStudioProcessPolling(game);
     }
 
     async function initChatForGame(game) {
