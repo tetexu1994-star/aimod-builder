@@ -2,6 +2,14 @@
 
 ## 2026-10-15
 
+### UE5 (IoStore) pak modding path
+
+- Added UE4/UE5 variant detection: `detect_engine` now returns `variant` (`ue5` for IoStore `.utoc`/`.ucas`, `ue4` for legacy `.pak`).
+- Added a first-class pak file-override modding path for Unreal: `scaffold_unreal_pak_mod`, `build_unreal_pak_mod`, `install_unreal_pak_mod`, and `unpack_unreal_pak`.
+- Added `agmod/repak.py`, which auto-downloads the repak CLI (Windows, GitHub release) and wraps pack/unpack, so UE5 IoStore modding needs no manual tooling.
+- Demoted UE4SS to a UE4-only recommendation; UE5 now defaults to pak override.
+- Dropped the misleading `phantom_air_jump` demo name; Unreal scaffolds emit a clean `override/` directory.
+
 ### Evidence Normalization and Install Dry-Run
 
 - Normalized UE4SS, REFramework, REA and Cpp2IL symbol shapes into typed `HookTarget` records with source/status/confidence and parameter signatures; generated hooks preserve this provenance.

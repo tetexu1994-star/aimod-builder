@@ -18,7 +18,7 @@ game-mod-agent/
 │   └── adapters/
 │       ├── base.py        # BaseAdapter 统一接口
 │       ├── unity.py       # Unity（Mono / IL2CPP）
-│       └── unreal.py      # Unreal Engine（UE4 / UE5 免编译 Lua Mod）
+│       └── unreal.py      # Unreal Engine（UE4/UE5：pak 覆盖 + UE4SS Lua）
 ├── AGENT_PROMPT.md        # 给 agent 的系统提示词（工作流 + 红线）
 ├── mcp_config.json        # Claude Code 注册示例
 └── mods/                  # 结构缓存（自动生成）
@@ -45,8 +45,12 @@ game-mod-agent/
 | `scaffold_mod` | 生成 BepInEx 插件工程 (Unity) | 无 |
 | `build_mod` | 编译插件并装入 BepInEx/plugins（**支持自动解析报错并自愈重试**） | .NET SDK |
 | `diagnose_build_error` | **编译报错诊断器**：解析 CSxxxx 错误并生成针对性修复代码建议 | 无 |
-| `scaffold_ue4ss_mod` | **生成 UE4SS 免编译 Lua Mod 工程 (Unreal Engine 4/5)** | 无 |
+| `scaffold_ue4ss_mod` | 生成 UE4SS Lua Mod 工程（**仅 UE4 稳定**） | 无 |
 | `install_ue4ss_mod` | 安装 UE4SS Lua Mod 至游戏目录（带回滚日志记录） | 无 |
+| `scaffold_unreal_pak_mod` | **生成 Unreal pak 文件覆盖 Mod 骨架（UE4/UE5 通用）** | 无 |
+| `build_unreal_pak_mod` | 用 repak 打包 `override/` 为 .pak（**UE5 IoStore 自动下载 repak**） | 网络 |
+| `install_unreal_pak_mod` | 安装 .pak 至 `Content/Paks/~mods/`（带回滚记录） | 无 |
+| `unpack_unreal_pak` | 用 repak 解包游戏资源，定位要覆盖的文件 | 网络 |
 | `scaffold_tmod_mod` | 生成 tModLoader mod 骨架（Terraria） | 无 |
 | `build_tmod_mod` | 编译 tModLoader mod | .NET 6 SDK |
 | `install_tmod_mod` | 安装 tModLoader mod 至游戏目录（带回滚日志记录） | 无 |
@@ -158,10 +162,11 @@ python -m agmod.ui --port 9000 --no-browser
 6. write_memory(pid, 0x1407A890, 99999) -> 成功生效！
 ```
 
-### 2. 持久化 Mod：Unity (BepInEx) vs Unreal (UE4SS)
+### 2. 持久化 Mod：Unity (BepInEx) vs Unreal (pak 覆盖 / UE4SS)
 
 - **Unity 游戏**：`scaffold_mod` 生成 C# Harmony 切面工程，`build_mod` 编译装入。
-- **虚幻引擎 4/5**：`scaffold_ue4ss_mod` 生成免编译的 Lua 脚本（`scripts/main.lua`），使用 UE4SS 动态 Hook UFunction 与 UObject，`install_ue4ss_mod` 直接部署生效！
+- **虚幻引擎 UE5（含影之刃零等 IoStore 大作）**：走 pak 文件覆盖——`scaffold_unreal_pak_mod` 生成 `override/` 骨架，`build_unreal_pak_mod` 自动下载 repak 打包成 .pak，`install_unreal_pak_mod` 装入 `Content/Paks/~mods/`。
+- **虚幻引擎 UE4**：`scaffold_ue4ss_mod` 生成 UE4SS Lua 脚本（`scripts/main.lua`），动态 Hook UFunction/UObject，`install_ue4ss_mod` 部署生效。
 
 ## 安全红线
 
