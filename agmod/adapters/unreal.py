@@ -198,12 +198,6 @@ print(string.format("[%s] Initialized successfully!", ModRef))
 
         override_dir = os.path.join(project_dir, "override")
         os.makedirs(override_dir, exist_ok=True)
-        with open(os.path.join(override_dir, "README.txt"), "w", encoding="utf-8") as f:
-            f.write(
-                "把要覆盖的文件按游戏内相对路径放到这里。\n"
-                "例如改配置：Config/DefaultGame.ini\n"
-                "例如换资源：Content/Characters/Hero/hero_mesh.uasset\n"
-            )
 
         ModManifest(
             id=mod_id,
@@ -248,3 +242,31 @@ print(string.format("[%s] Initialized successfully!", ModRef))
         pairs = [(p, os.path.join(mods_dir, os.path.basename(p))) for p in pak_files]
         rollback.install_files(game_dir, mod_id, pairs)
         return mods_dir
+
+    def pack_pak_mod(self, project_dir: str, game_dir: str, mod_id: str) -> str:
+        """Pack the override/ directory into dist/<mod_id>.pak (UE5 IoStore via repak)."""
+        mod_id = safe_component(mod_id, "mod_id")
+        variant = self._variant(game_dir)
+        override_dir = os.path.join(project_dir, "override")
+        if not os.path.isdir(override_dir) or not os.listdir(override_dir):
+            raise ValueError("override/ is empty; add overridden files first")
+
+        if variant == "ue4":
+            raise RuntimeError(
+                "UE4 titles use the game's own UnrealPak.exe to pack; "
+                "run it manually, or target a UE5 (IoStore) title for auto-packing"
+            )
+
+        from .. import repak
+        out_pak = os.path.join(project_dir, "dist", f"{mod_id}.pak")
+        os.makedirs(os.path.dirname(out_pak), exist_ok=True)
+        return repak.pack_override(override_dir, out_pak)
+
+    def unpack_pak(self, game_dir: str, pak_path: str, out_dir: str) -> str:
+        """Unpack a game pak archive for inspection (UE5 IoStore via repak)."""
+        from .. import repak
+        if not os.path.isabs(pak_path):
+            pak_path = os.path.join(game_dir, pak_path)
+        if not os.path.isfile(pak_path):
+            raise ValueError(f"pak archive not found: {pak_path}")
+        return repak.unpack(pak_path, out_dir)

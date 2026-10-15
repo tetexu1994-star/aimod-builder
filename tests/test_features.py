@@ -5,6 +5,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -99,6 +100,37 @@ class TestUnrealAdapter(unittest.TestCase):
                 f.write("PAK")
             dest = adapter.install_pak_mod(mod_proj, game_dir, "pbz_override")
             self.assertTrue(os.path.isfile(os.path.join(dest, "pbz_override.pak")))
+
+    def test_unreal_pack_pak_requires_override_files(self):
+        adapter = UnrealAdapter()
+        with tempfile.TemporaryDirectory() as game_dir, tempfile.TemporaryDirectory() as mod_proj:
+            adapter.scaffold_pak_mod(mod_proj, "m", "M")
+            with self.assertRaises(ValueError):
+                adapter.pack_pak_mod(mod_proj, game_dir, "m")
+
+    def test_unreal_pack_pak_ue4_rejected(self):
+        adapter = UnrealAdapter()
+        with tempfile.TemporaryDirectory() as game_dir, tempfile.TemporaryDirectory() as mod_proj:
+            paks = os.path.join(game_dir, "Content", "Paks")
+            os.makedirs(paks, exist_ok=True)
+            open(os.path.join(paks, "game.pak"), "w").close()
+            adapter.scaffold_pak_mod(mod_proj, "m", "M")
+            open(os.path.join(mod_proj, "override", "x.ini"), "w").close()
+            with self.assertRaises(RuntimeError):
+                adapter.pack_pak_mod(mod_proj, game_dir, "m")
+
+    def test_unreal_pack_pak_ue5_calls_repak(self):
+        adapter = UnrealAdapter()
+        with tempfile.TemporaryDirectory() as game_dir, tempfile.TemporaryDirectory() as mod_proj:
+            paks = os.path.join(game_dir, "PBZero", "Content", "Paks")
+            os.makedirs(paks, exist_ok=True)
+            open(os.path.join(paks, "global.utoc"), "w").close()
+            adapter.scaffold_pak_mod(mod_proj, "m", "M")
+            open(os.path.join(mod_proj, "override", "x.ini"), "w").close()
+            with mock.patch("agmod.repak.pack_override", return_value="/fake/m.pak") as pack:
+                out = adapter.pack_pak_mod(mod_proj, game_dir, "m")
+            pack.assert_called_once()
+            self.assertEqual(out, "/fake/m.pak")
 
 
 class TestScanSessionLogic(unittest.TestCase):

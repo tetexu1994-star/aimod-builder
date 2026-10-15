@@ -383,6 +383,22 @@ def install_unreal_pak_mod(project_dir: str, game_dir: str, mod_id: str) -> str:
 
 
 @mcp.tool()
+def build_unreal_pak_mod(project_dir: str, game_dir: str, mod_id: str) -> str:
+    """Pack the override/ directory into dist/<mod_id>.pak (UE5 IoStore via auto-downloaded repak)."""
+    adapter = UnrealAdapter()
+    out_pak = adapter.pack_pak_mod(project_dir, game_dir, mod_id)
+    return json.dumps({"pak": out_pak, "hint": "then call install_unreal_pak_mod"})
+
+
+@mcp.tool()
+def unpack_unreal_pak(game_dir: str, pak_path: str, out_dir: str) -> str:
+    """Unpack a game pak archive for inspection (UE5 IoStore via repak)."""
+    adapter = UnrealAdapter()
+    out = adapter.unpack_pak(game_dir, pak_path, out_dir)
+    return json.dumps({"unpacked_to": out})
+
+
+@mcp.tool()
 def check_update(owner: str, repo: str, current_version: str) -> str:
     """Check a GitHub repo for a newer release/commit than `current_version`."""
     return json.dumps(updater.check_update(owner, repo, current_version))
