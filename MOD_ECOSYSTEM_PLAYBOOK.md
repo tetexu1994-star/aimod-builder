@@ -85,3 +85,11 @@ game discovery
 ```
 
 The implementation should never jump directly from a user prompt to a guessed hook. The package shape and evidence chain are part of the product.
+
+## Current implementation checkpoints
+
+- `agmod/symbols.py` records REA and local dump observations separately from heuristic suggestions.
+- `agmod/packages.py` resolves loader/API dependency graphs and materializes code, config, assets, localization, manifest and documentation groups.
+- `plan_mod` emits `package-spec.json`, and `validate_project` checks both the source project and its distribution shape.
+- `pack.package_mod` carries dependency metadata and declared layers into the distributable ZIP.
+- Runtime installation and real Windows game verification remain intentionally separate release gates.

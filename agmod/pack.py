@@ -73,8 +73,22 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
 
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2))
+        for metadata in ("mod.json", "package-spec.json", "compatibility.json"):
+            metadata_path = os.path.join(project_dir, metadata)
+            if os.path.isfile(metadata_path):
+                z.write(metadata_path, metadata)
         for fn in sorted(dlls):
             z.write(dlls[fn], fn)
+        for group in ("config", "assets", "localization", "docs"):
+            group_dir = os.path.join(project_dir, group)
+            if not os.path.isdir(group_dir):
+                continue
+            for root, dirs, files in os.walk(group_dir):
+                dirs[:] = [d for d in dirs if d not in {"__pycache__", ".git"}]
+                for fn in files:
+                    source = os.path.join(root, fn)
+                    rel = os.path.relpath(source, project_dir).replace("\\", "/")
+                    z.write(source, rel)
         if entry_file and not entry_file.lower().endswith(".dll"):
             z.write(entry_file, m.entry.replace("\\", "/"))
             if m.engine in {"unreal", "re-engine", "godot"}:
@@ -85,7 +99,7 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
                         rel = os.path.relpath(source, project_dir).replace("\\", "/")
                         if rel == m.entry.replace("\\", "/"):
                             continue
-                        if rel in {"mod-spec.json", "request.md", "MODDING_PLAN.md", "README.md", "icon.png"}:
+                        if rel in {"mod.json", "mod-spec.json", "request.md", "MODDING_PLAN.md", "README.md", "icon.png", "package-spec.json", "compatibility.json"} or rel.startswith(("config/", "assets/", "localization/", "docs/")):
                             continue
                         z.write(source, rel)
         readme = os.path.join(project_dir, "README.md")

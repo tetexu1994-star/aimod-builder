@@ -8,7 +8,7 @@ from __future__ import annotations
 import glob
 import os
 
-from . import rea
+from . import rea, symbols
 from .registry import detect_engine, get_adapter
 
 
@@ -24,7 +24,15 @@ def inspect_feature(game_dir: str, keyword: str) -> dict:
 
     engine_id = engine_info["id"]
     keyword_lower = keyword.lower()
-    matches: list[str] = []
+    observed = symbols.collect_symbol_evidence(game_dir, engine_id, keyword)
+    matches: list[str] = [item["symbol"] for item in observed.get("candidates", [])]
+    symbol_evidence = {
+        "source": observed.get("candidates", [{}])[0].get("source", "artifact_scan") if matches else "none",
+        "status": observed.get("status", "unknown"),
+        "verified": False,
+        "observations": observed.get("candidates", []),
+        "errors": observed.get("errors", []),
+    }
     recommended_route = {}
 
     if engine_id == "unity":
@@ -34,7 +42,13 @@ def inspect_feature(game_dir: str, keyword: str) -> dict:
             dll_path = csharp_dlls[0]
             try:
                 # Fast member search with REA without full decompile
-                matches = rea.fast_search_members(dll_path, keyword_lower, limit=20)
+                if not matches:
+                    matches = rea.fast_search_members(dll_path, keyword_lower, limit=20)
+                    symbol_evidence.update({
+                        "source": "rea_fast_search",
+                        "status": "observed" if matches else "unknown",
+                        "observations": [{"symbol": item, "source": "rea_fast_search", "status": "observed"} for item in matches],
+                    })
             except Exception:
                 pass
 
@@ -72,6 +86,7 @@ def inspect_feature(game_dir: str, keyword: str) -> dict:
         "engine": engine_info,
         "keyword": keyword,
         "symbol_matches": matches[:15],
+        "symbol_evidence": symbol_evidence,
         "recommended_strategy": recommended_route,
     }
 
@@ -170,6 +185,13 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
     evidence_source = "heuristic"
     evidence_status = "suggested"
     evidence_confidence = 0.35
+    observed = symbols.collect_symbol_evidence(game_dir, engine_id, term)
+    if observed.get("candidates"):
+        matched_symbols = [item["symbol"] for item in observed["candidates"]]
+        evidence_source = observed["candidates"][0].get("source", "artifact_scan")
+        evidence_status = "observed"
+        evidence_confidence = max(0.55, min(0.9, max(item.get("confidence", 0.55) for item in observed["candidates"])))
+        target_binary = observed["candidates"][0].get("path", target_binary)
 
     if engine_id == "unreal":
         shippings = glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64", "*-Shipping.exe"))
@@ -188,12 +210,13 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
             "economy": ["UInventoryComponent:AddCurrency", "AItemDrop:SpawnLoot", "UWalletComponent:AddGold"],
             "generic_enhancement": ["ACharacter:Tick", "APlayerController:ClientRestart", "UGameplayStatics:SetGlobalTimeDilation"],
         }
-        matched_symbols = symbols_map.get(category, symbols_map["generic_enhancement"])
+        if not matched_symbols:
+            matched_symbols = symbols_map.get(category, symbols_map["generic_enhancement"])
         strategy = f"通过 UE4SS (Lua Hooking) 拦截 {matched_symbols[0]}，在虚幻引擎 UObject 运行时安全重载目标属性"
 
     elif engine_id == "unity":
         csharp_dlls = glob.glob(os.path.join(game_dir, "*_Data", "Managed", "Assembly-CSharp.dll"))
-        if csharp_dlls:
+        if csharp_dlls and not matched_symbols:
             target_binary = "Assembly-CSharp.dll"
             dll_p = csharp_dlls[0]
             try:
@@ -230,7 +253,8 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
             "economy": ["app.RewardManager.addReward", "app.ItemDropManager.get_DropRate"],
             "generic_enhancement": ["sdk.hook('via.hid.GamePad', 'update')", "app.GameManager.update"],
         }
-        matched_symbols = symbols_map.get(category, symbols_map["generic_enhancement"])
+        if not matched_symbols:
+            matched_symbols = symbols_map.get(category, symbols_map["generic_enhancement"])
         strategy = f"通过 REFramework Lua API 挂载 {matched_symbols[0]}，利用 Capcom RE 运行时 SDK 完成注入"
 
     else:
@@ -242,7 +266,8 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
             "economy": ["Economy.AddCurrency", "Inventory.Gold"],
             "generic_enhancement": ["GameEngine.Update", "Actor.Tick"],
         }
-        matched_symbols = symbols_map.get(category, symbols_map["generic_enhancement"])
+        if not matched_symbols:
+            matched_symbols = symbols_map.get(category, symbols_map["generic_enhancement"])
         strategy = f"在通用模块中拦截 {matched_symbols[0]} 完成安全调优"
 
     return {
@@ -255,6 +280,8 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
             "source": evidence_source,
             "status": evidence_status,
             "verified": evidence_status == "verified",
+            "observations": observed.get("candidates", []),
+            "errors": observed.get("errors", []),
         },
         "primary_hook": matched_symbols[0] if matched_symbols else "",
         "boundary_scope": {

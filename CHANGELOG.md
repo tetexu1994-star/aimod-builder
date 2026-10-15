@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-15
+
+### Real Evidence and Package Structure
+
+- Added `agmod/symbols.py` to collect observed symbol evidence from REA managed-member search and local UE4SS, REFramework, Godot and text dump artifacts. Heuristic symbols remain explicitly `suggested`, never `verified`.
+- Feature plans now prefer observed symbols and expose source, confidence, file/line, signature and collection errors through `symbol_evidence`.
+- Added `agmod/packages.py` with per-engine loader/API dependency profiles, local loader resolution, exact distribution dependency coordinates and explicit code/config/assets/localization/manifest/documentation artifact groups.
+- `plan_mod` now writes `package-spec.json`, materializes config/default, localization and install documentation layers, records `dependency_plan`, and updates `mod.json` dependencies.
+- Distribution ZIPs now include package metadata and declared artifact layers without duplicate paths; project and package validation reject incomplete package structures.
+- Added regression tests for UE4SS/REFramework/REA evidence sources, dependency resolution, package layout validation and packaged artifact contents.
+
 ## 2026-10-14
 
 ### Architecture Review Follow-up

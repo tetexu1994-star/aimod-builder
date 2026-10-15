@@ -7,7 +7,7 @@ import os
 import re
 import unicodedata
 
-from . import bepinex, inspector, tmodloader
+from . import bepinex, inspector, packages, tmodloader
 from .adapters.godot import GodotAdapter
 from .adapters.reengine import ReEngineAdapter
 from .adapters.unreal import UnrealAdapter
@@ -141,6 +141,14 @@ def create_mod_plan(
             inspection_warnings.append(f"inspection failed for keyword: {keyword}")
     candidate_symbols = list(dict.fromkeys(candidate_symbols))
 
+    package_spec = packages.build_package_spec(
+        game_dir=game_dir,
+        engine_id=engine["id"],
+        mod_id=mod_id,
+        mod_name=name,
+        version=mod_version,
+        customizations=customizations,
+    )
     spec = {
         "schema_version": 1,
         "id": mod_id,
@@ -151,6 +159,9 @@ def create_mod_plan(
         "engine": engine,
         "route": route,
         "ecosystem_pattern": _ecosystem_pattern(engine["id"]),
+        "dependency_plan": package_spec["dependency_plan"],
+        "artifact_groups": package_spec["artifact_groups"],
+        "package_spec": package_spec,
         "prerequisites": prerequisites,
         "candidate_symbols": candidate_symbols,
         "inspection_keywords": keywords,
@@ -160,14 +171,6 @@ def create_mod_plan(
         "validation": ["compile", "install preview", "runtime read-back or game log", "package contents"],
         "status": "planned",
     }
-    os.makedirs(project_dir, exist_ok=True)
-    with open(os.path.join(project_dir, "mod-spec.json"), "w", encoding="utf-8") as f:
-        json.dump(spec, f, ensure_ascii=False, indent=2)
-    with open(os.path.join(project_dir, "request.md"), "w", encoding="utf-8") as f:
-        f.write(request.strip() + "\n")
-    with open(os.path.join(project_dir, "MODDING_PLAN.md"), "w", encoding="utf-8") as f:
-        f.write(_plan_markdown(spec))
-
     if engine["id"] == "unity":
         bepinex.scaffold_plugin(project_dir, game_dir, mod_id, name, mod_version)
     elif engine["id"] == "unreal":
@@ -178,6 +181,22 @@ def create_mod_plan(
         GodotAdapter().scaffold_mod(project_dir, mod_id, name, mod_version)
     elif engine["id"] == "dotnet-xna":
         tmodloader.scaffold_tmod_mod(project_dir, mod_id, name, mod_version)
+    package_materialization = packages.materialize_package_layout(project_dir, package_spec)
+    manifest_path = os.path.join(project_dir, "mod.json")
+    if os.path.isfile(manifest_path):
+        manifest = ModManifest.load(manifest_path)
+        manifest.dependencies = package_spec["dependency_plan"]["manifest_dependencies"]
+        manifest.save(manifest_path)
+    spec["package_materialization"] = package_materialization
+    os.makedirs(project_dir, exist_ok=True)
+    with open(os.path.join(project_dir, "mod-spec.json"), "w", encoding="utf-8") as f:
+        json.dump(spec, f, ensure_ascii=False, indent=2)
+    with open(os.path.join(project_dir, "package-spec.json"), "w", encoding="utf-8") as f:
+        json.dump(package_spec, f, ensure_ascii=False, indent=2)
+    with open(os.path.join(project_dir, "request.md"), "w", encoding="utf-8") as f:
+        f.write(request.strip() + "\n")
+    with open(os.path.join(project_dir, "MODDING_PLAN.md"), "w", encoding="utf-8") as f:
+        f.write(_plan_markdown(spec))
     return spec
 
 
@@ -188,6 +207,11 @@ plan_mod = create_mod_plan
 def _plan_markdown(spec: dict) -> str:
     custom = json.dumps(spec["customizations"], ensure_ascii=False, indent=2)
     symbols = "\n".join(f"- `{s}`" for s in spec.get("candidate_symbols", [])) or "None detected automatically"
+    dependencies = "\n".join(
+        f"- `{item['id']}` `{item.get('resolved_version') or item.get('version')}` — {item.get('kind')} ({item.get('status')})"
+        for item in spec.get("dependency_plan", {}).get("dependencies", [])
+    ) or "No external dependencies declared"
+    groups = "\n".join(f"- `{name}`" for name in spec.get("artifact_groups", {}))
     return f"""# Modding Plan
 
 ## Request
@@ -204,6 +228,14 @@ def _plan_markdown(spec: dict) -> str:
 ## Reverse Engineering Candidates
 
 {symbols}
+
+## Dependency Plan
+
+{dependencies}
+
+## Package Artifact Groups
+
+{groups}
 
 ## Customizations
 
@@ -257,6 +289,18 @@ def validate_project(project_dir: str, stage: str = "pre_build") -> dict:
     for item in required:
         if not os.path.isfile(os.path.join(project_dir, item)):
             errors.append(f"missing required file: {item}")
+    package_spec_path = os.path.join(project_dir, "package-spec.json")
+    if os.path.isfile(package_spec_path):
+        try:
+            with open(package_spec_path, "r", encoding="utf-8") as f:
+                package_spec = json.load(f)
+            package_check = packages.validate_package_spec(project_dir, package_spec)
+            errors.extend(package_check.get("errors", []))
+            warnings.extend(package_check.get("warnings", []))
+        except (OSError, ValueError, TypeError) as exc:
+            errors.append(f"invalid package-spec.json: {exc}")
+    else:
+        warnings.append("missing package-spec.json; generated by plan_mod")
 
     # Semantic sanity checks
     if manifest.engine == "unity":
