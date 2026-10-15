@@ -263,10 +263,66 @@ print(string.format("[%s] Initialized successfully!", ModRef))
         return repak.pack_override(override_dir, out_pak)
 
     def unpack_pak(self, game_dir: str, pak_path: str, out_dir: str) -> str:
-        """Unpack a game pak archive for inspection (UE5 IoStore via repak)."""
+        """Unpack a game pak archive for inspection (UE5 IoStore via repak).
+
+        If `pak_path` is empty, auto-locate the primary archive (a `global.utoc`
+        or the largest `.pak`).
+        """
         from .. import repak
-        if not os.path.isabs(pak_path):
-            pak_path = os.path.join(game_dir, pak_path)
+        if pak_path:
+            if not os.path.isabs(pak_path):
+                pak_path = os.path.join(game_dir, pak_path)
+        else:
+            paks = self.list_paks(game_dir)
+            if not paks:
+                raise ValueError("no pak archives found in the game directory")
+            utoc = [p for p in paks if p.endswith(".utoc")]
+            pak_path = os.path.join(game_dir, (utoc or paks)[0])
         if not os.path.isfile(pak_path):
             raise ValueError(f"pak archive not found: {pak_path}")
         return repak.unpack(pak_path, out_dir)
+
+    def list_paks(self, game_dir: str) -> list[str]:
+        """Return relative paths of all pak/IoStore archives in the game directory."""
+        seen = set()
+        result = []
+        patterns = [
+            os.path.join("*", "Content", "Paks", pat)
+            for pat in ("*.pak", "*.utoc", "*.ucas")
+        ] + [
+            os.path.join("Content", "Paks", pat)
+            for pat in ("*.pak", "*.utoc", "*.ucas")
+        ]
+        for pattern in patterns:
+            for p in glob.glob(os.path.join(game_dir, pattern)):
+                if not os.path.isfile(p):
+                    continue
+                rel = os.path.relpath(p, game_dir).replace("\\", "/")
+                key = rel.lower()
+                if key not in seen:
+                    seen.add(key)
+                    result.append(rel)
+        return sorted(result)
+
+    def list_configs(self, game_dir: str) -> list[str]:
+        """Return relative paths of all .ini config files (the common 'tweak values' entry)."""
+        seen = set()
+        result = []
+        roots = [
+            os.path.join(game_dir, "Saved", "Config"),
+            os.path.join(game_dir, "Config"),
+        ]
+        for sub in glob.glob(os.path.join(game_dir, "*", "Saved", "Config")):
+            roots.append(sub)
+        for sub in glob.glob(os.path.join(game_dir, "*", "Config")):
+            roots.append(sub)
+        for root in roots:
+            for p in glob.glob(os.path.join(root, "**", "*.ini"), recursive=True):
+                if not os.path.isfile(p):
+                    continue
+                rel = os.path.relpath(p, game_dir).replace("\\", "/")
+                key = rel.lower()
+                if key not in seen:
+                    seen.add(key)
+                    result.append(rel)
+        return sorted(result)

@@ -391,11 +391,26 @@ def build_unreal_pak_mod(project_dir: str, game_dir: str, mod_id: str) -> str:
 
 
 @mcp.tool()
-def unpack_unreal_pak(game_dir: str, pak_path: str, out_dir: str) -> str:
-    """Unpack a game pak archive for inspection (UE5 IoStore via repak)."""
+def unpack_unreal_pak(game_dir: str, pak_path: str = "", out_dir: str = "") -> str:
+    """Unpack a game pak archive for inspection (UE5 IoStore via repak). Empty pak_path auto-locates the primary archive."""
     adapter = UnrealAdapter()
+    out_dir = out_dir or os.path.join(game_dir, "_unpacked")
     out = adapter.unpack_pak(game_dir, pak_path, out_dir)
     return json.dumps({"unpacked_to": out})
+
+
+@mcp.tool()
+def list_unreal_paks(game_dir: str) -> str:
+    """List all pak/IoStore archives in an Unreal game directory."""
+    adapter = UnrealAdapter()
+    return json.dumps(adapter.list_paks(game_dir), ensure_ascii=False)
+
+
+@mcp.tool()
+def list_unreal_configs(game_dir: str) -> str:
+    """List all .ini config files in an Unreal game (the common 'tweak values' entry point)."""
+    adapter = UnrealAdapter()
+    return json.dumps(adapter.list_configs(game_dir), ensure_ascii=False)
 
 
 @mcp.tool()

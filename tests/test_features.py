@@ -132,6 +132,25 @@ class TestUnrealAdapter(unittest.TestCase):
             pack.assert_called_once()
             self.assertEqual(out, "/fake/m.pak")
 
+    def test_unreal_list_paks_and_configs(self):
+        adapter = UnrealAdapter()
+        with tempfile.TemporaryDirectory() as game_dir:
+            paks = os.path.join(game_dir, "PBZero", "Content", "Paks")
+            os.makedirs(paks, exist_ok=True)
+            open(os.path.join(paks, "global.utoc"), "w").close()
+            open(os.path.join(paks, "extra.pak"), "w").close()
+
+            configs = os.path.join(game_dir, "Saved", "Config", "Windows")
+            os.makedirs(configs, exist_ok=True)
+            open(os.path.join(configs, "GameUserSettings.ini"), "w").close()
+
+            paks_list = adapter.list_paks(game_dir)
+            self.assertIn("PBZero/Content/Paks/global.utoc", paks_list)
+            self.assertIn("PBZero/Content/Paks/extra.pak", paks_list)
+
+            configs_list = adapter.list_configs(game_dir)
+            self.assertIn("Saved/Config/Windows/GameUserSettings.ini", configs_list)
+
 
 class TestScanSessionLogic(unittest.TestCase):
     def test_session_filtering(self):
