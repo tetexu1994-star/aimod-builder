@@ -346,5 +346,52 @@ class TestGodotAdapter(unittest.TestCase):
             self.assertFalse(ReEngineAdapter().detect(d))
 
 
+class TestAntiCheatDetection(unittest.TestCase):
+    def test_detect_eac_and_battleye(self):
+        from agmod import safety
+
+        with tempfile.TemporaryDirectory() as game_dir:
+            # Clean game initially
+            info = safety.detect_game_anticheat(game_dir)
+            self.assertFalse(info["has_anticheat"])
+
+            # EAC folder
+            os.makedirs(os.path.join(game_dir, "EasyAntiCheat"))
+            info = safety.detect_game_anticheat(game_dir)
+            self.assertTrue(info["has_anticheat"])
+            self.assertEqual(info["anticheat_system"], "EasyAntiCheat")
+
+            # Check check_game_target blocks it
+            allowed, reason = safety.check_game_target(game_dir)
+            self.assertFalse(allowed)
+            self.assertIn("反作弊", reason)
+
+        with tempfile.TemporaryDirectory() as game_dir:
+            # BattlEye folder
+            os.makedirs(os.path.join(game_dir, "BattlEye"))
+            info = safety.detect_game_anticheat(game_dir)
+            self.assertTrue(info["has_anticheat"])
+            self.assertEqual(info["anticheat_system"], "BattlEye")
+
+            allowed, reason = safety.check_game_target(game_dir)
+            self.assertFalse(allowed)
+            self.assertIn("反作弊", reason)
+
+    def test_detect_blocked_game_names(self):
+        from agmod import safety
+
+        with tempfile.TemporaryDirectory() as base_dir:
+            apex_dir = os.path.join(base_dir, "Apex Legends")
+            os.makedirs(apex_dir)
+            info = safety.detect_game_anticheat(apex_dir)
+            self.assertTrue(info["has_anticheat"])
+            self.assertIn("apex", info["anticheat_reason"].lower())
+
+            allowed, reason = safety.check_game_target(apex_dir)
+            self.assertFalse(allowed)
+            self.assertIn("反作弊", reason)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+

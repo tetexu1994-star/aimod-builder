@@ -13,7 +13,7 @@ import os
 import re
 from typing import Any
 
-_SEMVER = re.compile(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$")
+_SEMVER = re.compile(r"^\d+\.\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.-]+)?$")
 _GROUPS = ("code", "config", "assets", "localization", "manifest", "documentation")
 
 

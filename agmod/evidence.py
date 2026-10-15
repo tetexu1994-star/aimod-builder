@@ -4,13 +4,15 @@ from __future__ import annotations
 import re
 from dataclasses import asdict, dataclass, field
 
-_SUPPORTED_ENGINES = {"unity", "unreal", "re-engine", "godot"}
+_SUPPORTED_ENGINES = {"unity", "unreal", "re-engine", "godot", "dotnet-xna"}
 _ENGINE_ALIASES = {
     "ue4": "unreal",
     "ue5": "unreal",
     "reframework": "re-engine",
     "capcom": "re-engine",
     "godotmodloader": "godot",
+    "tmodloader": "dotnet-xna",
+    "smapi": "dotnet-xna",
 }
 
 
@@ -152,9 +154,9 @@ def normalize_hook_target(
         without_call = re.sub(r"\([^)]*\)", "", text, count=1).strip()
         without_call = re.sub(r"\b(?:public|private|protected|static|virtual|override|final)\b", "", without_call, flags=re.I).strip()
         if "::" in without_call:
-            class_name, method_name = without_call.split("::", 1)
+            class_name, method_name = without_call.rsplit("::", 1)
         elif ":" in without_call and not without_call.lower().startswith(("http:", "https:")):
-            class_name, method_name = without_call.split(":", 1)
+            class_name, method_name = without_call.rsplit(":", 1)
         elif "." in without_call:
             class_name, method_name = without_call.rsplit(".", 1)
         else:
@@ -173,7 +175,7 @@ def normalize_hook_target(
     if engine not in _SUPPORTED_ENGINES:
         return None
     namespace = ""
-    if engine in {"unity", "godot"} and "." in class_name:
+    if engine in {"unity", "godot", "dotnet-xna"} and "." in class_name:
         namespace, class_name = class_name.rsplit(".", 1)
     return HookTarget(
         engine=engine,

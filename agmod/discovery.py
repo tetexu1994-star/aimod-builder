@@ -172,6 +172,7 @@ def scan_installed_games(extra_dirs: Optional[List[str]] = None) -> List[Dict[st
                 engine_info = registry.detect_engine(game_dir) or {}
                 is_running, procs = process.is_game_running(game_dir)
                 exes = process.find_game_executables(game_dir)
+                ac_info = safety.detect_game_anticheat(game_dir)
 
                 games.append({
                     "id": f"steam_{appid}",
@@ -186,6 +187,9 @@ def scan_installed_games(extra_dirs: Optional[List[str]] = None) -> List[Dict[st
                     "is_running": is_running,
                     "running_pid": procs[0]["pid"] if procs else None,
                     "executables": exes,
+                    "has_anticheat": ac_info.get("has_anticheat", False),
+                    "anticheat_system": ac_info.get("system", ""),
+                    "anticheat_reason": ac_info.get("reason", ""),
                 })
 
         # 1b. Fallback: scan common folder directly for games without active acf
@@ -215,6 +219,7 @@ def scan_installed_games(extra_dirs: Optional[List[str]] = None) -> List[Dict[st
 
                 engine_info = registry.detect_engine(sub_dir) or {}
                 is_running, procs = process.is_game_running(sub_dir)
+                ac_info = safety.detect_game_anticheat(sub_dir)
 
                 games.append({
                     "id": f"folder_{sub}",
@@ -229,6 +234,9 @@ def scan_installed_games(extra_dirs: Optional[List[str]] = None) -> List[Dict[st
                     "is_running": is_running,
                     "running_pid": procs[0]["pid"] if procs else None,
                     "executables": exes,
+                    "has_anticheat": ac_info.get("has_anticheat", False),
+                    "anticheat_system": ac_info.get("system", ""),
+                    "anticheat_reason": ac_info.get("reason", ""),
                 })
 
     # 2. Extra custom directories
@@ -288,7 +296,10 @@ def launch_game(game_dir: str, appid: str = "") -> Dict[str, Any]:
         exe_name = os.path.basename(main_exe)
         try:
             if sys.platform == "win32":
-                os.startfile(main_exe)
+                try:
+                    os.startfile(main_exe, cwd=exe_cwd)
+                except TypeError:
+                    os.startfile(main_exe)
             else:
                 subprocess.Popen([main_exe], cwd=exe_cwd)
             return {
@@ -303,7 +314,10 @@ def launch_game(game_dir: str, appid: str = "") -> Dict[str, Any]:
     # 3. Fallback to Steam URI protocol only if direct executable failed or not found
     if sys.platform == "win32" and appid and appid.isdigit():
         try:
-            os.system(f'start "" "steam://run/{appid}"')
+            try:
+                os.startfile(f"steam://run/{appid}")
+            except Exception:
+                subprocess.Popen(["cmd.exe", "/c", "start", "", f"steam://run/{appid}"])
             return {
                 "success": True,
                 "method": "steam_protocol",

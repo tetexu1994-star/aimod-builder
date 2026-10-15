@@ -27,8 +27,9 @@ def inspect_feature(game_dir: str, keyword: str) -> dict:
     keyword_lower = keyword.lower()
     observed = symbols.collect_symbol_evidence(game_dir, engine_id, keyword)
     matches: list[str] = [item["symbol"] for item in observed.get("candidates", [])]
+    candidates = observed.get("candidates") or [{}]
     symbol_evidence = {
-        "source": observed.get("candidates", [{}])[0].get("source", "artifact_scan") if matches else "none",
+        "source": candidates[0].get("source", "artifact_scan") if matches else "none",
         "status": observed.get("status", "unknown"),
         "verified": False,
         "observations": observed.get("candidates", []),
@@ -150,7 +151,7 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
             "防负数溢出：保证计算后 Health >= 1，杜绝负数触发 Death 状态机误判",
             "剧情强制杀伤事件白名单旁路，防止剧情杀卡关",
         ]
-    elif any(k in prompt_low for k in ["攻", "伤", "秒杀", "attack", "damage", "暴击", "力"]):
+    elif any(k in prompt_low for k in ["攻", "攻击", "伤害", "秒杀", "attack", "damage", "暴击", "威力", "增加伤害"]):
         category = "combat_offense"
         term = "damage"
         param_label = "攻击倍率"
@@ -202,11 +203,16 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
         target_binary = observed["candidates"][0].get("path", target_binary)
 
     if engine_id == "unreal":
-        shippings = glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64", "*-Shipping.exe"))
+        all_shippings = glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64", "*-Shipping.exe"))
+        if not all_shippings:
+            all_shippings = glob.glob(os.path.join(game_dir, "Binaries", "Win64", "*.exe"))
+        if not all_shippings:
+            all_shippings = glob.glob(os.path.join(game_dir, "*.exe"))
+
+        # Filter out crash reporter and auxiliary engine tools
+        shippings = [p for p in all_shippings if "crashreport" not in os.path.basename(p).lower()]
         if not shippings:
-            shippings = glob.glob(os.path.join(game_dir, "Binaries", "Win64", "*.exe"))
-        if not shippings:
-            shippings = glob.glob(os.path.join(game_dir, "*.exe"))
+            shippings = all_shippings
 
         target_binary = os.path.basename(shippings[0]) if shippings else "Engine/Binaries/Win64/*-Shipping.exe"
 
@@ -224,18 +230,21 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
 
     elif engine_id == "unity":
         csharp_dlls = glob.glob(os.path.join(game_dir, "*_Data", "Managed", "Assembly-CSharp.dll"))
-        if csharp_dlls and not matched_symbols:
+        if not csharp_dlls:
+            csharp_dlls = glob.glob(os.path.join(game_dir, "*_data", "Managed", "Assembly-CSharp.dll"))
+        if csharp_dlls:
             target_binary = "Assembly-CSharp.dll"
             dll_p = csharp_dlls[0]
-            try:
-                real_found = rea.fast_search_members(dll_p, term, limit=5)
-                if real_found:
-                    matched_symbols = real_found
-                    evidence_source = "rea_fast_search"
-                    evidence_status = "observed"
-                    evidence_confidence = 0.75
-            except Exception:
-                pass
+            if not matched_symbols:
+                try:
+                    real_found = rea.fast_search_members(dll_p, term, limit=5)
+                    if real_found:
+                        matched_symbols = real_found
+                        evidence_source = "rea_fast_search"
+                        evidence_status = "observed"
+                        evidence_confidence = 0.75
+                except Exception:
+                    pass
         else:
             target_binary = "UnityPlayer.dll"
 
@@ -254,12 +263,12 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
     elif engine_id == "re-engine":
         target_binary = "reframework/autorun"
         symbols_map = {
-            "movement_speed": ["sdk.hook('via.motion.MotionHelper', 'set_Speed')", "app.PlayerSpeedManager.set_Speed"],
+            "movement_speed": ["via.motion.MotionHelper.set_Speed", "app.PlayerSpeedManager.set_Speed"],
             "jump_mobility": ["app.PlayerJumpController.set_JumpCount", "via.motion.JumpAction"],
-            "combat_defense": ["app.DamageCalculator.calculatePlayerDamage", "sdk.hook('app.HitController', 'damage')"],
-            "combat_offense": ["app.PlayerAttack.calcDamage", "sdk.hook('app.Weapon', 'get_AttackPower')"],
+            "combat_defense": ["app.DamageCalculator.calculatePlayerDamage", "app.HitController.damage"],
+            "combat_offense": ["app.PlayerAttack.calcDamage", "app.Weapon.get_AttackPower"],
             "economy": ["app.RewardManager.addReward", "app.ItemDropManager.get_DropRate"],
-            "generic_enhancement": ["sdk.hook('via.hid.GamePad', 'update')", "app.GameManager.update"],
+            "generic_enhancement": ["via.hid.GamePad.update", "app.GameManager.update"],
         }
         if not matched_symbols:
             matched_symbols = symbols_map.get(category, symbols_map["generic_enhancement"])

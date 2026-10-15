@@ -5,6 +5,7 @@ and `threading` to serve a modern responsive dashboard and RESTful JSON API.
 """
 from __future__ import annotations
 
+import glob
 import json
 import logging
 import os
@@ -20,7 +21,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable, Dict, Optional, Tuple
 
-from agmod import codegen, discovery, doctor, inspector, install_preview, llm, log_repair, logs, paths, planning, process, registry, rollback, saves
+from agmod import codegen, discovery, doctor, inspector, install_preview, llm, log_repair, logs, paths, planning, process, registry, rollback, safety, saves
 
 logger = logging.getLogger("agmod.ui")
 
@@ -34,14 +35,20 @@ def _lua_string(value: Any) -> str:
 def _hook_target_parts(target: str) -> tuple[str, str]:
     target = str(target or "").strip()
     if ":" in target:
-        class_name, method_name = target.split(":", 1)
+        class_name, method_name = target.rsplit(":", 1)
     elif "." in target:
         class_name, method_name = target.rsplit(".", 1)
     else:
         raise ValueError("hook_target must look like Class:Method or Class.Method")
-    if not class_name.strip() or not method_name.strip():
+    cls = class_name.strip()
+    mth = method_name.strip()
+    if not cls or not mth:
         raise ValueError("hook_target must include both class and method")
-    return class_name.strip(), method_name.strip()
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]*", cls):
+        raise ValueError(f"invalid class name in hook_target: {cls}")
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", mth):
+        raise ValueError(f"invalid method name in hook_target: {mth}")
+    return cls, mth
 
 
 def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict[str, Any]) -> tuple[str, dict]:
@@ -81,7 +88,10 @@ def _read_body_json(handler: BaseHTTPRequestHandler) -> Dict[str, Any]:
         return {}
     raw_data = handler.rfile.read(content_len)
     try:
-        return json.loads(raw_data.decode("utf-8"))
+        val = json.loads(raw_data.decode("utf-8"))
+        if not isinstance(val, dict):
+            raise ValueError("Request body must be a JSON object")
+        return val
     except Exception as e:
         raise ValueError(f"Invalid JSON body: {e}")
 
@@ -226,6 +236,14 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 self._send_html(HTTPStatus.NOT_FOUND, "<h1>Dashboard HTML not found.</h1>")
             return
 
+        # Fallback for API routes -> 404 JSON (do not return index.html)
+        if path.startswith("/api/"):
+            self._send_json(HTTPStatus.NOT_FOUND, {
+                "success": False,
+                "error": f"API endpoint not found: {path}"
+            })
+            return
+
         # Fallback for SPA routing
         if os.path.exists(INDEX_HTML_PATH):
             with open(INDEX_HTML_PATH, "r", encoding="utf-8") as f:
@@ -300,20 +318,27 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
 
     def _handle_process(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
+        if not game_dir:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
         status = process.check_game_status(game_dir)
         return HTTPStatus.OK, {"success": True, "data": status}
 
     def _handle_plan(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
-        request_text = body.get("request", "").strip()
+        request_text = str(body.get("request") or "").strip()
         project_dir = _safe_path(body.get("project_dir", ""))
-        mod_id = body.get("mod_id", "").strip()
-        mod_name = body.get("mod_name", "").strip()
-        mod_version = body.get("mod_version", "1.0.0").strip()
+        mod_id = str(body.get("mod_id") or "").strip()
+        mod_name = str(body.get("mod_name") or "").strip()
+        mod_version = str(body.get("mod_version") or "1.0.0").strip()
         customizations = body.get("customizations")
 
         if not game_dir or not request_text:
             return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir and request are required"}
+
+        # Anti-cheat check: block plans for protected games
+        allowed, reason = safety.check_game_target(game_dir)
+        if not allowed:
+            return HTTPStatus.FORBIDDEN, {"success": False, "error": reason, "blocked_by_anticheat": True}
 
         if not project_dir:
             project_dir = os.path.join(game_dir, "_mod_projects", mod_id or "new_mod")
@@ -330,11 +355,11 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         return HTTPStatus.OK, {"success": True, "data": spec}
 
     def _handle_codegen_template(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
-        engine = body.get("engine", "")
-        class_name = body.get("class_name", "")
-        method_name = body.get("method_name", "")
-        hook_type = body.get("hook_type", "prefix")
-        return_type = body.get("return_type", "void")
+        engine = str(body.get("engine") or "")
+        class_name = str(body.get("class_name") or "")
+        method_name = str(body.get("method_name") or "")
+        hook_type = str(body.get("hook_type") or "prefix")
+        return_type = str(body.get("return_type") or "void")
         parameters = body.get("parameters", [])
 
         if not engine or not class_name or not method_name:
@@ -365,22 +390,28 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
 
     def _handle_mods_list(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
+        if not game_dir:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
         installs = rollback.list_installs(game_dir)
         return HTTPStatus.OK, {"success": True, "data": installs}
 
     def _handle_mods_conflicts(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
+        if not game_dir:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
         incoming_files = body.get("incoming_files", [])
         conflicts = rollback.check_conflicts(game_dir, incoming_files)
         return HTTPStatus.OK, {"success": True, "data": conflicts}
 
     def _handle_install_preview(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
-        mod_id = paths.slugify(body.get("mod_id", "preview_mod"))
+        if not game_dir:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
+        mod_id = paths.slugify(str(body.get("mod_id") or "preview_mod"))
         files = body.get("files", [])
         project_dir = _safe_path(body.get("project_dir", ""))
         package_spec = body.get("package_spec")
-        engine_id = str(body.get("engine_id", ""))
+        engine_id = str(body.get("engine_id") or "")
         try:
             preview = install_preview.preview_install(
                 game_dir, mod_id, files, package_spec=package_spec, project_dir=project_dir, engine_id=engine_id
@@ -391,10 +422,12 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
 
     def _handle_mods_uninstall(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
-        mod_id = body.get("mod_id", "").strip()
+        mod_id = str(body.get("mod_id") or "").strip()
         if not game_dir or not mod_id:
             return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir and mod_id are required"}
         res = rollback.uninstall(game_dir, mod_id)
+        if not res.get("success"):
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": res.get("error", "Uninstall failed"), "data": res}
         return HTTPStatus.OK, {"success": True, "data": res}
 
     def _handle_mods_rollback(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
@@ -406,29 +439,40 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
 
     def _handle_saves_list(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
+        if not game_dir:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
         res = saves.list_save_backups(game_dir)
         return HTTPStatus.OK, {"success": True, "data": res}
 
     def _handle_saves_create(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
-        tag = body.get("label") or body.get("tag") or "manual"
-        custom_save_dir = body.get("custom_save_dir", "")
+        tag = str(body.get("label") or body.get("tag") or body.get("reason") or "manual")
+        custom_save_dir = str(body.get("custom_save_dir") or "")
         if not game_dir:
             return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
         res = saves.create_save_backup(game_dir, tag=tag, custom_save_dir=custom_save_dir)
+        if not res.get("success"):
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": res.get("error", "Backup failed"), "data": res}
         return HTTPStatus.OK, {"success": True, "data": res}
 
     def _handle_saves_restore(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
-        backup_id = body.get("backup_id", "").strip()
+        backup_id = str(body.get("backup_id") or "").strip()
         if not game_dir or not backup_id:
             return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir and backup_id are required"}
         res = saves.restore_save_backup(game_dir, backup_id)
+        if not res.get("success"):
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": res.get("error", "Restore failed"), "data": res}
         return HTTPStatus.OK, {"success": True, "data": res}
 
     def _handle_logs_read(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
-        lines = int(body.get("lines", 100))
+        if not game_dir:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
+        try:
+            lines = int(body.get("lines", 100))
+        except (TypeError, ValueError):
+            lines = 100
         res = logs.read_mod_logs(game_dir, tail_lines=lines)
         return HTTPStatus.OK, {"success": True, "data": res}
 
@@ -468,10 +512,20 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
     def _handle_mod_interact(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
         user_prompt = str(body.get("prompt", "")).strip()
-        history = body.get("history", [])
+        raw_history = body.get("history")
+        history = raw_history if isinstance(raw_history, list) else []
 
         if not game_dir or not user_prompt:
             return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir and prompt are required"}
+
+        # Anti-cheat guard: strictly block all mod creation/interaction on protected games
+        allowed, reason = safety.check_game_target(game_dir)
+        if not allowed:
+            return HTTPStatus.FORBIDDEN, {
+                "success": False,
+                "error": reason,
+                "blocked_by_anticheat": True,
+            }
 
         engine_info = registry.detect_engine(game_dir) or {}
         engine_name = engine_info.get("engine_name") or engine_info.get("name", "通用引擎")
@@ -544,26 +598,35 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 f'  "tuning_params": [\n'
                 f'    {{"id": "param_1", "label": "{boundary.get("param_label", "参数调节")}", "type": "slider", "min": {boundary.get("safe_min", 1.0)}, "max": {boundary.get("safe_max", 5.0)}, "step": {boundary.get("step", 0.1)}, "value": {boundary.get("default_val", 2.0)}}}\n'
                 f'  ],\n'
-                f'  "hook_target": "类名:方法名",\n'
+                f'  "hook_target": "{rea_insight.get("primary_hook", "Class:Method")}",\n'
                 f'  "can_pin": true\n'
                 f"}}\n"
                 f"```"
             )
             chat_msgs = []
             for h in history[-6:]:
+                if not isinstance(h, dict):
+                    continue
                 r = h.get("role")
                 c = h.get("content", "")
                 if r in ("user", "assistant") and c:
                     chat_msgs.append({"role": r, "content": c})
-            chat_msgs.append({"role": "user", "content": user_prompt})
+
+            # Augmented prompt grounds the LLM in real symbols and boundary specs
+            augmented_prompt = f"{sys_prompt}\n\n【玩家当前需求】\n{user_prompt}"
+            chat_msgs.append({"role": "user", "content": augmented_prompt})
 
             llm_res = llm.chat_completion(
                 messages=chat_msgs,
-                game_context={"game_dir": game_dir, "engine": engine_name, "framework": framework_name}
+                game_context={
+                    "game_dir": game_dir,
+                    "engine": engine_name,
+                    "framework": framework_name,
+                    "system_prompt_addon": rea_section,
+                }
             )
             if llm_res.get("success"):
                 full_reply = llm_res.get("reply", "")
-                import re
                 m = re.search(r"```(?:json:)?mod_action\s*([\s\S]*?)```", full_reply)
                 if m:
                     try:
@@ -576,81 +639,96 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             else:
                 reply = ""
 
-        if not reply:
+        # Fallback grounding: synthesize action directly from REA analysis & prompt intent
+        if not action:
             prompt_lower = user_prompt.lower()
+            primary_hook = rea_insight.get("primary_hook") or "GameLogic:Update"
+            category = rea_insight.get("category", "player")
+
             if engine_id == "unreal":
                 if any(k in prompt_lower for k in ["速", "快", "speed", "run"]):
                     mod_id = "swift_stride"
                     mod_name = "疾风瞬影 · 移速提升 (Swift Stride)"
                     summary = "角色疾驰移动速度提升 100%"
                     tuning = [{"id": "speed_multiplier", "label": "移速倍率", "type": "slider", "min": 1.0, "max": 5.0, "step": 0.1, "value": 2.0}]
-                    target = "UCharacterMovementComponent:SetMaxWalkSpeed"
+                    target = primary_hook if primary_hook != "GameLogic:Update" else "UCharacterMovementComponent:SetMaxWalkSpeed"
                 elif any(k in prompt_lower for k in ["跳", "jump"]):
                     mod_id = "air_step_jump"
                     mod_name = "踏雪无痕 · 空中二段跳 (Air Step Jump)"
                     summary = "解锁绝妙空中连环二段跳跃与滞空机动"
                     tuning = [{"id": "jump_impulse", "label": "腾空跃力", "type": "slider", "min": 1.0, "max": 3.0, "step": 0.1, "value": 1.5}]
-                    target = "ACharacter:JumpMaxCount"
+                    target = primary_hook if primary_hook != "GameLogic:Update" else "ACharacter:JumpMaxCount"
                 elif any(k in prompt_lower for k in ["钱", "金", "coin", "gold", "money"]):
                     mod_id = "infinite_gold"
                     mod_name = "金玉满堂 · 掉落倍率 (Gold Multiplier)"
                     summary = "击败敌人金钱掉落倍率提高 5 倍"
                     tuning = [{"id": "gold_multi", "label": "掉落倍率", "type": "slider", "min": 2, "max": 20, "step": 1, "value": 5}]
-                    target = "InventoryComponent:AddCurrency"
+                    target = primary_hook if primary_hook != "GameLogic:Update" else "InventoryComponent:AddCurrency"
                 elif any(k in prompt_lower for k in ["血", "命", "hp", "health", "无敌"]):
                     mod_id = "invincible_shield"
                     mod_name = "金钟罩 · 刀枪不入 (Invincible Guard)"
                     summary = "受到攻击减免 100% 伤害并生成霸体护体"
                     tuning = [{"id": "damage_reduction", "label": "护甲减免比例", "type": "slider", "min": 50, "max": 100, "step": 5, "value": 100}]
-                    target = "ACharacter:TakeDamage"
+                    target = primary_hook if primary_hook != "GameLogic:Update" else "ACharacter:TakeDamage"
                 else:
                     mod_id = f"custom_mod_{int(time.time())}"
                     mod_name = f"增强特性: {user_prompt[:12]}"
                     summary = f"已针对虚幻引擎注入运行时补丁: {user_prompt}"
                     tuning = [{"id": "effect_intensity", "label": "效果强度", "type": "slider", "min": 1, "max": 10, "step": 1, "value": 2}]
-                    target = "ACharacter:Tick"
+                    target = primary_hook if primary_hook != "GameLogic:Update" else "ACharacter:Tick"
             else:
                 if any(k in prompt_lower for k in ["速", "快", "speed", "run"]):
                     mod_id = "speed_boost"
                     mod_name = "急速奔跑 (Speed Boost)"
                     summary = "角色移动速度提升 100%"
                     tuning = [{"id": "multiplier", "label": "移速倍率", "type": "slider", "min": 1.0, "max": 5.0, "step": 0.1, "value": 2.0}]
-                    target = "HeroController.MoveSpeed" if "hollow" in game_name.lower() else "PlayerController.Movement"
+                    target = primary_hook if primary_hook != "GameLogic:Update" else ("HeroController.MoveSpeed" if "hollow" in game_name.lower() else "PlayerController.Movement")
                 elif any(k in prompt_lower for k in ["跳", "jump"]):
                     mod_id = "double_jump"
                     mod_name = "空中二段跳 (Air Jump)"
                     summary = "解锁空中二段跳跃与机动性提升"
                     tuning = [{"id": "jump_height", "label": "跳跃力度", "type": "slider", "min": 0.5, "max": 3.0, "step": 0.1, "value": 1.5}]
-                    target = "HeroController.CanDoubleJump"
+                    target = primary_hook if primary_hook != "GameLogic:Update" else "HeroController.CanDoubleJump"
                 elif any(k in prompt_lower for k in ["钱", "金", "coin", "gold", "money"]):
                     mod_id = "infinite_gold"
                     mod_name = "金钱丰裕 (Gold Multiplier)"
                     summary = "获得金钱奖励翻 5 倍"
                     tuning = [{"id": "gold_multi", "label": "掉落倍率", "type": "slider", "min": 2, "max": 20, "step": 1, "value": 5}]
-                    target = "CurrencyManager.AddGeo"
+                    target = primary_hook if primary_hook != "GameLogic:Update" else "CurrencyManager.AddGeo"
                 elif any(k in prompt_lower for k in ["血", "命", "hp", "health", "无敌"]):
                     mod_id = "god_mode"
                     mod_name = "护甲金身 (God Mode / Shield)"
                     summary = "受到攻击时减免伤害并提供无敌护盾"
                     tuning = [{"id": "damage_reduction", "label": "减伤比例", "type": "slider", "min": 50, "max": 100, "step": 5, "value": 100}]
-                    target = "PlayerData.TakeDamage"
+                    target = primary_hook if primary_hook != "GameLogic:Update" else "PlayerData.TakeDamage"
                 else:
-                    mod_id = f"custom_mod_{int(time.time())}"
-                    mod_name = f"增强特性: {user_prompt[:12]}"
-                    summary = f"已针对需求注入运行时补丁: {user_prompt}"
-                    tuning = [{"id": "effect_intensity", "label": "效果强度", "type": "slider", "min": 1, "max": 10, "step": 1, "value": 2}]
-                    target = "GameManager.Update"
+                    mod_id = f"{category}_{int(time.time())}"
+                    mod_name = f"{engine_name} 逆向增强特性"
+                    summary = f"基于逆向定位 {primary_hook} 的参数安全调优"
+                    tuning = [{
+                        "id": "param_1",
+                        "label": boundary.get("param_label", "效果强度"),
+                        "type": "slider",
+                        "min": boundary.get("safe_min", 1.0),
+                        "max": boundary.get("safe_max", 5.0),
+                        "step": boundary.get("step", 0.1),
+                        "value": boundary.get("default_val", 2.0),
+                    }]
+                    target = primary_hook
 
             action = {
                 "mod_id": mod_id,
                 "mod_name": mod_name,
                 "summary": summary,
-                "category": "player",
+                "category": category,
                 "tuning_params": tuning,
                 "hook_target": target,
                 "can_pin": True,
             }
-            reply = f"✨ 已为你设计并注入 **【{mod_name}】**！\n\n已定位到核心逻辑 `{target}` 并完成运行时热挂钩。现在切回游戏即可直接体验，你可以在下方实时滑动滑块调节强度，试玩满意后点击「📌 固化为 Mod」！"
+
+
+        if not reply:
+            reply = f"✨ 已通过 REA 逆向工程为你设计并挂钩 **【{action['mod_name']}】**！\n\n- 目标拦截点: `{action['hook_target']}`\n- 安全边界: {boundary.get('boundary_warning', '已开启物理与数值边界防护')}\n\n切回游戏即可直接体验，可在下方滑块调节数值，满意后点击「📌 固化为 Mod」！"
 
         return HTTPStatus.OK, {
             "success": True,
@@ -730,10 +808,15 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 message = f"Godot Mod【{mod_name}】已固化到 mods-unpacked 目录！"
             else:
                 mod_folder = os.path.join(game_dir, "BepInEx", "plugins", mod_id)
-                source = os.path.join(staging, "mod.json")
-                with open(source, "w", encoding="utf-8") as f:
+                source_manifest = os.path.join(staging, "mod.json")
+                with open(source_manifest, "w", encoding="utf-8") as f:
                     json.dump(manifest, f, ensure_ascii=False, indent=2)
-                pairs.append((source, os.path.join(mod_folder, "mod.json")))
+                pairs.append((source_manifest, os.path.join(mod_folder, "mod.json")))
+                if source_code:
+                    source_cs = os.path.join(staging, f"{mod_id}.cs")
+                    with open(source_cs, "w", encoding="utf-8") as f:
+                        f.write(source_code)
+                    pairs.append((source_cs, os.path.join(mod_folder, f"{mod_id}.cs")))
                 message = f"Mod【{mod_name}】已成功固化到游戏目录！下次直接在 Steam 启动游戏依然生效。"
                 mods_root = mod_folder
 
@@ -825,13 +908,13 @@ def get_or_start_server(host: str = "127.0.0.1", port: int = 8765) -> Tuple[ModU
 def _open_browser_safely(url: str) -> None:
     """Safely open default browser with OS-specific fallback."""
     try:
-        if sys.platform == "win32":
-            os.system(f'start "" "{url}"')
-        else:
-            webbrowser.open(url)
+        opened = webbrowser.open(url)
+        if not opened and sys.platform == "win32" and hasattr(os, "startfile"):
+            os.startfile(url)
     except Exception:
         try:
-            webbrowser.open(url)
+            if sys.platform == "win32" and hasattr(os, "startfile"):
+                os.startfile(url)
         except Exception:
             pass
 

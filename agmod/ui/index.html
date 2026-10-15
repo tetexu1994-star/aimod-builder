@@ -1139,13 +1139,19 @@
         </div>
 
         <!-- Inspiration Pills -->
-        <div class="chat-pills-bar">
+        <div class="chat-pills-bar" id="chat-pills-bar">
           <span class="label">快捷灵感:</span>
           <button class="pill-btn" onclick="sendPrompt('角色移动速度提升 100%')">⚡ 移速翻倍</button>
           <button class="pill-btn" onclick="sendPrompt('解锁空中二段跳')">🦘 空中二段跳</button>
           <button class="pill-btn" onclick="sendPrompt('金币掉落倍率提高 5 倍')">💰 5倍金币</button>
           <button class="pill-btn" onclick="sendPrompt('受到伤害减免 100% 无敌护盾')">🛡️ 无敌金身</button>
           <button class="pill-btn" onclick="sendPrompt('攻击距离与挥砍范围翻倍')">🗡️ 剑气范围扩大</button>
+        </div>
+
+        <!-- Anti-Cheat Warning Banner -->
+        <div id="anticheat-warning-banner" style="display:none; padding:12px 20px; background:rgba(239, 68, 68, 0.12); border-bottom:1px solid rgba(239, 68, 68, 0.3); color:#f87171; font-size:13px; align-items:center; gap:8px;">
+          <span style="font-size:16px;">🛡️</span>
+          <span><strong>反作弊保护生效：</strong>检测到该游戏受 <strong id="anticheat-system-name">反作弊系统</strong> 保护。为保障您的账号安全防止封号，已严格阻断此游戏的自定义 Mod 编写、热注入与固化操作。</span>
         </div>
 
         <!-- Chat Messages -->
@@ -1335,8 +1341,13 @@
           ? `<div class="game-card-status running"><span class="pulse-dot"></span> 运行中 (PID: ${g.running_pid})</div>`
           : `<div class="game-card-status">● 未运行</div>`;
 
+        const anticheatHtml = g.has_anticheat
+          ? `<div style="position:absolute; top:8px; left:8px; background:rgba(220,38,38,0.9); color:#fff; font-size:11px; font-weight:700; padding:2px 7px; border-radius:4px; z-index:2; backdrop-filter:blur(4px); display:flex; align-items:center; gap:4px;"><span>🛡️</span><span>${g.anticheat_system || '反作弊保护'}</span></div>`
+          : '';
+
         card.innerHTML = `
-          <div class="game-card-cover">
+          <div class="game-card-cover" style="position:relative;">
+            ${anticheatHtml}
             ${coverHtml}
             ${statusHtml}
           </div>
@@ -1360,6 +1371,13 @@
     }
 
     function selectGameAndAdvance(game) {
+      if (currentGame && currentGame.game_dir !== game.game_dir) {
+        chatHistory = [];
+        activeActions = [];
+        installedMods = [];
+        const container = document.getElementById('chat-messages');
+        if (container) container.innerHTML = '';
+      }
       currentGame = game;
       // If already running, skip Gatekeeper straight to Stage 3!
       if (game.is_running) {
@@ -1502,6 +1520,34 @@
         pill.style.color = 'var(--text-muted)';
       }
 
+      const acBanner = document.getElementById('anticheat-warning-banner');
+      const promptInput = document.getElementById('prompt-input');
+      const btnSend = document.getElementById('btn-send');
+      const pillsBar = document.getElementById('chat-pills-bar');
+
+      if (game.has_anticheat) {
+        if (acBanner) {
+          acBanner.style.display = 'flex';
+          const acName = document.getElementById('anticheat-system-name');
+          if (acName) acName.textContent = game.anticheat_system || '反作弊保护';
+        }
+        if (pillsBar) pillsBar.style.display = 'none';
+        if (promptInput) {
+          promptInput.disabled = true;
+          promptInput.value = '';
+          promptInput.placeholder = '⚠️ 检测到该游戏受反作弊保护，禁止自定义 Mod 操作以防封号。';
+        }
+        if (btnSend) btnSend.disabled = true;
+      } else {
+        if (acBanner) acBanner.style.display = 'none';
+        if (pillsBar) pillsBar.style.display = 'flex';
+        if (promptInput) {
+          promptInput.disabled = false;
+          promptInput.placeholder = '对 AI 说出你想要的 Mod 功能... (例如：攻击时附带剑气、无限制跳跃、敌人血量减半)';
+        }
+        if (btnSend) btnSend.disabled = false;
+      }
+
       if (chatHistory.length === 0) {
         initChatForGame(game);
       }
@@ -1513,6 +1559,16 @@
       const container = document.getElementById('chat-messages');
       container.innerHTML = '';
       chatHistory = [];
+
+      if (game.has_anticheat) {
+        appendAIMessage(
+          `🛡️ **反作弊安全保护生效中**\n\n` +
+          `检测到 **${game.name}** 受 **${game.anticheat_system || '反作弊系统'}** 保护。\n\n` +
+          `为了防止玩家账号受到游戏官方的封禁与安全处罚，系统已严格阻断此游戏的自定义 Mod 编写、热注入与固化操作。\n\n` +
+          `若您希望体验 AI Mod 创作，请选择单机或无竞技反作弊的游戏（如 黑神话：悟空、艾尔登法环（离线）、幻兽帕鲁、博德之门3 等）。`
+        );
+        return;
+      }
 
       appendAIMessage(
         `你好！我已经接入 **${game.name}**（${game.engine_name || '检测就绪'}）。\n\n` +
@@ -1543,7 +1599,12 @@
       const msg = document.createElement('div');
       msg.className = 'msg';
 
-      let html = markdownText
+      let safeText = String(markdownText || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      let html = safeText
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/`([^`]+)`/g, '<code style="background:var(--code-bg); color:var(--code-text); padding:2px 5px; border-radius:4px; font-family:var(--mono); font-size:12px;">$1</code>')
         .replace(/\n/g, '<br>');
@@ -1584,6 +1645,14 @@
 
       let actionHtml = '';
       if (action) {
+        if (action.tuning_params && action.tuning_params.length > 0) {
+          action.params = action.params || {};
+          action.tuning_params.forEach(p => {
+            if (action.params[p.id] === undefined) {
+              action.params[p.id] = p.value;
+            }
+          });
+        }
         activeActions.push(action);
         renderSidebarContent();
 
@@ -1629,7 +1698,10 @@
       chatHistory.push({ role: 'assistant', content: markdownText });
     }
 
+    let isSubmittingPrompt = false;
+
     function handleChatKey(e) {
+      if (e.isComposing || e.keyCode === 229) return;
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         submitPrompt();
@@ -1637,25 +1709,36 @@
     }
 
     function sendPrompt(text) {
+      if (isSubmittingPrompt) return;
       document.getElementById('prompt-input').value = text;
       submitPrompt();
     }
 
     async function submitPrompt() {
+      if (isSubmittingPrompt) return;
       if (!currentGame) {
         showToast('请先选择游戏', 'error');
+        return;
+      }
+      if (currentGame.has_anticheat) {
+        showToast('该游戏受反作弊系统保护，禁止自定义 Mod 操作以防封号', 'warning');
         return;
       }
       const input = document.getElementById('prompt-input');
       const text = input.value.trim();
       if (!text) return;
+
+      isSubmittingPrompt = true;
       input.value = '';
+      input.disabled = true;
 
       appendUserMessage(text);
 
       const btn = document.getElementById('btn-send');
-      btn.disabled = true;
-      btn.textContent = '分析注入中...';
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '分析注入中...';
+      }
 
       try {
         const resp = await fetch('/api/mod/interact', {
@@ -1676,18 +1759,33 @@
       } catch (e) {
         appendAIMessage('❌ 网络连接错误: ' + e.message);
       } finally {
-        btn.disabled = false;
-        btn.textContent = '发送生成';
+        isSubmittingPrompt = false;
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '发送生成';
+        }
+        if (!currentGame.has_anticheat) {
+          input.disabled = false;
+          input.focus();
+        }
       }
     }
 
     function onParamTune(modId, paramId, val) {
+      const act = activeActions.find(a => a.mod_id === modId);
+      if (act) {
+        if (!act.params) act.params = {};
+        act.params[paramId] = parseFloat(val) || val;
+      }
       showToast(`已实时调节 [${paramId}] = ${val}`, 'info');
     }
 
     async function pinMod(modId, modName, summary, hookTarget = '') {
       if (!currentGame) return;
       showToast(`正在将【${modName}】固化为永久 Mod...`, 'info');
+      const act = activeActions.find(a => a.mod_id === modId);
+      const params = act ? (act.params || {}) : {};
+      const target = hookTarget || (act ? (act.hook_target || '') : '');
       try {
         const resp = await fetch('/api/mod/pin', {
           method: 'POST',
@@ -1697,7 +1795,8 @@
             mod_id: modId,
             mod_name: modName,
             summary: summary,
-            hook_target: hookTarget
+            hook_target: target,
+            params: params
           })
         });
         const res = await resp.json();
@@ -1745,7 +1844,7 @@
             </div>
             <div style="font-size:12px; color:var(--text-muted);">${act.summary}</div>
             <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:6px;">
-              <button class="btn btn-sm btn-primary" onclick="pinMod('${act.mod_id}', '${act.mod_name}', '${act.summary}')">📌 固化为 Mod</button>
+              <button class="btn btn-sm btn-primary" onclick="pinMod('${act.mod_id}', '${act.mod_name}', '${act.summary}', '${act.hook_target || ''}')">📌 固化为 Mod</button>
             </div>
           </div>
         `).join('');
@@ -1794,7 +1893,7 @@
         });
         const res = await resp.json();
         if (res.success) {
-          installedMods = res.data.mods || [];
+          installedMods = Array.isArray(res.data) ? res.data : (res.data?.mods || []);
           document.getElementById('installed-mods-count').textContent = installedMods.length;
           if (currentSidebarTab === 'mods') renderSidebarContent();
         }
@@ -1831,7 +1930,7 @@
         if (res.success) {
           const listDiv = document.getElementById('saves-list-container');
           if (!listDiv) return;
-          const backups = res.data.backups || [];
+          const backups = Array.isArray(res.data) ? res.data : (res.data?.backups || []);
           if (backups.length === 0) {
             listDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">暂无备份记录</div>';
             return;

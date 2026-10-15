@@ -25,8 +25,11 @@ _no_proxy_opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 def _http_get(url: str):
     req = urllib.request.Request(url)
-    with _no_proxy_opener.open(req, timeout=5) as response:
-        return response.getcode(), response.read().decode("utf-8")
+    try:
+        with _no_proxy_opener.open(req, timeout=5) as response:
+            return response.getcode(), response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        return exc.code, exc.read().decode("utf-8")
 
 
 def _http_post(url: str, data: dict):
@@ -37,8 +40,14 @@ def _http_post(url: str, data: dict):
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with _no_proxy_opener.open(req, timeout=5) as response:
-        return response.getcode(), json.loads(response.read().decode("utf-8"))
+    try:
+        with _no_proxy_opener.open(req, timeout=5) as response:
+            return response.getcode(), json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        try:
+            return exc.code, json.loads(exc.read().decode("utf-8"))
+        except Exception:
+            return exc.code, {}
 
 
 class TestUIServer(unittest.TestCase):
@@ -286,6 +295,29 @@ System.NullReferenceException: Object reference not set to an instance of an obj
             self.assertEqual(code, 200)
             self.assertTrue(pin_res["success"])
             self.assertTrue(os.path.exists(pin_res["data"]["path"]))
+
+    def test_anticheat_api_blocking(self):
+        with tempfile.TemporaryDirectory() as protected_game:
+            os.makedirs(os.path.join(protected_game, "EasyAntiCheat"))
+            # 1. /api/mod/interact must return 403 Forbidden
+            code, res = _http_post(f"{self.base_url}/api/mod/interact", {
+                "game_dir": protected_game,
+                "prompt": "无敌"
+            })
+            self.assertEqual(code, 403)
+            self.assertFalse(res["success"])
+            self.assertTrue(res.get("blocked_by_anticheat"))
+
+            # 2. /api/mod/pin must return 403 Forbidden
+            code, pin_res = _http_post(f"{self.base_url}/api/mod/pin", {
+                "game_dir": protected_game,
+                "mod_id": "cheat_mod",
+                "mod_name": "作弊模组",
+                "summary": "测试",
+                "params": {}
+            })
+            self.assertEqual(code, 403)
+            self.assertFalse(pin_res["success"])
 
     def test_launch_ui_function(self):
         port = _get_free_port()
