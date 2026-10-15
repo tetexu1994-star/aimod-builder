@@ -342,7 +342,7 @@ def diagnose_build_error(compiler_output: str, return_code: int = 0) -> str:
 
 @mcp.tool()
 def scaffold_ue4ss_mod(project_dir: str, mod_id: str, mod_name: str, mod_version: str = "1.0.0", author: str = "AI Mod Agent") -> str:
-    """Generate a compiler-free Lua Mod skeleton for Unreal Engine (UE4 / UE5) using UE4SS."""
+    """Generate a UE4SS Lua Mod skeleton. Reliable for UE4; prefer scaffold_unreal_pak_mod for UE5/IoStore."""
     adapter = UnrealAdapter()
     adapter.scaffold_mod(project_dir, mod_id, mod_name, mod_version, author)
     return json.dumps({
@@ -358,6 +358,27 @@ def install_ue4ss_mod(project_dir: str, game_dir: str, mod_id: str) -> str:
     """Install a UE4SS Lua Mod into the game's Binaries/Win64/ue4ss/Mods/<mod_id>/ directory."""
     adapter = UnrealAdapter()
     dest = adapter.install_mod(project_dir, game_dir, mod_id)
+    return json.dumps({"installed": dest})
+
+
+@mcp.tool()
+def scaffold_unreal_pak_mod(project_dir: str, mod_id: str, mod_name: str, mod_version: str = "1.0.0", author: str = "AI Mod Agent") -> str:
+    """Generate a pak file-override mod skeleton (works for UE4 and UE5/IoStore like Phantom Blade Zero)."""
+    adapter = UnrealAdapter()
+    adapter.scaffold_pak_mod(project_dir, mod_id, mod_name, mod_version, author)
+    return json.dumps({
+        "project_dir": project_dir,
+        "engine": "unreal",
+        "framework": "pak",
+        "hint": "Put overridden files under override/ keeping in-game paths, then pack to .pak (repak for UE5, UnrealPak for UE4) into dist/, then install_unreal_pak_mod",
+    })
+
+
+@mcp.tool()
+def install_unreal_pak_mod(project_dir: str, game_dir: str, mod_id: str) -> str:
+    """Install a built .pak override mod into the game's Content/Paks/~mods/ directory."""
+    adapter = UnrealAdapter()
+    dest = adapter.install_pak_mod(project_dir, game_dir, mod_id)
     return json.dumps({"installed": dest})
 
 

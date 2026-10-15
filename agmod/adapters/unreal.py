@@ -1,8 +1,10 @@
-"""Unreal Engine (UE4 / UE5) adapter using UE4SS (Lua scripting).
+"""Unreal Engine (UE4 / UE5) adapter.
 
-Unreal Engine games have standardized structures (UObject, UClass, UProperty).
-The cleanest, compiler-free modding route for UE4/UE5 is UE4SS, which exposes a
-powerful Lua API that runs in-process without requiring MSVC/C++ compilation.
+Two distinct modding paths:
+  - UE4SS (Lua scripting): reliable for UE4, experimental on UE5 — NOT the default.
+  - pak override mods (repak / UnrealPak -> Content/Paks/~mods/): the reliable,
+    compiler-free route for both UE4 and UE5 (including IoStore .utoc/.ucas titles
+    like Phantom Blade Zero).
 """
 from __future__ import annotations
 
@@ -20,9 +22,27 @@ class UnrealAdapter(BaseAdapter):
     id = "unreal"
     runtime = "unreal"
     name = "Unreal Engine (UE4 / UE5)"
-    mod_framework = "UE4SS (Lua API) / pak 覆盖 (repak)"
-    structure = "UE4SS dumper / Dumper-7 导出 UClass/UProperty"
+    mod_framework = "pak 覆盖 (repak / UnrealPak) + UE4SS Lua (仅 UE4 稳定)"
+    structure = "FModel / repak 解包资源；UE4SS dumper 仅 UE4 反射"
     capabilities = ("detect", "fingerprint", "prepare", "launch")
+
+    def _variant(self, game_dir: str) -> str | None:
+        """Return 'ue5' (IoStore) or 'ue4' (legacy pak) for an Unreal game."""
+        ue5_patterns = [
+            "Content/Paks/*.utoc", "Content/Paks/*.ucas",
+            "*/*/Content/Paks/*.utoc", "*/*/Content/Paks/*.ucas",
+            "*/Content/Paks/*.utoc", "*/Content/Paks/*.ucas",
+        ]
+        for pat in ue5_patterns:
+            if glob.glob(os.path.join(game_dir, pat)):
+                return "ue5"
+        ue4_patterns = [
+            "Content/Paks/*.pak", "*/*/Content/Paks/*.pak", "*/Content/Paks/*.pak",
+        ]
+        for pat in ue4_patterns:
+            if glob.glob(os.path.join(game_dir, pat)):
+                return "ue4"
+        return None
 
     def _matched_files(self, game_dir: str) -> list[str]:
         hits = []
@@ -44,7 +64,6 @@ class UnrealAdapter(BaseAdapter):
     def detect(self, game_dir: str) -> bool:
         if not os.path.isdir(game_dir):
             return False
-        # Direct markers
         if glob.glob(os.path.join(game_dir, "*.uproject")):
             return True
         if os.path.isdir(os.path.join(game_dir, "Engine", "Binaries")) or os.path.isdir(os.path.join(game_dir, "Engine")):
@@ -64,17 +83,23 @@ class UnrealAdapter(BaseAdapter):
 
     def prepare(self, game_dir: str, cache_root: str) -> StructureTable:
         files = self._matched_files(game_dir)
+        variant = self._variant(game_dir)
+        if variant == "ue5":
+            guidance = (
+                "UE5 (IoStore)：推荐 pak 文件覆盖 mod —— 用 repak 解包/打包 .utoc/.ucas，"
+                "把生成的 .pak 放入 Content/Paks/~mods/。UE4SS Lua 对 UE5 不稳定，不作为默认。"
+            )
+        else:
+            guidance = (
+                "UE4：可用 UE4SS Lua（放入 Binaries/Win64/）或 pak 覆盖（UnrealPak 打包到 ~mods/）。"
+            )
         return StructureTable(
             game_id=os.path.basename(os.path.normpath(game_dir)),
             engine=self.id,
-            variant=self.runtime,
+            variant=variant or self.runtime,
             fingerprint=self.fingerprint(game_dir),
             files=[os.path.relpath(p, game_dir) for p in files[:20]],
-            guidance=(
-                "前置: UE4SS (放入 <Game>/Binaries/Win64/)；"
-                "Mod 编写: 在 Mods/<ModName>/scripts/main.lua 编写 Lua Hook；"
-                "免编译热加载: 支持 RegisterHook, StaticFindObject, NotifyOnNewObject"
-            ),
+            guidance=guidance,
         )
 
     def launch(self, game_dir: str) -> dict | None:
@@ -82,8 +107,10 @@ class UnrealAdapter(BaseAdapter):
         if not shippings:
             shippings = glob.glob(os.path.join(game_dir, "*.exe"))
         if shippings:
-            return {"exe": shippings[0], "hint": "Run game with UE4SS injected"}
+            return {"exe": shippings[0], "variant": self._variant(game_dir) or "unknown"}
         return None
+
+    # --- UE4SS Lua path (UE4 only) ---
 
     def scaffold_mod(
         self,
@@ -93,17 +120,15 @@ class UnrealAdapter(BaseAdapter):
         mod_version: str = "1.0.0",
         author: str = "AI Mod Agent",
     ) -> str:
-        """Generate a complete UE4SS Lua Mod skeleton."""
+        """Generate a UE4SS Lua mod skeleton (reliable for UE4 only)."""
         mod_id = safe_component(mod_id, "mod_id")
         lua_name = str(mod_name).replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
         scripts_dir = os.path.join(project_dir, "scripts")
         os.makedirs(scripts_dir, exist_ok=True)
 
-        # 1. enabled.txt
         with open(os.path.join(project_dir, "enabled.txt"), "w", encoding="utf-8") as f:
             f.write("1\n")
 
-        # 2. mod.json metadata (via ModManifest, consistent with other scaffolds)
         ModManifest(
             id=mod_id,
             name=mod_name,
@@ -111,24 +136,17 @@ class UnrealAdapter(BaseAdapter):
             engine="unreal",
             author=author,
             entry="scripts/main.lua",
-            description="UE4SS Lua mod",
+            description="UE4SS Lua mod (UE4)",
         ).save(os.path.join(project_dir, "mod.json"))
 
-        # 3. scripts/main.lua template
         lua_template = f"""-- {lua_name} (ID: {mod_id})
--- Built with game-mod-agent for UE4SS (Lua API)
+-- Built with game-mod-agent for UE4SS (UE4 Lua API)
 
 local ModRef = "{lua_name}"
 print(string.format("[%s] Initialized successfully!", ModRef))
 
--- Hooking template:
 -- RegisterHook("/Script/Engine.PlayerController:ClientRestart", function(self, newPawn)
 --     print(string.format("[%s] Player restarted!", ModRef))
--- end)
-
--- Object inspection template:
--- NotifyOnNewObject("/Script/Engine.Character", function(character)
---     print(string.format("[%s] Found new Character instance: %s", ModRef, character:GetFullName()))
 -- end)
 """
         with open(os.path.join(scripts_dir, "main.lua"), "w", encoding="utf-8") as f:
@@ -137,21 +155,18 @@ print(string.format("[%s] Initialized successfully!", ModRef))
         return project_dir
 
     def install_mod(self, project_dir: str, game_dir: str, mod_id: str) -> str:
-        """Install UE4SS mod into <Game>/Binaries/Win64/ue4ss/Mods/<mod_id>/."""
+        """Install a UE4SS Lua mod into Binaries/Win64/ue4ss/Mods/<mod_id>/."""
         mod_id = safe_component(mod_id, "mod_id")
         target_candidates = glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64"))
         if not target_candidates:
             target_candidates = [os.path.join(game_dir, "Binaries", "Win64")]
 
         win64_dir = target_candidates[0]
-        # UE4SS can use either ue4ss/Mods/ or Mods/
         mods_dir = os.path.join(win64_dir, "ue4ss", "Mods", mod_id)
         if not os.path.exists(os.path.join(win64_dir, "ue4ss")):
             mods_dir = os.path.join(win64_dir, "Mods", mod_id)
-
         os.makedirs(mods_dir, exist_ok=True)
 
-        # Collect (src, dst) pairs first so overwritten files can be backed up
         pairs = []
         for item in os.listdir(project_dir):
             s = os.path.join(project_dir, item)
@@ -164,5 +179,72 @@ print(string.format("[%s] Initialized successfully!", ModRef))
             else:
                 pairs.append((s, d))
 
+        rollback.install_files(game_dir, mod_id, pairs)
+        return mods_dir
+
+    # --- pak override path (UE4 + UE5, the reliable default) ---
+
+    def scaffold_pak_mod(
+        self,
+        project_dir: str,
+        mod_id: str,
+        mod_name: str,
+        mod_version: str = "1.0.0",
+        author: str = "AI Mod Agent",
+    ) -> str:
+        """Generate a pak file-override mod skeleton (works for UE4 and UE5 IoStore)."""
+        mod_id = safe_component(mod_id, "mod_id")
+        os.makedirs(project_dir, exist_ok=True)
+
+        override_dir = os.path.join(project_dir, "override")
+        os.makedirs(override_dir, exist_ok=True)
+        with open(os.path.join(override_dir, "README.txt"), "w", encoding="utf-8") as f:
+            f.write(
+                "把要覆盖的文件按游戏内相对路径放到这里。\n"
+                "例如改配置：Config/DefaultGame.ini\n"
+                "例如换资源：Content/Characters/Hero/hero_mesh.uasset\n"
+            )
+
+        ModManifest(
+            id=mod_id,
+            name=mod_name,
+            version=mod_version,
+            engine="unreal",
+            author=author,
+            entry="",
+            description="Unreal pak 文件覆盖 mod",
+        ).save(os.path.join(project_dir, "mod.json"))
+
+        with open(os.path.join(project_dir, "README.md"), "w", encoding="utf-8") as f:
+            f.write(f"""# {mod_name} (pak 覆盖 mod)
+
+## 流程
+
+1. 解包游戏资源定位要改的文件（UE4 用 FModel，UE5 IoStore 用 repak / CUE4Parse）。
+2. 把修改后的文件按游戏内相对路径放进 `override/`。
+3. 打包成 `.pak`：
+   - UE5 (IoStore)：`repak pack override {mod_id}.pak`
+   - UE4：`UnrealPak.exe {mod_id}.pak -Create=filelist.txt`
+4. 把生成的 `.pak` 放到 `dist/`，然后点「安装」自动装入 `Content/Paks/~mods/`。
+""")
+
+        return project_dir
+
+    def install_pak_mod(self, project_dir: str, game_dir: str, mod_id: str) -> str:
+        """Install a built .pak override mod into Content/Paks/~mods/."""
+        mod_id = safe_component(mod_id, "mod_id")
+        pak_files = glob.glob(os.path.join(project_dir, "dist", "*.pak"))
+        if not pak_files:
+            pak_files = glob.glob(os.path.join(project_dir, "*.pak"))
+        if not pak_files:
+            raise ValueError("no built .pak found in dist/; run repak/UnrealPak to pack first")
+
+        paks_dirs = glob.glob(os.path.join(game_dir, "*", "Content", "Paks"))
+        if not paks_dirs:
+            paks_dirs = [os.path.join(game_dir, "Content", "Paks")]
+        mods_dir = os.path.join(paks_dirs[0], "~mods")
+        os.makedirs(mods_dir, exist_ok=True)
+
+        pairs = [(p, os.path.join(mods_dir, os.path.basename(p))) for p in pak_files]
         rollback.install_files(game_dir, mod_id, pairs)
         return mods_dir

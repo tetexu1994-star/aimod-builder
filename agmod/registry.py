@@ -28,12 +28,22 @@ def adapters() -> list[BaseAdapter]:
 
 
 def detect_engine(game_dir: str) -> dict | None:
-    """Return the first adapter that claims `game_dir`, as its full describe() info."""
+    """Return the first adapter that claims `game_dir`, as its full describe() info.
+
+    If the adapter can distinguish a variant (e.g. UE4 vs UE5 IoStore), that is
+    attached as a `variant` key.
+    """
     if not os.path.isdir(game_dir):
         return None
     for a in _ADAPTERS:
         if a.detect(game_dir):
-            return a.describe()
+            info = a.describe()
+            variant_fn = getattr(a, "_variant", None)
+            if callable(variant_fn):
+                variant = variant_fn(game_dir)
+                if variant:
+                    info = {**info, "variant": variant}
+            return info
     return None
 
 

@@ -66,6 +66,40 @@ class TestUnrealAdapter(unittest.TestCase):
                 self.assertIn("Test Mod", content)
                 self.assertIn("RegisterHook", content)
 
+    def test_unreal_variant_detection(self):
+        adapter = UnrealAdapter()
+        with tempfile.TemporaryDirectory() as game_dir:
+            paks = os.path.join(game_dir, "PBZero", "Content", "Paks")
+            os.makedirs(paks, exist_ok=True)
+            open(os.path.join(paks, "global.utoc"), "w").close()
+            open(os.path.join(paks, "global.ucas"), "w").close()
+            self.assertEqual(adapter._variant(game_dir), "ue5")
+            self.assertEqual(detect_engine(game_dir)["variant"], "ue5")
+
+        with tempfile.TemporaryDirectory() as game_dir:
+            paks = os.path.join(game_dir, "Content", "Paks")
+            os.makedirs(paks, exist_ok=True)
+            open(os.path.join(paks, "game.pak"), "w").close()
+            self.assertEqual(adapter._variant(game_dir), "ue4")
+            self.assertEqual(detect_engine(game_dir)["variant"], "ue4")
+
+    def test_unreal_pak_mod_scaffold_and_install(self):
+        adapter = UnrealAdapter()
+        with tempfile.TemporaryDirectory() as mod_proj:
+            adapter.scaffold_pak_mod(mod_proj, "pbz_override", "PBZ Override")
+            self.assertTrue(os.path.isfile(os.path.join(mod_proj, "mod.json")))
+            self.assertTrue(os.path.isdir(os.path.join(mod_proj, "override")))
+            self.assertTrue(os.path.isfile(os.path.join(mod_proj, "README.md")))
+
+        with tempfile.TemporaryDirectory() as game_dir, tempfile.TemporaryDirectory() as mod_proj:
+            adapter.scaffold_pak_mod(mod_proj, "pbz_override", "PBZ Override")
+            dist = os.path.join(mod_proj, "dist")
+            os.makedirs(dist, exist_ok=True)
+            with open(os.path.join(dist, "pbz_override.pak"), "w") as f:
+                f.write("PAK")
+            dest = adapter.install_pak_mod(mod_proj, game_dir, "pbz_override")
+            self.assertTrue(os.path.isfile(os.path.join(dest, "pbz_override.pak")))
+
 
 class TestScanSessionLogic(unittest.TestCase):
     def test_session_filtering(self):

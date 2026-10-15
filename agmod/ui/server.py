@@ -586,7 +586,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                     tuning = [{"id": "speed_multiplier", "label": "移速倍率", "type": "slider", "min": 1.0, "max": 5.0, "step": 0.1, "value": 2.0}]
                     target = "UCharacterMovementComponent:SetMaxWalkSpeed"
                 elif any(k in prompt_lower for k in ["跳", "jump"]):
-                    mod_id = "phantom_air_jump"
+                    mod_id = "air_step_jump"
                     mod_name = "踏雪无痕 · 空中二段跳 (Air Step Jump)"
                     summary = "解锁绝妙空中连环二段跳跃与滞空机动"
                     tuning = [{"id": "jump_impulse", "label": "腾空跃力", "type": "slider", "min": 1.0, "max": 3.0, "step": 0.1, "value": 1.5}]
