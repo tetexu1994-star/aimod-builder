@@ -1108,9 +1108,10 @@
               <span class="pulse-dot" id="gatekeeper-pulse"></span>
               <span id="gatekeeper-status-text">正在监测游戏进程启动中...</span>
             </div>
-            <div style="display:flex; gap:16px; margin-top:8px;">
+            <div style="display:flex; gap:16px; margin-top:8px; flex-wrap:wrap; justify-content:center;">
               <a href="javascript:void(0)" onclick="manualProcessRefresh()" style="font-size:12px; color:var(--primary); text-decoration:none;">手动刷新连接状态 ↻</a>
-              <a href="javascript:void(0)" onclick="skipLaunchToStudio()" style="font-size:12px; color:var(--text-dim); text-decoration:none;">暂不启动，直接编写离线 Mod ➔</a>
+              <a href="javascript:void(0)" onclick="forceConnectToStudio()" style="font-size:12px; color:var(--emerald); text-decoration:none;">⚡ 游戏已在运行，立即接入工作台 ➔</a>
+              <a href="javascript:void(0)" onclick="skipLaunchToStudio()" style="font-size:12px; color:var(--text-dim); text-decoration:none;">暂不启动，离线编写 Mod ➔</a>
             </div>
           </div>
         </div>
@@ -1434,13 +1435,16 @@
       startProcessPolling(game);
     }
 
-    async function checkProcessStatus(silent = false) {
+    async function checkProcessStatus(silent = false, forceRefresh = false) {
       if (!currentGame) return false;
       try {
         const resp = await fetch('/api/process', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ game_dir: currentGame.game_dir })
+          body: JSON.stringify({
+            game_dir: currentGame.game_dir,
+            force_refresh: forceRefresh
+          })
         });
         const res = await resp.json();
         if (res.success && res.data.is_running) {
@@ -1496,8 +1500,9 @@
           showToast(res.message || '启动指令已发送！正在等待游戏进程连接...', 'success');
           const statusText = document.getElementById('gatekeeper-status-text');
           if (statusText) statusText.textContent = '游戏已启动，正在探测连接主程序进程...';
-          setTimeout(() => checkProcessStatus(true), 600);
-          setTimeout(() => checkProcessStatus(true), 1600);
+          setTimeout(() => checkProcessStatus(true, true), 800);
+          setTimeout(() => checkProcessStatus(true, true), 2000);
+          setTimeout(() => checkProcessStatus(true, true), 3500);
         } else {
           showToast('启动出错: ' + res.error, 'error');
         }
@@ -1508,8 +1513,8 @@
 
     function startProcessPolling(game) {
       if (processPollTimer) clearInterval(processPollTimer);
-      // Immediate probe
-      checkProcessStatus(true);
+      // Immediate probe with force refresh
+      checkProcessStatus(true, true);
       // Polling interval
       processPollTimer = setInterval(() => {
         if (!currentGame || currentStage !== 2) {
@@ -1522,11 +1527,27 @@
 
     async function manualProcessRefresh() {
       if (!currentGame) return;
-      showToast('正在探测游戏进程...', 'info');
-      const isRunning = await checkProcessStatus(false);
+      showToast('正在深入探测游戏进程...', 'info');
+      const isRunning = await checkProcessStatus(false, true);
       if (!isRunning) {
-        showToast('未检测到该游戏的运行进程，请点击绿色按钮启动游戏，或确认游戏已打开。', 'info');
+        showToast('未检测到该游戏的运行进程。如果游戏已打开，可点击“⚡ 游戏已在运行，立即接入工作台”直接进入。', 'info');
       }
+    }
+
+    async function forceConnectToStudio() {
+      if (!currentGame) return;
+      // Probe process once more
+      await checkProcessStatus(true, true);
+      if (!currentGame.running_pid) {
+        currentGame.running_pid = 'Active';
+      }
+      currentGame.is_running = true;
+      showToast('已确认游戏运行，正在接入 AI 创作工作台...', 'success');
+      if (processPollTimer) {
+        clearInterval(processPollTimer);
+        processPollTimer = null;
+      }
+      goToStage(3);
     }
 
     function skipLaunchToStudio() {
@@ -1584,7 +1605,7 @@
       loadGameSaves(game);
     }
 
-    function initChatForGame(game) {
+    async function initChatForGame(game) {
       const container = document.getElementById('chat-messages');
       container.innerHTML = '';
       chatHistory = [];
@@ -1599,6 +1620,103 @@
         return;
       }
 
+      // 1. Show immediate loading state for REA detection
+      const loadingMsg = document.createElement('div');
+      loadingMsg.className = 'msg';
+      loadingMsg.id = 'rea-loading-bubble';
+      loadingMsg.innerHTML = `
+        <div class="msg-avatar">AI</div>
+        <div class="msg-content" style="display:flex; align-items:center; gap:10px;">
+          <span class="pulse-dot" style="background:var(--primary);"></span>
+          <span>正在对《${escapeHtml(game.name)}》进行 REA 底层逆向检测与架构解析...</span>
+        </div>
+      `;
+      container.appendChild(loadingMsg);
+
+      try {
+        const resp = await fetch('/api/rea/overview', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ game_dir: game.game_dir })
+        });
+        const res = await resp.json();
+        const loadElem = document.getElementById('rea-loading-bubble');
+        if (loadElem) loadElem.remove();
+
+        if (res.success && res.data) {
+          renderREAOverviewGreeting(game, res.data);
+        } else {
+          renderDefaultGreeting(game);
+        }
+      } catch (e) {
+        const loadElem = document.getElementById('rea-loading-bubble');
+        if (loadElem) loadElem.remove();
+        renderDefaultGreeting(game);
+      }
+    }
+
+    function renderREAOverviewGreeting(game, data) {
+      const symbolsPills = (data.discovered_symbols || []).map(s => `<code style="font-family:var(--mono); background:rgba(99,102,241,0.1); color:var(--primary); padding:2px 6px; border-radius:4px; font-size:12px;">${escapeHtml(s)}</code>`).join(' ');
+      const guardsHtml = (data.safety_guards || []).map(g => `<li>${escapeHtml(g)}</li>`).join('');
+
+      let llmBannerHtml = '';
+      if (!data.has_llm) {
+        llmBannerHtml = `
+          <div style="margin-top:12px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.3); border-radius:8px; padding:12px 14px;">
+            <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:#f59e0b; font-size:13px;">
+              <span>⚠️ 尚未配置大模型 API Key（当前为内置预设模式）</span>
+            </div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:4px; line-height:1.5;">
+              AI 需要连接大模型才能理解你的自然语言指令并编写定制代码。支持 DeepSeek / 官方 OpenAI / Claude / 本地 Ollama。
+            </div>
+            <div style="margin-top:8px;">
+              <button class="btn btn-sm btn-primary" onclick="openLLMModal()">⚙️ 立即配置大模型 API Key (CC Switch)</button>
+            </div>
+          </div>
+        `;
+      } else {
+        const modelName = data.llm_info?.model || '已就绪';
+        llmBannerHtml = `
+          <div style="margin-top:10px; display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--emerald); background:var(--emerald-bg); padding:4px 10px; border-radius:6px; border:1px solid rgba(16,185,129,0.25);">
+            <span class="pulse-dot"></span>
+            <span>AI 大模型推理通道已就绪 (${escapeHtml(modelName)}) · 具备自然语言逆向推理能力</span>
+          </div>
+        `;
+      }
+
+      const cardHtml = `
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(99,102,241,0.15); padding-bottom:6px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="rea-badge">🎯 REA 逆向工程已就绪</span>
+              <strong style="font-size:13px;">《${escapeHtml(game.name)}》架构全景</strong>
+            </div>
+            <span style="font-size:11px; color:var(--text-dim);">${escapeHtml(data.flavor || data.engine_name)}</span>
+          </div>
+
+          <div style="font-size:13px; line-height:1.6; margin-top:4px;">
+            <div><strong>📦 核心模块:</strong> <code>${escapeHtml(data.target_binary)}</code> (主程序: <code>${escapeHtml(data.primary_exe)}</code>)</div>
+            <div><strong>💉 注入方案:</strong> <span style="color:var(--primary); font-weight:600;">${escapeHtml(data.injection_mode)}</span></div>
+            <div style="margin-top:4px;"><strong>🧬 提取逆向入口:</strong> ${symbolsPills || '通用接口'}</div>
+          </div>
+
+          <div style="margin-top:6px; background:rgba(0,0,0,0.15); border-radius:6px; padding:8px 12px; font-size:12px; color:var(--text-muted);">
+            <div style="font-weight:700; color:var(--text-main); margin-bottom:4px;">🛡️ 安全沙箱保护原则：</div>
+            <ul style="margin:0; padding-left:18px; line-height:1.5;">${guardsHtml}</ul>
+          </div>
+
+          ${llmBannerHtml}
+
+          <div style="margin-top:8px; font-size:13px; color:var(--text-dim);">
+            👉 你可以直接在下方输入任何你想实现的功能（如：角色移动速度翻倍、无敌、背包无限空间等），或点击上方快捷灵感按钮！
+          </div>
+        </div>
+      `;
+
+      appendRawAIMessage(cardHtml, `已对《${game.name}》完成 REA 底层逆向检测。`);
+    }
+
+    function renderDefaultGreeting(game) {
       appendAIMessage(
         `你好！我已经接入 **${game.name}**（${game.engine_name || '检测就绪'}）。\n\n` +
         `你想在游戏里实现什么新特性？可以直接用自然语言告诉我，例如：\n` +
@@ -1610,10 +1728,25 @@
       );
     }
 
+    function appendRawAIMessage(htmlContent, rawHistoryText = '') {
+      const container = document.getElementById('chat-messages');
+      const msg = document.createElement('div');
+      msg.className = 'msg';
+      msg.innerHTML = `
+        <div class="msg-avatar">AI</div>
+        <div class="msg-content">
+          ${htmlContent}
+        </div>
+      `;
+      container.appendChild(msg);
+      container.scrollTop = container.scrollHeight;
+      chatHistory.push({ role: 'assistant', content: rawHistoryText || 'REA 逆向检测完成' });
+    }
+
     function appendUserMessage(text) {
       const container = document.getElementById('chat-messages');
       const msg = document.createElement('div');
-      msg.className = 'msg msg-user';
+      msg.className = 'msg';
       msg.innerHTML = `
         <div class="msg-avatar">你</div>
         <div class="msg-content">${escapeHtml(text)}</div>
@@ -1623,7 +1756,7 @@
       chatHistory.push({ role: 'user', content: text });
     }
 
-    function appendAIMessage(markdownText, action = null, reaInsight = null) {
+    function appendAIMessage(markdownText, action = null, reaInsight = null, requireApiKey = false) {
       const container = document.getElementById('chat-messages');
       const msg = document.createElement('div');
       msg.className = 'msg';
@@ -1718,12 +1851,22 @@
         `;
       }
 
+      let apiKeyBtnHtml = '';
+      if (requireApiKey) {
+        apiKeyBtnHtml = `
+          <div style="margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08);">
+            <button class="btn btn-sm btn-primary" onclick="openLLMModal()">⚙️ 立即配置大模型 API Key (CC Switch)</button>
+          </div>
+        `;
+      }
+
       msg.innerHTML = `
         <div class="msg-avatar">AI</div>
         <div class="msg-content">
           ${html}
           ${reaHtml}
           ${actionHtml}
+          ${apiKeyBtnHtml}
         </div>
       `;
       msg.querySelectorAll('[data-pin-action]').forEach(button => {
@@ -1797,7 +1940,7 @@
         });
         const res = await resp.json();
         if (res.success) {
-          appendAIMessage(res.data.reply, res.data.action, res.data.rea_insight);
+          appendAIMessage(res.data.reply, res.data.action, res.data.rea_insight, res.data.require_api_key);
         } else {
           appendAIMessage('❌ 生成失败: ' + res.error);
         }

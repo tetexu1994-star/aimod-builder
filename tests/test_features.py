@@ -487,6 +487,27 @@ class TestAntiCheatDetection(unittest.TestCase):
             self.assertFalse(target["anticheat_blocked"])
 
 
+    def test_process_fallback_without_psutil(self):
+        from agmod import process
+
+        with tempfile.TemporaryDirectory() as game_dir:
+            exe_path = os.path.join(game_dir, "Raft.exe")
+            open(exe_path, "w").close()
+
+            # Mock psutil as None to test native fallback
+            with mock.patch.object(process, "psutil", None):
+                # Mock tasklist returning Raft.exe on Windows
+                mock_csv = b'"Raft.exe","48588","Console","1","1,500,888 K"\r\n'
+                mock_proc = mock.MagicMock(returncode=0, stdout=mock_csv)
+                with mock.patch("subprocess.run", return_value=mock_proc):
+                    with mock.patch.object(process.sys, "platform", "win32"):
+                        running, procs = process.is_game_running(game_dir, force_refresh=True)
+                        self.assertTrue(running)
+                        self.assertEqual(len(procs), 1)
+                        self.assertEqual(procs[0]["pid"], 48588)
+                        self.assertEqual(procs[0]["name"], "Raft.exe")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 

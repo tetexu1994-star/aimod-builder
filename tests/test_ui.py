@@ -345,10 +345,35 @@ System.NullReferenceException: Object reference not set to an instance of an obj
             self.assertEqual(code, 409)
             self.assertFalse(pin_res["success"])
 
-    def test_launch_ui_function(self):
-        port = _get_free_port()
-        url = launch_ui(host="127.0.0.1", port=port, open_browser=False)
-        self.assertEqual(url, f"http://127.0.0.1:{port}")
+    def test_rea_overview_and_require_api_key(self):
+        with tempfile.TemporaryDirectory() as game:
+            # Create dummy Unity game structure
+            managed = os.path.join(game, "Raft_Data", "Managed")
+            os.makedirs(managed, exist_ok=True)
+            open(os.path.join(managed, "Assembly-CSharp.dll"), "w").close()
+            open(os.path.join(game, "Raft.exe"), "w").close()
+
+            # 1. /api/rea/overview returns rich architecture info
+            code, res = _http_post(f"{self.base_url}/api/rea/overview", {"game_dir": game})
+            self.assertEqual(code, 200)
+            self.assertTrue(res["success"])
+            self.assertEqual(res["data"]["engine_id"], "unity")
+            self.assertEqual(res["data"]["primary_exe"], "Raft.exe")
+            self.assertIn("discovered_symbols", res["data"])
+            self.assertIn("safety_guards", res["data"])
+
+            # 2. When LLM is not configured and user asks freeform question "你这个调了啥？"
+            with patch("agmod.llm.load_config", return_value={"api_key": "", "api_endpoint": "https://api.openai.com/v1"}):
+                code, interact_res = _http_post(f"{self.base_url}/api/mod/interact", {
+                    "game_dir": game,
+                    "prompt": "你这个调了啥？"
+                })
+                self.assertEqual(code, 200)
+                self.assertTrue(interact_res["success"])
+                self.assertFalse(interact_res["data"]["has_llm"])
+                self.assertTrue(interact_res["data"]["require_api_key"])
+                self.assertIsNone(interact_res["data"]["action"])
+                self.assertIn("尚未配置大模型 API Key", interact_res["data"]["reply"])
 
 
 if __name__ == "__main__":

@@ -183,12 +183,12 @@ def _is_subpath(parent: str, child: str) -> bool:
         return False
 
 
-def _get_running_processes_tasklist(known_exes_lower: set[str]) -> list[dict]:
+def _get_running_processes_tasklist(known_exes_lower: set[str], force_refresh: bool = False) -> list[dict]:
     """Native Windows fallback using tasklist command with snapshot caching."""
     global _PROCESS_CACHE
     now = time.time()
 
-    if now - _PROCESS_CACHE["timestamp"] >= _PROCESS_CACHE_TTL:
+    if force_refresh or (now - _PROCESS_CACHE["timestamp"] >= _PROCESS_CACHE_TTL):
         creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if sys.platform == "win32" else 0
         parsed = []
         try:
@@ -196,14 +196,21 @@ def _get_running_processes_tasklist(known_exes_lower: set[str]) -> list[dict]:
                 ["tasklist", "/FO", "CSV", "/NH"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True,
-                encoding="gbk",
-                errors="ignore",
                 creationflags=creationflags,
                 timeout=3,
             )
             if proc.returncode == 0:
-                reader = csv.reader(io.StringIO(proc.stdout))
+                raw_out = proc.stdout
+                text_out = None
+                for enc in ("gbk", "utf-8", "cp1252", sys.getfilesystemencoding()):
+                    try:
+                        text_out = raw_out.decode(enc)
+                        break
+                    except Exception:
+                        continue
+                if text_out is None:
+                    text_out = raw_out.decode("latin-1", errors="ignore")
+                reader = csv.reader(io.StringIO(text_out))
                 for row in reader:
                     if len(row) >= 2:
                         name = row[0].strip()
@@ -218,7 +225,9 @@ def _get_running_processes_tasklist(known_exes_lower: set[str]) -> list[dict]:
 
     hits = []
     for name, pid in _PROCESS_CACHE["processes"]:
-        if name.lower() in known_exes_lower:
+        n_low = name.lower()
+        n_stem = n_low[:-4] if n_low.endswith(".exe") else n_low
+        if n_low in known_exes_lower or n_stem in known_exes_lower:
             hits.append({
                 "pid": pid,
                 "name": name,
@@ -227,12 +236,12 @@ def _get_running_processes_tasklist(known_exes_lower: set[str]) -> list[dict]:
     return hits
 
 
-def _get_running_processes_ps(known_exes_lower: set[str]) -> list[dict]:
+def _get_running_processes_ps(known_exes_lower: set[str], force_refresh: bool = False) -> list[dict]:
     """Native POSIX fallback using ps command with snapshot caching."""
     global _PROCESS_CACHE
     now = time.time()
 
-    if now - _PROCESS_CACHE["timestamp"] >= _PROCESS_CACHE_TTL:
+    if force_refresh or (now - _PROCESS_CACHE["timestamp"] >= _PROCESS_CACHE_TTL):
         parsed = []
         try:
             proc = subprocess.run(
@@ -259,7 +268,8 @@ def _get_running_processes_ps(known_exes_lower: set[str]) -> list[dict]:
     hits = []
     for comm, pid in _PROCESS_CACHE["processes"]:
         comm_base = os.path.basename(comm).lower()
-        if comm_base in known_exes_lower or comm.lower() in known_exes_lower:
+        comm_stem = comm_base[:-4] if comm_base.endswith(".exe") else comm_base
+        if comm_base in known_exes_lower or comm_stem in known_exes_lower or comm.lower() in known_exes_lower:
             hits.append({
                 "pid": pid,
                 "name": comm,
@@ -268,10 +278,14 @@ def _get_running_processes_ps(known_exes_lower: set[str]) -> list[dict]:
     return hits
 
 
-def get_running_game_processes(game_dir: str) -> list[dict]:
+def get_running_game_processes(game_dir: str, force_refresh: bool = False) -> list[dict]:
     """Return active processes whose executable path or name matches game_dir."""
     if not game_dir or not os.path.isdir(game_dir):
         return []
+
+    if force_refresh:
+        global _PROCESS_CACHE
+        _PROCESS_CACHE["timestamp"] = 0.0
 
     game_dir_abs = os.path.realpath(game_dir)
     found_exes = find_game_executables(game_dir)
@@ -282,6 +296,9 @@ def get_running_game_processes(game_dir: str) -> list[dict]:
     if base_name:
         known_exes_lower.add(base_name)
         known_exes_lower.add(f"{base_name}.exe")
+        known_exes_lower.add(base_name.replace(" ", "") + ".exe")
+        known_exes_lower.add(base_name.replace(" ", "_") + ".exe")
+        known_exes_lower.add(base_name.replace(" ", "-") + ".exe")
 
     hits = []
     seen_pids = set()
@@ -298,6 +315,7 @@ def get_running_game_processes(game_dir: str) -> list[dict]:
 
                     p_name = info.get("name") or ""
                     p_name_low = p_name.lower()
+                    p_name_stem = p_name_low[:-4] if p_name_low.endswith(".exe") else p_name_low
                     p_exe = info.get("exe") or ""
                     cwd = info.get("cwd") or ""
 
@@ -309,6 +327,10 @@ def get_running_game_processes(game_dir: str) -> list[dict]:
                     # Check 2: Working directory is inside game directory
                     elif cwd and _is_subpath(game_dir_abs, cwd):
                         matched = True
+                    # Check 3: Process name matches known game executable
+                    elif p_name_low and (p_name_low in known_exes_lower or p_name_stem in known_exes_lower):
+                        matched = True
+
                     if matched:
                         seen_pids.add(pid)
                         hits.append({
@@ -322,7 +344,9 @@ def get_running_game_processes(game_dir: str) -> list[dict]:
                     # Windows access denied on exe/cwd: fall back to name check
                     try:
                         p_name = proc.name()
-                        if p_name and p_name.lower() in known_exes_lower:
+                        p_name_low = p_name.lower() if p_name else ""
+                        p_name_stem = p_name_low[:-4] if p_name_low.endswith(".exe") else p_name_low
+                        if p_name_low and (p_name_low in known_exes_lower or p_name_stem in known_exes_lower):
                             pid = proc.pid
                             if pid not in seen_pids:
                                 seen_pids.add(pid)
@@ -336,20 +360,27 @@ def get_running_game_processes(game_dir: str) -> list[dict]:
         except Exception:
             pass
 
+    # Step 2: Fallback to native tasklist (Windows) or ps (POSIX) when psutil is unavailable or returned no hits
+    if not hits:
+        if sys.platform == "win32":
+            hits = _get_running_processes_tasklist(known_exes_lower, force_refresh=force_refresh)
+        else:
+            hits = _get_running_processes_ps(known_exes_lower, force_refresh=force_refresh)
+
     return hits
 
 
-def is_game_running(game_dir: str) -> tuple[bool, list[dict]]:
+def is_game_running(game_dir: str, force_refresh: bool = False) -> tuple[bool, list[dict]]:
     """Check if any game process from `game_dir` is currently active."""
-    procs = get_running_game_processes(game_dir)
+    procs = get_running_game_processes(game_dir, force_refresh=force_refresh)
     return len(procs) > 0, procs
 
 
-def check_game_status(game_dir: str) -> dict:
+def check_game_status(game_dir: str, force_refresh: bool = False) -> dict:
     """Check game executable status: detected binaries, whether any game process is running, and lock risk."""
     game_dir_abs = os.path.abspath(game_dir) if game_dir else ""
     exes = find_game_executables(game_dir_abs) if game_dir_abs else []
-    running, running_procs = is_game_running(game_dir_abs) if game_dir_abs else (False, [])
+    running, running_procs = is_game_running(game_dir_abs, force_refresh=force_refresh) if game_dir_abs else (False, [])
     return {
         "game_dir": game_dir_abs,
         "executables": exes,

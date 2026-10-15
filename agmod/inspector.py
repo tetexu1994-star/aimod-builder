@@ -367,3 +367,119 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
         "implementation_strategy": strategy,
         "confidence": evidence_confidence,
     }
+
+
+def get_reverse_engineering_overview(game_dir: str) -> dict:
+    """Perform upfront reverse engineering scan on game files and return architecture overview."""
+    engine_info = detect_engine(game_dir) or {}
+    engine_id = engine_info.get("engine_id") or engine_info.get("id", "generic")
+    engine_name = engine_info.get("engine_name") or engine_info.get("name", "通用引擎")
+    variant = engine_info.get("variant", "")
+
+    from . import process, llm
+    exes = process.find_game_executables(game_dir)
+    primary_exe = exes[0] if exes else "Game.exe"
+
+    target_binary = primary_exe
+    flavor = ""
+    discovered_symbols = []
+
+    if engine_id == "unity":
+        is_il2cpp = bool(
+            os.path.exists(os.path.join(game_dir, "GameAssembly.dll"))
+            or glob.glob(os.path.join(game_dir, "*_Data", "il2cpp_data"))
+            or glob.glob(os.path.join(game_dir, "*_data", "il2cpp_data"))
+        )
+        flavor = "Unity IL2CPP (原生 C++ 编译)" if is_il2cpp else "Unity Mono (托管 C# 程序集)"
+        csharp_dlls = (
+            glob.glob(os.path.join(game_dir, "*_Data", "Managed", "Assembly-CSharp*.dll"))
+            + glob.glob(os.path.join(game_dir, "*_data", "Managed", "Assembly-CSharp*.dll"))
+        )
+        if csharp_dlls:
+            target_binary = os.path.basename(csharp_dlls[0])
+            try:
+                for term in ("player", "movement", "game", "inventory", "item"):
+                    found = rea.fast_search_members(csharp_dlls[0], term, limit=3)
+                    for sym in found:
+                        if sym not in discovered_symbols:
+                            discovered_symbols.append(sym)
+            except Exception:
+                pass
+        if not discovered_symbols:
+            discovered_symbols = ["PlayerController", "PlayerMovement", "Inventory", "GameManager", "Time.timeScale"]
+
+        injection_mode = "BepInEx-IL2CPP / Cpp2IL" if is_il2cpp else "HarmonyX / BepInEx 6 (前缀/后缀补丁)"
+        safety_guards = [
+            "空指针保护：必须通过 obj != null 触发底层 C++ 原生存活校验，严禁使用 ReferenceEquals",
+            "物理防穿模：刚体与移动控制器速度在 FixedUpdate 中限制在安全阈值，防止穿透碰撞体",
+            "时间缩放守卫：Time.timeScale 严格限制在 [0.01, 10.0]，杜绝除零或物理死锁",
+            "Harmony 拦截保护：Prefix 必须使用 try-catch 包裹，return true 保证游戏原逻辑不被截断",
+        ]
+
+    elif engine_id == "unreal":
+        flavor = f"Unreal Engine ({variant.upper() if variant else 'UE4/UE5'})"
+        if variant == "ue5":
+            injection_mode = "loose .pak 覆盖（IoStore 资源覆盖）"
+            safety_guards = [
+                "UE5 IoStore 边界保护：严禁直接修改只读 utoc/ucas 索引容器",
+                "资源覆盖校验：使用 ~mods loose pak 规范，确保目标版本支持 Pak 文件重载",
+            ]
+        else:
+            injection_mode = "UE4SS Lua 运行时挂钩"
+            safety_guards = [
+                "UObject 指针存活校验：执行前校验目标 Actor / Component 有效性",
+                "UFunction 签名校验：严格遵循虚幻引擎反射元数据与参数规范",
+            ]
+        discovered_symbols = ["UCharacterMovementComponent", "ACharacter", "APlayerController", "UInventoryComponent", "UGameplayStatics"]
+
+    elif engine_id == "godot":
+        flavor = "Godot Engine (GDScript / PCK 补丁)"
+        injection_mode = "PCK 资源热补丁 / GDScript 拦截"
+        discovered_symbols = ["Player", "CharacterBody2D", "Movement", "Stats", "Inventory"]
+        safety_guards = [
+            "GDScript 强类型守卫：函数传参校验，防止空引用崩溃",
+            "物理处理守卫：_physics_process 内部限制速度向量模长",
+        ]
+
+    elif engine_id == "re-engine":
+        flavor = "Capcom RE-Engine"
+        injection_mode = "REFramework Lua SDK 注入"
+        discovered_symbols = ["via.motion.MotionHelper", "app.PlayerSpeedManager", "app.DamageCalculator", "via.hid.GamePad"]
+        safety_guards = [
+            "SDK 原生托管对象指针校验，防止悬挂引用闪退",
+            "Lua Hook 异常安全沙箱静默隔离",
+        ]
+
+    else:
+        flavor = engine_name
+        injection_mode = "通用运行时注入"
+        discovered_symbols = ["Player.Speed", "Player.Health", "Inventory.Items", "GameEngine.Update"]
+        safety_guards = [
+            "内存数值范围溢出拦截 (Clamp)",
+            "主线程执行保护，防止跨线程竞态条件",
+        ]
+
+    cfg = llm.load_config()
+    has_llm = bool(str(cfg.get("api_key") or "").strip() or "localhost" in cfg.get("api_endpoint", "") or "127.0.0.1" in cfg.get("api_endpoint", ""))
+    provider = cfg.get("provider", "deepseek")
+    model = cfg.get("model", "deepseek-chat")
+
+    return {
+        "game_name": os.path.basename(os.path.normpath(game_dir)),
+        "game_dir": game_dir,
+        "engine_id": engine_id,
+        "engine_name": engine_name,
+        "flavor": flavor,
+        "target_binary": target_binary,
+        "primary_exe": primary_exe,
+        "executables": exes,
+        "discovered_symbols": discovered_symbols[:10],
+        "injection_mode": injection_mode,
+        "safety_guards": safety_guards,
+        "has_llm": has_llm,
+        "llm_info": {
+            "has_key": has_llm,
+            "provider": provider,
+            "model": model,
+        },
+    }

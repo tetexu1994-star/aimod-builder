@@ -291,6 +291,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             "/api/games/launch": self._handle_games_launch,
             "/api/mod/interact": self._handle_mod_interact,
             "/api/mod/pin": self._handle_mod_pin,
+            "/api/rea/overview": self._handle_rea_overview,
         }
 
         handler_fn = routes.get(path)
@@ -318,9 +319,10 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
 
     def _handle_process(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
+        force_refresh = bool(body.get("force_refresh", False))
         if not game_dir:
             return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
-        status = process.check_game_status(game_dir)
+        status = process.check_game_status(game_dir, force_refresh=force_refresh)
         return HTTPStatus.OK, {"success": True, "data": status}
 
     def _handle_plan(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
@@ -509,6 +511,16 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         res = discovery.launch_game(game_dir, appid)
         return (HTTPStatus.OK if res.get("success") else HTTPStatus.INTERNAL_SERVER_ERROR), res
 
+    def _handle_rea_overview(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        game_dir = _safe_path(body.get("game_dir", ""))
+        if not game_dir:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
+        try:
+            overview = inspector.get_reverse_engineering_overview(game_dir)
+            return HTTPStatus.OK, {"success": True, "data": overview}
+        except Exception as e:
+            return HTTPStatus.INTERNAL_SERVER_ERROR, {"success": False, "error": str(e)}
+
     def _handle_mod_interact(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
         user_prompt = str(body.get("prompt", "")).strip()
@@ -596,6 +608,37 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         symbol_evidence = rea_insight.get("symbol_evidence", {})
         boundary = rea_insight.get("boundary_scope", {})
         guards = rea_insight.get("exception_guards", [])
+
+        # If LLM is NOT configured, verify if this is a predefined quick preset vs freeform query
+        if not has_llm:
+            prompt_lower = user_prompt.lower()
+            preset_keywords = ["移速", "速", "二段跳", "跳", "金币", "钱", "无敌", "减伤", "伤害", "剑气", "speed", "jump", "gold", "shield", "attack"]
+            is_preset_intent = any(k in prompt_lower for k in preset_keywords) and len(user_prompt) <= 30
+            is_question_or_freeform = (
+                any(q in prompt_lower for q in ["你", "啥", "什么", "怎么", "如何", "调了", "为什么", "是谁", "？", "?", "help", "hello", "hi", "帮助", "干了"])
+                or not is_preset_intent
+            )
+
+            if is_question_or_freeform:
+                return HTTPStatus.OK, {
+                    "success": True,
+                    "data": {
+                        "has_llm": False,
+                        "require_api_key": True,
+                        "reply": (
+                            f"⚠️ **当前尚未配置大模型 API Key（CC Switch）**\n\n"
+                            f"收到你的指令：*“{user_prompt}”*。\n\n"
+                            f"AI 需要连接大模型才能理解你的自然语言指令、结合游戏反编译符号编写定制代码。当前处于离线模式，无法通过自然语言进行深度理解与代码生成。\n\n"
+                            f"**操作指引：**\n"
+                            f"1. 点击右上角 **【⚙️ 模型配置 (CC Switch)】**\n"
+                            f"2. 输入你的 API Key（支持 DeepSeek / 官方 OpenAI / Claude / 本地 Ollama 等）并保存\n"
+                            f"3. 保存后即可随时通过自然语言对 AI 自由提问或让其创作专属 Mod！\n\n"
+                            f"*(💡 提示：在未配置 API Key 时，你也可以直接点击输入框上方的「快捷灵感」预设按钮体验基础 Mod。)*"
+                        ),
+                        "action": None,
+                        "rea_insight": rea_insight,
+                    }
+                }
 
         if has_llm:
             rea_section = (
@@ -762,11 +805,15 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
 
 
         if not reply:
-            reply = f"✨ 已通过 REA 逆向工程为你设计并挂钩 **【{action['mod_name']}】**！\n\n- 目标拦截点: `{action['hook_target']}`\n- 安全边界: {boundary.get('boundary_warning', '已开启物理与数值边界防护')}\n\n切回游戏即可直接体验，可在下方滑块调节数值，满意后点击「📌 固化为 Mod」！"
+            prefix_note = ""
+            if not has_llm:
+                prefix_note = "\n\n> 💡 **提示**：当前通过内置预设模板生效。若要让 AI 自由理解任意自然语言并定制编写 Mod，请点击右上角「⚙️ 模型配置」填入 API Key。"
+            reply = f"✨ 已通过 REA 逆向工程为你设计并挂钩 **【{action['mod_name']}】**！\n\n- 目标拦截点: `{action['hook_target']}`\n- 安全边界: {boundary.get('boundary_warning', '已开启物理与数值边界防护')}\n\n切回游戏即可直接体验，可在下方滑块调节数值，满意后点击「📌 固化为 Mod」！{prefix_note}"
 
         return HTTPStatus.OK, {
             "success": True,
             "data": {
+                "has_llm": has_llm,
                 "reply": reply,
                 "action": action,
                 "rea_insight": rea_insight,
@@ -889,6 +936,11 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         }
 
 
+class _ReusableThreadingHTTPServer(ThreadingHTTPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+
 class ModUIServer:
     """Encapsulates the threading HTTP server instance for the UI."""
 
@@ -907,7 +959,7 @@ class ModUIServer:
         if self._server is not None:
             return self.url
 
-        self._server = ThreadingHTTPServer((self.host, self.port), ModUIRequestHandler)
+        self._server = _ReusableThreadingHTTPServer((self.host, self.port), ModUIRequestHandler)
         if blocking:
             try:
                 self._server.serve_forever()
