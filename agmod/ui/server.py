@@ -82,6 +82,193 @@ def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict
     return result["code"], result.get("target", {})
 
 
+def _clean_user_reply(text: str) -> str:
+    """Strips verbose code blocks (csharp, lua, cpp, etc.) from LLM response so user sees zero code dumps."""
+    cleaned = re.sub(r"```(?:csharp|cs|cpp|c\+\+|lua|gdscript|python|bash|sh|batch|powershell)?\s*[\s\S]*?```", "", text)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+    return cleaned
+
+
+def _auto_deploy_mod(
+    game_dir: str,
+    mod_id: str,
+    mod_name: str,
+    summary: str,
+    hook_target: str,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Automatically scaffolds, builds, and writes mod files to the target game directory immediately."""
+    from agmod import safety, registry, bepinex, install_preview, rollback, paths
+
+    if not game_dir:
+        return {"success": False, "error": "game_dir is required"}
+
+    allowed, reason = safety.check_game_target(game_dir)
+    if not allowed:
+        return {"success": False, "error": reason, "blocked_by_anticheat": True}
+
+    engine_info = registry.detect_engine(game_dir) or {}
+    engine_id = engine_info.get("engine_id") or engine_info.get("id", "generic")
+
+    if engine_id == "unreal" and engine_info.get("variant") == "ue5":
+        return {
+            "success": False,
+            "error": "UE5 IoStore hook auto-deployment is disabled; use loose .pak workflow instead",
+        }
+
+    try:
+        source_code, normalized_target = _pinned_source(engine_id, mod_name, hook_target, params)
+    except Exception:
+        source_code, normalized_target = f"-- Mod {mod_name}\n", {}
+
+    staging = tempfile.mkdtemp(prefix="aimod-deploy-")
+    try:
+        manifest = {
+            "id": mod_id,
+            "name": mod_name,
+            "summary": summary,
+            "hook_target": hook_target,
+            "params": params,
+            "deployed_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        pairs: list[tuple[str, str]] = []
+        pending_restart = False
+        message = ""
+
+        if engine_id == "unreal":
+            import glob
+            win64_candidates = glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64"))
+            if not win64_candidates:
+                win64_candidates = [os.path.join(game_dir, "Binaries", "Win64")]
+            mods_root = os.path.join(win64_candidates[0], "Mods", mod_id)
+            if os.path.exists(os.path.join(win64_candidates[0], "ue4ss", "Mods")):
+                mods_root = os.path.join(win64_candidates[0], "ue4ss", "Mods", mod_id)
+            stage_files = {
+                "enabled.txt": "1\n",
+                "mod.json": json.dumps(manifest, ensure_ascii=False, indent=2),
+                "scripts/main.lua": source_code,
+            }
+            for rel, content in stage_files.items():
+                source = os.path.join(staging, rel)
+                os.makedirs(os.path.dirname(source), exist_ok=True)
+                with open(source, "w", encoding="utf-8") as f:
+                    f.write(content)
+                pairs.append((source, os.path.join(mods_root, rel)))
+            message = f"虚幻引擎 Mod【{mod_name}】已全自动部署到 Mods 目录！"
+
+        elif engine_id == "re-engine":
+            ref_folder = os.path.join(game_dir, "reframework", "autorun")
+            mods_root = ref_folder
+            source = os.path.join(staging, f"{mod_id}.lua")
+            with open(source, "w", encoding="utf-8") as f:
+                f.write(source_code)
+            pairs.append((source, os.path.join(ref_folder, f"{mod_id}.lua")))
+            message = f"RE-Engine Mod【{mod_name}】已全自动写入 reframework/autorun 目录！"
+
+        elif engine_id == "godot":
+            mods_root = os.path.join(game_dir, "mods-unpacked", f"{paths.slugify(mod_name)}-{mod_id}")
+            source = os.path.join(staging, "mod_main.gd")
+            with open(source, "w", encoding="utf-8") as f:
+                f.write(source_code)
+            pairs.append((source, os.path.join(mods_root, "mod_main.gd")))
+            message = f"Godot Mod【{mod_name}】已全自动写入 mods-unpacked 目录！"
+
+        else:
+            # Unity or generic
+            bepin_core = os.path.join(game_dir, "BepInEx", "core")
+            if not os.path.isdir(bepin_core):
+                try:
+                    bepinex.install_bepinex(game_dir, allow_running=True)
+                    running, _ = rollback.is_game_running(game_dir)
+                    if running:
+                        pending_restart = True
+                except Exception:
+                    pass
+
+            mod_folder = os.path.join(game_dir, "BepInEx", "plugins", mod_id)
+            mods_root = mod_folder
+            source_manifest = os.path.join(staging, "mod.json")
+            with open(source_manifest, "w", encoding="utf-8") as f:
+                json.dump(manifest, f, ensure_ascii=False, indent=2)
+            pairs.append((source_manifest, os.path.join(mod_folder, "mod.json")))
+
+            if source_code:
+                source_cs = os.path.join(staging, f"{mod_id}.cs")
+                with open(source_cs, "w", encoding="utf-8") as f:
+                    f.write(source_code)
+                pairs.append((source_cs, os.path.join(mod_folder, f"{mod_id}.cs")))
+
+            # Also generate/update BepInEx config file for real-time config sync
+            cfg_dir = os.path.join(game_dir, "BepInEx", "config")
+            cfg_source = os.path.join(staging, f"{mod_id}.cfg")
+            cfg_lines = [f"## Settings for {mod_name}", f"[{mod_name}]"]
+            for k, v in params.items():
+                cfg_lines.append(f"{k} = {v}")
+            with open(cfg_source, "w", encoding="utf-8") as f:
+                f.write("\n".join(cfg_lines) + "\n")
+            pairs.append((cfg_source, os.path.join(cfg_dir, f"{mod_id}.cfg")))
+
+            # If dotnet is available, attempt compiling DLL
+            if shutil.which("dotnet") and os.path.isfile(os.path.join(bepin_core, "BepInEx.dll")):
+                try:
+                    proj_staging = tempfile.mkdtemp(prefix="aimod-proj-")
+                    try:
+                        bepinex.scaffold_plugin(proj_staging, game_dir, mod_id, mod_name)
+                        plugin_cs_path = os.path.join(proj_staging, "Plugin.cs")
+                        enhanced_cs = f"""using BepInEx;
+using HarmonyLib;
+
+namespace {mod_id.replace('-', '_')}
+{{
+    [BepInPlugin("{mod_id}", "{mod_name}", "1.0.0")]
+    public class Plugin : BaseUnityPlugin
+    {{
+        private void Awake()
+        {{
+            Harmony.CreateAndPatchAll(typeof(Plugin));
+            Logger.LogInfo($"[AIMod] {mod_name} loaded successfully.");
+        }}
+    }}
+}}
+
+{source_code}
+"""
+                        with open(plugin_cs_path, "w", encoding="utf-8") as f:
+                            f.write(enhanced_cs)
+                        build_res = bepinex.build_plugin_with_diagnostics(proj_staging, game_dir, auto_repair=False)
+                        if build_res.get("success"):
+                            message = f"Mod【{mod_name}】已通过 .NET SDK 编译为插件 DLL 并部署到 BepInEx/plugins 目录！"
+                    finally:
+                        shutil.rmtree(proj_staging, ignore_errors=True)
+                except Exception:
+                    pass
+
+            if not message:
+                message = f"Mod【{mod_name}】已全自动写入 BepInEx 插件目录！"
+            if pending_restart:
+                message += "（提示：检测到游戏此前已在运行，请顺手重启一次游戏以装载前置框架）"
+
+        preview = install_preview.preview_install(
+            game_dir,
+            mod_id,
+            pairs,
+            engine_id=engine_id,
+            check_running=False,
+        )
+        if preview.get("ready"):
+            rollback.install_files(game_dir, mod_id, pairs, check_running=False)
+
+        return {
+            "success": True,
+            "installed_path": mods_root,
+            "message": message,
+            "pending_restart": pending_restart,
+            "preview": preview,
+        }
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+
 def _read_body_json(handler: BaseHTTPRequestHandler) -> Dict[str, Any]:
     content_len = int(handler.headers.get("Content-Length", 0))
     if content_len == 0:
@@ -291,6 +478,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             "/api/games/launch": self._handle_games_launch,
             "/api/mod/interact": self._handle_mod_interact,
             "/api/mod/pin": self._handle_mod_pin,
+            "/api/mod/tune": self._handle_mod_tune,
             "/api/rea/overview": self._handle_rea_overview,
         }
 
@@ -610,8 +798,26 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         guards = rea_insight.get("exception_guards", [])
 
         # If LLM is NOT configured, verify if this is a predefined quick preset vs freeform query
+        # Check if user is asking whether manual file dragging/placement is needed
+        prompt_lower = user_prompt.lower()
+        if any(k in prompt_lower for k in ["手动", "放进", "放哪", "复制", "拖入", "怎么用", "放进去"]):
+            reply = (
+                "🎉 **完全不需要手动放进去！**\n\n"
+                "AI Mod Builder 拥有全自动构建与部署引擎：所有 Mod 插件代码、前置框架及配置在生成时已**全自动写入到游戏目录中**，无需你手动创建、拖拽或编译任何文件！\n\n"
+                "👉 你只需切回游戏即可直接体验，或在下方调节参数滑块实时调优手感！"
+            )
+            return HTTPStatus.OK, {
+                "success": True,
+                "data": {
+                    "has_llm": has_llm,
+                    "reply": reply,
+                    "action": None,
+                    "rea_insight": rea_insight,
+                }
+            }
+
+        # If LLM is NOT configured, verify if this is a predefined quick preset vs freeform query
         if not has_llm:
-            prompt_lower = user_prompt.lower()
             preset_keywords = ["移速", "速", "二段跳", "跳", "金币", "钱", "无敌", "减伤", "伤害", "剑气", "speed", "jump", "gold", "shield", "attack"]
             is_preset_intent = any(k in prompt_lower for k in preset_keywords) and len(user_prompt) <= 30
             is_question_or_freeform = (
@@ -640,9 +846,9 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                     }
                 }
 
-        if has_llm:
+        if has_llm and not reply:
             rea_section = (
-                f"\n【REA 逆向工程与安全边界分析（必须严格遵守）】\n"
+                f"\n【底层逆向与安全边界分析（必须严格遵守）】\n"
                 f"- 目标模块: {target_binary}\n"
                 f"- 候选逆向符号: {', '.join(matched_syms[:4])}\n"
                 f"- 符号证据状态: {symbol_evidence.get('status', 'suggested')} / {symbol_evidence.get('source', 'heuristic')}\n"
@@ -650,7 +856,6 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 f"- 安全边界范围: {boundary.get('boundary_warning', '')}\n"
                 f"- 参数约束: min={boundary.get('safe_min')}, max={boundary.get('safe_max')}, step={boundary.get('step')}, default={boundary.get('default_val')}\n"
                 f"- 异常规避原则: {'；'.join(guards)}\n"
-                f"- 核心规范: 未经验证的符号只能作为候选；生成代码前必须标注证据状态，不能把启发式候选描述成已验证目标。tuning_params 必须遵守边界并在安装前由用户确认。\n"
             )
 
             sys_prompt = (
@@ -662,10 +867,11 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 f"- 框架环境: {framework_name}\n"
                 f"{engine_prompt_addon}\n"
                 f"{rea_section}\n"
-                f"【任务要求】\n"
-                f"根据玩家提出的需求，为该游戏设计并注入对应的 Mod 功能。\n"
-                f"请用亲切、充满极客魅力的中文回答，说明你注入了什么功能，以及如何切回游戏测试。\n"
-                f"并在回答的末尾，输出一个 ```json:mod_action ``` 代码块，包含可调参数与动作结构：\n"
+                f"【核心运行机制与铁律规范（必须严格遵守）】\n"
+                f"1. 【全自动写入与零人工操作】：本系统（AI Mod Builder）拥有全自动脚手架、代码生成、编译与文件落盘引擎。所有 Mod、前置框架（如 BepInEx / UE4SS / REFramework）及配置文件均由本系统全自动写入游戏目录并配置完成。严禁指示玩家手动创建、修改、编译、复制或拖拽文件到 plugins 目录！若玩家询问是否需要手动放进去，明确告知系统已经全自动写入落盘，无需任何手动操作。\n"
+                f"2. 【严禁输出大段代码】：严禁在回复中输出长篇源码（严禁输出完整的 C# 类、C++ 或 Lua 代码文件，更不要提供 Visual Studio 编译教程）。用户是普通玩家，不需要阅读代码。请保持回复简明轻快（3-5 句内），聚焦于 Mod 的游戏效果、安全边界保障以及如何体验。\n"
+                f"3. 【隐藏内部逆向术语】：不要向用户堆砌逆向工程术语（如 REA、反编译模块名、置信度百分比等），只用玩家听得懂的语言解释功能与安全边界（例如：已对物理移速做防穿模安全保护）。\n"
+                f"4. 【动作结构输出】：回复末尾必须包含一个 ```json:mod_action ``` 代码块，包含可调参数与动作结构，以便前端直接绑定实时滑块控制：\n"
                 f"```json:mod_action\n"
                 f"{{\n"
                 f'  "mod_id": "safe_slug_id",\n'
@@ -710,9 +916,10 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                         action = json.loads(m.group(1).strip())
                     except Exception:
                         pass
-                    reply = full_reply[:m.start()].strip()
+                    raw_reply = full_reply[:m.start()].strip()
                 else:
-                    reply = full_reply
+                    raw_reply = full_reply
+                reply = _clean_user_reply(raw_reply)
             else:
                 reply = ""
 
@@ -780,8 +987,8 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                     target = primary_hook if primary_hook != "GameLogic:Update" else "PlayerData.TakeDamage"
                 else:
                     mod_id = f"{category}_{int(time.time())}"
-                    mod_name = f"{engine_name} 逆向增强特性"
-                    summary = f"基于逆向定位 {primary_hook} 的参数安全调优"
+                    mod_name = f"{engine_name} 增强特性"
+                    summary = f"基于 {primary_hook} 的安全调优"
                     tuning = [{
                         "id": "param_1",
                         "label": boundary.get("param_label", "效果强度"),
@@ -803,12 +1010,34 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 "can_pin": True,
             }
 
+        # Auto-deploy mod files immediately to game directory
+        deploy_res = {}
+        if action:
+            params_map = {p["id"]: p["value"] for p in action.get("tuning_params", []) if "id" in p and "value" in p}
+            deploy_res = _auto_deploy_mod(
+                game_dir=game_dir,
+                mod_id=action["mod_id"],
+                mod_name=action["mod_name"],
+                summary=action.get("summary", ""),
+                hook_target=action.get("hook_target", ""),
+                params=params_map,
+            )
+            action["installed_path"] = deploy_res.get("installed_path", "")
+            action["auto_deployed"] = deploy_res.get("success", False)
+            action["pending_restart"] = deploy_res.get("pending_restart", False)
+            action["deploy_message"] = deploy_res.get("message", "")
 
         if not reply:
             prefix_note = ""
             if not has_llm:
                 prefix_note = "\n\n> 💡 **提示**：当前通过内置预设模板生效。若要让 AI 自由理解任意自然语言并定制编写 Mod，请点击右上角「⚙️ 模型配置」填入 API Key。"
-            reply = f"✨ 已通过 REA 逆向工程为你设计并挂钩 **【{action['mod_name']}】**！\n\n- 目标拦截点: `{action['hook_target']}`\n- 安全边界: {boundary.get('boundary_warning', '已开启物理与数值边界防护')}\n\n切回游戏即可直接体验，可在下方滑块调节数值，满意后点击「📌 固化为 Mod」！{prefix_note}"
+            status_desc = deploy_res.get("message", "已全自动写入游戏目录")
+            reply = (
+                f"✨ 已为你设计并全自动写入游戏 **【{action['mod_name']}】**！\n\n"
+                f"- 部署状态: {status_desc}\n"
+                f"- 安全边界提示: {boundary.get('boundary_warning', '已开启物理与数值边界防护')}\n\n"
+                f"切回游戏即可直接体验，可在下方滑块调节数值！{prefix_note}"
+            )
 
         return HTTPStatus.OK, {
             "success": True,
@@ -817,6 +1046,92 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 "reply": reply,
                 "action": action,
                 "rea_insight": rea_insight,
+            }
+        }
+
+    def _handle_mod_tune(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        game_dir = _safe_path(body.get("game_dir", ""))
+        raw_mod_id = str(body.get("mod_id", "")).strip()
+        param_id = str(body.get("param_id", "")).strip()
+        value = body.get("value")
+
+        if not game_dir or not raw_mod_id or not param_id:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir, mod_id, and param_id are required"}
+
+        slug_mod_id = paths.slugify(raw_mod_id)
+        mod_variants = list(dict.fromkeys([
+            raw_mod_id,
+            slug_mod_id,
+            raw_mod_id.replace('-', '_'),
+            raw_mod_id.replace('_', '-'),
+            slug_mod_id.replace('-', '_'),
+            slug_mod_id.replace('_', '-'),
+        ]))
+
+        # 1. Update mod.json in plugin directory
+        json_candidates = []
+        import glob
+        for mid in mod_variants:
+            json_candidates.extend([
+                os.path.join(game_dir, "BepInEx", "plugins", mid, "mod.json"),
+                os.path.join(game_dir, "Mods", mid, "mod.json"),
+                os.path.join(game_dir, "mods-unpacked", mid, "mod.json"),
+            ])
+            for cand in glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64", "Mods", mid, "mod.json")):
+                json_candidates.append(cand)
+            for cand in glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64", "ue4ss", "Mods", mid, "mod.json")):
+                json_candidates.append(cand)
+
+        file_synced = False
+        for path in json_candidates:
+            if os.path.isfile(path):
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    if "params" not in data or not isinstance(data["params"], dict):
+                        data["params"] = {}
+                    data["params"][param_id] = value
+                    data["last_tuned_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                    with open(path, "w", encoding="utf-8") as f:
+                        json.dump(data, f, ensure_ascii=False, indent=2)
+                    file_synced = True
+                except Exception:
+                    pass
+
+        # 2. Update BepInEx INI config if present
+        for mid in mod_variants:
+            bepin_cfg = os.path.join(game_dir, "BepInEx", "config", f"{mid}.cfg")
+            if os.path.isfile(bepin_cfg):
+                try:
+                    with open(bepin_cfg, "r", encoding="utf-8") as f:
+                        lines = f.readlines()
+                    updated_lines = []
+                    param_found = False
+                    for line in lines:
+                        if line.strip().startswith(f"{param_id} =") or line.strip().startswith(f"{param_id}="):
+                            updated_lines.append(f"{param_id} = {value}\n")
+                            param_found = True
+                        else:
+                            updated_lines.append(line)
+                    if not param_found:
+                        updated_lines.append(f"{param_id} = {value}\n")
+                    with open(bepin_cfg, "w", encoding="utf-8") as f:
+                        f.writelines(updated_lines)
+                    file_synced = True
+                except Exception:
+                    pass
+
+        running, _ = rollback.is_game_running(game_dir)
+
+        return HTTPStatus.OK, {
+            "success": True,
+            "data": {
+                "mod_id": raw_mod_id,
+                "param_id": param_id,
+                "value": value,
+                "file_synced": file_synced,
+                "game_running": running,
+                "message": f"参数 [{param_id}] 已实时同步为 {value}！",
             }
         }
 

@@ -1093,17 +1093,22 @@
         </div>
         <div class="gatekeeper-body">
           <div class="gatekeeper-step-desc">
-            <div class="gatekeeper-step-icon">🔒</div>
+            <div class="gatekeeper-step-icon">🎮</div>
             <div class="gatekeeper-step-text">
-              <h4>必须先启动游戏，AI 才能进行实时修改</h4>
-              <p>为了让 AI 写的每一个 Mod 能够<strong>在游戏画面里立刻生效</strong>，我们需要建立与游戏运行进程（PID）的双向热挂钩通道。请点击下方按钮启动游戏。</p>
+              <h4>启动游戏开启实时修改体验</h4>
+              <p>启动游戏建立双向通信通道，在游戏画面中实时体验数值调节；你也可以直接进入 Mod 制作工作台，由系统分析安全边界并自动生成注入 Mod 后再启动体验。</p>
             </div>
           </div>
 
           <div class="gatekeeper-actions">
-            <button class="btn btn-launch" style="padding: 12px 32px; font-size: 15px;" onclick="launchAndAdvance()">
-              ▶ 一键启动游戏并建立 AI 连接
-            </button>
+            <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+              <button class="btn btn-launch" style="padding: 12px 26px; font-size: 14px;" onclick="launchAndAdvance()">
+                ▶ 启动游戏并建立实时连接
+              </button>
+              <button class="btn btn-primary" style="padding: 12px 26px; font-size: 14px;" onclick="goToStage(3)">
+                🛠️ 直接进入 Mod 制作工作台 ➔
+              </button>
+            </div>
             <div class="gatekeeper-status-banner">
               <span class="pulse-dot" id="gatekeeper-pulse"></span>
               <span id="gatekeeper-status-text">正在监测游戏进程启动中...</span>
@@ -1111,7 +1116,6 @@
             <div style="display:flex; gap:16px; margin-top:8px; flex-wrap:wrap; justify-content:center;">
               <a href="javascript:void(0)" onclick="manualProcessRefresh()" style="font-size:12px; color:var(--primary); text-decoration:none;">手动刷新连接状态 ↻</a>
               <a href="javascript:void(0)" onclick="forceConnectToStudio()" style="font-size:12px; color:var(--emerald); text-decoration:none;">⚡ 游戏已在运行，立即接入工作台 ➔</a>
-              <a href="javascript:void(0)" onclick="skipLaunchToStudio()" style="font-size:12px; color:var(--text-dim); text-decoration:none;">暂不启动，离线编写 Mod ➔</a>
             </div>
           </div>
         </div>
@@ -1409,8 +1413,26 @@
         if (container) container.innerHTML = '';
       }
       currentGame = game;
-      // If already running, skip Gatekeeper straight to Stage 3!
+
+      // 1. 若游戏已经在运行中，直接进入工作台进行实时修改体验
       if (game.is_running) {
+        goToStage(3);
+        return;
+      }
+
+      // 2. 逻辑分支：如果可以启动后实时修改，让用户启动游戏实时修改体验；
+      //    如果不行（必须要 mod 注入后再生效），直接进入 mod 生成界面，
+      //    由系统自动处理游戏路径下的游戏并分析出处理边界，直接开始对话与大模型交互！
+      const eng = (game.engine || game.engine_name || '').toLowerCase();
+      const requiresModInjectionFirst = (
+        eng.includes('unity') ||
+        eng.includes('unreal') ||
+        eng.includes('re-engine') ||
+        eng.includes('godot') ||
+        !game.can_live_modify
+      );
+
+      if (requiresModInjectionFirst) {
         goToStage(3);
       } else {
         goToStage(2);
@@ -1628,7 +1650,7 @@
         <div class="msg-avatar">AI</div>
         <div class="msg-content" style="display:flex; align-items:center; gap:10px;">
           <span class="pulse-dot" style="background:var(--primary);"></span>
-          <span>正在对《${escapeHtml(game.name)}》进行 REA 底层逆向检测与架构解析...</span>
+          <span>正在分析《${escapeHtml(game.name)}》游戏架构与安全处理边界...</span>
         </div>
       `;
       container.appendChild(loadingMsg);
@@ -1656,62 +1678,52 @@
     }
 
     function renderREAOverviewGreeting(game, data) {
-      const symbolsPills = (data.discovered_symbols || []).map(s => `<code style="font-family:var(--mono); background:rgba(99,102,241,0.1); color:var(--primary); padding:2px 6px; border-radius:4px; font-size:12px;">${escapeHtml(s)}</code>`).join(' ');
-      const guardsHtml = (data.safety_guards || []).map(g => `<li>${escapeHtml(g)}</li>`).join('');
-
       let llmBannerHtml = '';
       if (!data.has_llm) {
         llmBannerHtml = `
-          <div style="margin-top:12px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.3); border-radius:8px; padding:12px 14px;">
+          <div style="margin-top:10px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); border-radius:8px; padding:10px 14px;">
             <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:#f59e0b; font-size:13px;">
-              <span>⚠️ 尚未配置大模型 API Key（当前为内置预设模式）</span>
+              <span>⚠️ 尚未配置大模型 API Key（当前为内置预设模板模式）</span>
             </div>
             <div style="font-size:12px; color:var(--text-muted); margin-top:4px; line-height:1.5;">
-              AI 需要连接大模型才能理解你的自然语言指令并编写定制代码。支持 DeepSeek / 官方 OpenAI / Claude / 本地 Ollama。
-            </div>
-            <div style="margin-top:8px;">
-              <button class="btn btn-sm btn-primary" onclick="openLLMModal()">⚙️ 立即配置大模型 API Key (CC Switch)</button>
+              AI 需要连接大模型才能理解任意自然语言自由编写 Mod。已为你准备基础快捷灵感，点击右上角「⚙️ 模型配置」可随时填入 Key 畅享自由创作。
             </div>
           </div>
         `;
       } else {
         const modelName = data.llm_info?.model || '已就绪';
         llmBannerHtml = `
-          <div style="margin-top:10px; display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--emerald); background:var(--emerald-bg); padding:4px 10px; border-radius:6px; border:1px solid rgba(16,185,129,0.25);">
+          <div style="margin-top:8px; display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--emerald); background:var(--emerald-bg); padding:4px 10px; border-radius:6px; border:1px solid rgba(16,185,129,0.25);">
             <span class="pulse-dot"></span>
-            <span>AI 大模型推理通道已就绪 (${escapeHtml(modelName)}) · 具备自然语言逆向推理能力</span>
+            <span>AI 大模型推理通道已就绪 (${escapeHtml(modelName)}) · 支持自然语言自由创作</span>
           </div>
         `;
       }
 
       const cardHtml = `
         <div style="display:flex; flex-direction:column; gap:8px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(99,102,241,0.15); padding-bottom:6px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="rea-badge">🎯 REA 逆向工程已就绪</span>
-              <strong style="font-size:13px;">《${escapeHtml(game.name)}》架构全景</strong>
+              <span style="font-size:16px;">🎮</span>
+              <strong style="font-size:14px;">《${escapeHtml(game.name)}》AI 创作助手已就绪</strong>
             </div>
             <span style="font-size:11px; color:var(--text-dim);">${escapeHtml(data.flavor || data.engine_name)}</span>
           </div>
 
-          <div style="font-size:13px; line-height:1.6; margin-top:4px;">
-            <div><strong>📦 核心模块:</strong> <code>${escapeHtml(data.target_binary)}</code> (主程序: <code>${escapeHtml(data.primary_exe)}</code>)</div>
-            <div><strong>💉 注入方案:</strong> <span style="color:var(--primary); font-weight:600;">${escapeHtml(data.injection_mode)}</span></div>
-            <div style="margin-top:4px;"><strong>🧬 提取逆向入口:</strong> ${symbolsPills || '通用接口'}</div>
-          </div>
-
-          <div style="margin-top:6px; background:rgba(0,0,0,0.15); border-radius:6px; padding:8px 12px; font-size:12px; color:var(--text-muted);">
-            <div style="font-weight:700; color:var(--text-main); margin-bottom:4px;">🛡️ 安全沙箱保护原则：</div>
-            <ul style="margin:0; padding-left:18px; line-height:1.5;">${guardsHtml}</ul>
+          <div style="font-size:13px; line-height:1.6; margin-top:4px; color:var(--text-muted);">
+            <div>🛡️ <strong>安全处理边界已就绪：</strong>已自动配置物理防穿模与内存保护边界，所有制作的 Mod 将全自动部署入库生效。</div>
           </div>
 
           ${llmBannerHtml}
 
           <div style="margin-top:8px; font-size:13px; color:var(--text-dim);">
-            👉 你可以直接在下方输入任何你想实现的功能（如：角色移动速度翻倍、无敌、背包无限空间等），或点击上方快捷灵感按钮！
+            👉 直接在下方输入你想要实现的特性（例如：“角色移动速度翻倍”、“解锁空中二段跳”、“金币掉落提高5倍”），AI 将全自动生成并写入游戏！
           </div>
         </div>
       `;
+
+      appendRawAIMessage(cardHtml, `《${game.name}》创作助手与安全边界已就绪。`);
+    }
 
       appendRawAIMessage(cardHtml, `已对《${game.name}》完成 REA 底层逆向检测。`);
     }
@@ -1771,36 +1783,13 @@
         .replace(/`([^`]+)`/g, '<code style="background:var(--code-bg); color:var(--code-text); padding:2px 5px; border-radius:4px; font-family:var(--mono); font-size:12px;">$1</code>')
         .replace(/\n/g, '<br>');
 
-      let reaHtml = '';
-      if (reaInsight) {
-        const syms = reaInsight.matched_symbols ? reaInsight.matched_symbols.slice(0, 3).map(s => `<code style="font-family:var(--mono); background:rgba(99,102,241,0.1); color:var(--primary); padding:1px 4px; border-radius:3px;">${escapeHtml(s)}</code>`).join(' ') : '';
-        const guardsText = escapeHtml((reaInsight.exception_guards || []).join(' · '));
-        const boundaryText = escapeHtml(reaInsight.boundary_scope?.boundary_warning || '已完成数值范围与物理碰撞安全约束');
-        const binName = escapeHtml(reaInsight.target_binary || 'Game Target');
-
-        reaHtml = `
-          <div class="rea-card">
-            <div class="rea-card-header">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span class="rea-badge">🔬 REA 逆向工程分析</span>
-                <span style="font-size:11px; color:var(--text-muted);">目标模块: <code style="font-family:var(--mono); color:var(--text-main); font-size:11px;">${binName}</code></span>
-              </div>
-              <span style="font-size:11px; color:var(--emerald); background:var(--emerald-bg); padding:1px 6px; border-radius:4px; font-weight:600;">置信度 ${Math.round((reaInsight.confidence || 0.35) * 100)}%</span>
-            </div>
-            <div class="rea-card-body">
-              <div class="rea-item">
-                <span class="rea-label">🎯 逆向定位符号:</span>
-                <span class="rea-val">${syms || '动态符号解析就绪'}</span>
-              </div>
-              <div class="rea-item">
-                <span class="rea-label">🛡️ 安全边界校验:</span>
-                <span class="rea-val" style="color:var(--emerald);">${boundaryText}</span>
-              </div>
-              <div class="rea-item">
-                <span class="rea-label">⚡ 异常防范守卫:</span>
-                <span class="rea-val" style="color:var(--text-muted);">${guardsText || '异常沙箱隔离'}</span>
-              </div>
-            </div>
+      let boundaryHtml = '';
+      if (reaInsight && reaInsight.boundary_scope && reaInsight.boundary_scope.boundary_warning) {
+        const boundaryText = escapeHtml(reaInsight.boundary_scope.boundary_warning);
+        boundaryHtml = `
+          <div style="margin-top:8px; display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--emerald); background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); padding:5px 12px; border-radius:6px;">
+            <span>🛡️</span>
+            <span><strong>安全处理边界提示：</strong>${boundaryText}</span>
           </div>
         `;
       }
@@ -1836,15 +1825,18 @@
           <div class="action-card">
             <div class="action-card-header">
               <span>✨ ${escapeHtml(action.mod_name)}</span>
-              <span style="font-size:11px; background:var(--emerald-bg); color:var(--emerald); padding:2px 7px; border-radius:4px;">🟢 实时生效中</span>
+              <span style="font-size:11px; background:var(--emerald-bg); color:var(--emerald); padding:2px 7px; border-radius:4px;">
+                ${action.pending_restart ? '🔄 已部署 · 首次需重启游戏生效' : '🟢 已全自动写入游戏 · 实时生效中'}
+              </span>
             </div>
             <div style="font-size:12px; color:var(--text-muted);">${escapeHtml(action.summary)}</div>
+            ${action.installed_path ? `<div style="font-size:11px; color:var(--text-dim); margin-top:2px;">📁 自动部署路径: <code>${escapeHtml(action.installed_path)}</code></div>` : ''}
             ${tuningHtml ? `<div class="tuning-group">${tuningHtml}</div>` : ''}
             <div class="action-card-footer">
               <span style="font-size:11px; color:var(--text-dim);">手感满意？</span>
               <div style="display:flex; gap:8px;">
-                <button type="button" class="btn btn-sm btn-primary" data-pin-action="${actionIndex}">📌 固化为永久 Mod</button>
-                <button class="btn btn-sm" onclick="showToast('已撤回此项热修改', 'info')">↩️ 撤销</button>
+                <button type="button" class="btn btn-sm btn-primary" data-pin-action="${actionIndex}">💾 固化为永久 Mod</button>
+                <button class="btn btn-sm" onclick="showToast('已还原为默认数值', 'info')">↩️ 重置</button>
               </div>
             </div>
           </div>
@@ -1864,7 +1856,7 @@
         <div class="msg-avatar">AI</div>
         <div class="msg-content">
           ${html}
-          ${reaHtml}
+          ${boundaryHtml}
           ${actionHtml}
           ${apiKeyBtnHtml}
         </div>
@@ -1968,13 +1960,38 @@
       showToast(`已实时调节 [${paramId}] = ${val}`, 'info');
     }
 
+    let tuneDebounceTimer = null;
     function tuneActionIndex(actionIndex, paramIndex, val) {
       const act = activeActions[actionIndex];
       const param = act?.tuning_params?.[paramIndex];
       if (!act || !param) return;
       if (!act.params) act.params = {};
-      act.params[param.id] = parseFloat(val) || val;
-      showToast(`已实时调节 [${param.id}] = ${val}`, 'info');
+      const numVal = parseFloat(val);
+      act.params[param.id] = isNaN(numVal) ? val : numVal;
+
+      clearTimeout(tuneDebounceTimer);
+      tuneDebounceTimer = setTimeout(async () => {
+        if (!currentGame) return;
+        try {
+          const resp = await fetch('/api/mod/tune', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              game_dir: currentGame.game_dir,
+              mod_id: act.mod_id,
+              param_id: param.id,
+              value: isNaN(numVal) ? val : numVal,
+              hook_target: act.hook_target || ''
+            })
+          });
+          const res = await resp.json();
+          if (res.success) {
+            showToast(`⚡ 已实时同步 [${param.label || param.id}] = ${val}`, 'success');
+          }
+        } catch (e) {
+          console.warn('Realtime tune sync error:', e);
+        }
+      }, 150);
     }
 
     function pinActionIndex(actionIndex) {

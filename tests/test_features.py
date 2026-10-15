@@ -506,6 +506,7 @@ class TestAntiCheatDetection(unittest.TestCase):
                         self.assertEqual(len(procs), 1)
                         self.assertEqual(procs[0]["pid"], 48588)
                         self.assertEqual(procs[0]["name"], "Raft.exe")
+            process.clear_process_cache()
 
 
 if __name__ == "__main__":

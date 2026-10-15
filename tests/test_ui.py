@@ -375,6 +375,63 @@ System.NullReferenceException: Object reference not set to an instance of an obj
                 self.assertIsNone(interact_res["data"]["action"])
                 self.assertIn("尚未配置大模型 API Key", interact_res["data"]["reply"])
 
+    def test_mod_interact_auto_deploys_and_tunes_params(self):
+        with tempfile.TemporaryDirectory() as game:
+            managed = os.path.join(game, "Raft_Data", "Managed")
+            os.makedirs(managed, exist_ok=True)
+            open(os.path.join(managed, "Assembly-CSharp.dll"), "w").close()
+            open(os.path.join(game, "Raft.exe"), "w").close()
+
+            # 1. Mod interact auto deploys files to game dir
+            code, res = _http_post(f"{self.base_url}/api/mod/interact", {
+                "game_dir": game,
+                "prompt": "角色移动速度增加 100%"
+            })
+            self.assertEqual(code, 200)
+            self.assertTrue(res["success"])
+            action = res["data"]["action"]
+            self.assertIsNotNone(action)
+            self.assertEqual(action["mod_id"], "speed_boost")
+            self.assertTrue(action.get("auto_deployed"))
+            # Verify file was written to disk
+            plugin_dir = os.path.join(game, "BepInEx", "plugins", "speed_boost")
+            self.assertTrue(os.path.exists(plugin_dir))
+            self.assertTrue(os.path.exists(os.path.join(plugin_dir, "mod.json")))
+
+            # 2. Test /api/mod/tune updates param in real-time
+            code, tune_res = _http_post(f"{self.base_url}/api/mod/tune", {
+                "game_dir": game,
+                "mod_id": "speed_boost",
+                "param_id": "multiplier",
+                "value": 3.5,
+                "hook_target": "PlayerController.Movement"
+            })
+            self.assertEqual(code, 200)
+            self.assertTrue(tune_res["success"])
+            self.assertEqual(tune_res["data"]["value"], 3.5)
+            self.assertTrue(tune_res["data"]["file_synced"])
+
+            # Verify on-disk file was updated
+            with open(os.path.join(plugin_dir, "mod.json"), "r", encoding="utf-8") as f:
+                saved_manifest = json.load(f)
+            self.assertEqual(saved_manifest["params"]["multiplier"], 3.5)
+
+    def test_manual_dragging_inquiry_clarification(self):
+        with tempfile.TemporaryDirectory() as game:
+            managed = os.path.join(game, "Raft_Data", "Managed")
+            os.makedirs(managed, exist_ok=True)
+            open(os.path.join(managed, "Assembly-CSharp.dll"), "w").close()
+            open(os.path.join(game, "Raft.exe"), "w").close()
+
+            code, res = _http_post(f"{self.base_url}/api/mod/interact", {
+                "game_dir": game,
+                "prompt": "需要我手动放进去？"
+            })
+            self.assertEqual(code, 200)
+            self.assertTrue(res["success"])
+            self.assertIn("完全不需要手动放进去", res["data"]["reply"])
+            self.assertIn("全自动", res["data"]["reply"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

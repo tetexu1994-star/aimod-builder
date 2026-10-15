@@ -44,6 +44,12 @@ _PROCESS_CACHE: dict[str, Any] = {"timestamp": 0.0, "processes": []}
 _PROCESS_CACHE_TTL = 3.0  # seconds
 
 
+def clear_process_cache() -> None:
+    """Clear cached process list to ensure fresh process queries."""
+    _PROCESS_CACHE["timestamp"] = 0.0
+    _PROCESS_CACHE["processes"] = []
+
+
 def _scan_dir_executables(game_dir: str) -> list[str]:
     """Fast shallow walk of game directory to locate executables, skipping heavy asset folders."""
     if not os.path.isdir(game_dir):

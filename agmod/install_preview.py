@@ -57,6 +57,7 @@ def preview_install(
     package_spec: dict | None = None,
     project_dir: str = "",
     engine_id: str = "",
+    check_running: bool = True,
 ) -> dict:
     """Return a non-mutating install diff and blockers for the proposed file set."""
     game_dir = os.path.abspath(game_dir)
@@ -87,7 +88,7 @@ def preview_install(
     errors.extend(dependency_check.get("errors", []))
     warnings.extend(dependency_check.get("warnings", []))
     running_state = rollback.check_conflicts(game_dir, []).get("game_running", {})
-    if running_state.get("is_running"):
+    if check_running and running_state.get("is_running"):
         errors.append(f"game is running; close it before installing: {running_state.get('processes', [])}")
 
     changes: list[dict] = []

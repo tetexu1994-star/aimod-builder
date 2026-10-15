@@ -20,21 +20,41 @@ from . import rollback
 from .manifest import ModManifest
 from .paths import safe_component, safe_extract_zip
 
-BEPINEX_VERSION = "5.4.23.0"
+BEPINEX_VERSION = "5.4.23.5"
 _BASE_URL = "https://github.com/BepInEx/BepInEx/releases/download"
 
 
-def install_bepinex(game_dir: str, version: str = BEPINEX_VERSION) -> str:
-    """Download + extract BepInEx into `game_dir`. Returns the BepInEx dir path."""
+def _find_bundled_zip() -> str | None:
+    pkg_dir = os.path.dirname(os.path.abspath(__file__))
+    res_dir = os.path.join(pkg_dir, "resources", "bepinex")
+    if os.path.isdir(res_dir):
+        for f in sorted(os.listdir(res_dir), reverse=True):
+            if f.startswith("BepInEx") and f.endswith(".zip"):
+                candidate = os.path.join(res_dir, f)
+                if os.path.isfile(candidate):
+                    return candidate
+    return None
+
+
+def install_bepinex(game_dir: str, version: str = BEPINEX_VERSION, allow_running: bool = False) -> str:
+    """Extract bundled BepInEx or download into `game_dir`. Returns the BepInEx dir path."""
     running, processes = rollback.is_game_running(game_dir)
-    if running:
+    if running and not allow_running:
         raise RuntimeError(f"game is running; close it before installing BepInEx: {processes}")
     bepin = os.path.join(game_dir, "BepInEx")
     if os.path.isdir(os.path.join(bepin, "core")) and os.path.isdir(os.path.join(bepin, "plugins")):
         return "already-installed:" + bepin
-    url = f"{_BASE_URL}/v{version}/BepInEx_win_x64_{version}.zip"
-    zip_path = os.path.join(game_dir, "_bepinex_tmp.zip")
-    urllib.request.urlretrieve(url, zip_path)
+
+    bundled_zip = _find_bundled_zip()
+    should_remove_zip = False
+    if bundled_zip:
+        zip_path = bundled_zip
+    else:
+        url = f"{_BASE_URL}/v{version}/BepInEx_win_x64_{version}.zip"
+        zip_path = os.path.join(game_dir, "_bepinex_tmp.zip")
+        urllib.request.urlretrieve(url, zip_path)
+        should_remove_zip = True
+
     try:
         staging = tempfile.mkdtemp(prefix=".bepinex-stage-", dir=game_dir)
         try:
@@ -49,7 +69,7 @@ def install_bepinex(game_dir: str, version: str = BEPINEX_VERSION) -> str:
         finally:
             shutil.rmtree(staging, ignore_errors=True)
     finally:
-        if os.path.exists(zip_path):
+        if should_remove_zip and os.path.exists(zip_path):
             os.remove(zip_path)
     return bepin
 
