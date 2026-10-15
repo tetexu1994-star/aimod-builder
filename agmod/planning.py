@@ -308,7 +308,8 @@ def validate_project(project_dir: str, stage: str = "pre_build") -> dict:
     if manifest.engine == "unity":
         required_files = ["Plugin.cs"]
     elif manifest.engine == "unreal":
-        if manifest.entry == os.path.join("scripts", "main.lua"):
+        entry_normalized = (manifest.entry or "").replace("\\", "/").strip()
+        if entry_normalized == "scripts/main.lua":
             required_files = ["enabled.txt", os.path.join("scripts", "main.lua")]
         else:
             required_files = ["mod.json"]

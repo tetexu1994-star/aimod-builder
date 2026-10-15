@@ -479,10 +479,12 @@ class TestAntiCheatDetection(unittest.TestCase):
             game_dir = os.path.join(base_dir, "Phantom Blade Zero")
             os.makedirs(os.path.join(game_dir, "EasyAntiCheat"))
             with mock.patch.object(safety, "_active_anticheat_status", return_value=([], "")):
-                games = discovery.scan_installed_games(extra_dirs=[game_dir])
-            self.assertEqual(len(games), 1)
-            self.assertTrue(games[0]["has_anticheat"])
-            self.assertFalse(games[0]["anticheat_blocked"])
+                with mock.patch.object(discovery, "find_all_steam_libraries", return_value=[]):
+                    games = discovery.scan_installed_games(extra_dirs=[game_dir])
+            target = next((g for g in games if os.path.abspath(g["game_dir"]) == os.path.abspath(game_dir)), None)
+            self.assertIsNotNone(target)
+            self.assertTrue(target["has_anticheat"])
+            self.assertFalse(target["anticheat_blocked"])
 
 
 if __name__ == "__main__":
