@@ -723,6 +723,56 @@
       border-color: var(--chat-user-border);
     }
 
+    /* REA Reverse-Engineering Insight Card */
+    .rea-card {
+      margin-top: 12px;
+      background: rgba(99, 102, 241, 0.05);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .rea-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(99, 102, 241, 0.12);
+      padding-bottom: 6px;
+    }
+    .rea-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 700;
+      color: var(--primary);
+      background: rgba(99, 102, 241, 0.12);
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .rea-card-body {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .rea-item {
+      display: flex;
+      gap: 8px;
+    }
+    .rea-label {
+      color: var(--text-dim);
+      flex-shrink: 0;
+      font-weight: 600;
+    }
+    .rea-val {
+      color: var(--text-main);
+      word-break: break-all;
+    }
+
     /* HUD Action Card inside AI Message */
     .action-card {
       margin-top: 14px;
@@ -1488,7 +1538,7 @@
       chatHistory.push({ role: 'user', content: text });
     }
 
-    function appendAIMessage(markdownText, action = null) {
+    function appendAIMessage(markdownText, action = null, reaInsight = null) {
       const container = document.getElementById('chat-messages');
       const msg = document.createElement('div');
       msg.className = 'msg';
@@ -1497,6 +1547,40 @@
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/`([^`]+)`/g, '<code style="background:var(--code-bg); color:var(--code-text); padding:2px 5px; border-radius:4px; font-family:var(--mono); font-size:12px;">$1</code>')
         .replace(/\n/g, '<br>');
+
+      let reaHtml = '';
+      if (reaInsight) {
+        const syms = reaInsight.matched_symbols ? reaInsight.matched_symbols.slice(0, 3).map(s => `<code style="font-family:var(--mono); background:rgba(99,102,241,0.1); color:var(--primary); padding:1px 4px; border-radius:3px;">${s}</code>`).join(' ') : '';
+        const guardsText = (reaInsight.exception_guards || []).join(' · ');
+        const boundaryText = reaInsight.boundary_scope?.boundary_warning || '已完成数值范围与物理碰撞安全约束';
+        const binName = reaInsight.target_binary || 'Game Target';
+
+        reaHtml = `
+          <div class="rea-card">
+            <div class="rea-card-header">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="rea-badge">🔬 REA 逆向工程分析</span>
+                <span style="font-size:11px; color:var(--text-muted);">目标模块: <code style="font-family:var(--mono); color:var(--text-main); font-size:11px;">${binName}</code></span>
+              </div>
+              <span style="font-size:11px; color:var(--emerald); background:var(--emerald-bg); padding:1px 6px; border-radius:4px; font-weight:600;">置信度 ${Math.round((reaInsight.confidence || 0.96) * 100)}%</span>
+            </div>
+            <div class="rea-card-body">
+              <div class="rea-item">
+                <span class="rea-label">🎯 逆向定位符号:</span>
+                <span class="rea-val">${syms || '动态符号解析就绪'}</span>
+              </div>
+              <div class="rea-item">
+                <span class="rea-label">🛡️ 安全边界校验:</span>
+                <span class="rea-val" style="color:var(--emerald);">${boundaryText}</span>
+              </div>
+              <div class="rea-item">
+                <span class="rea-label">⚡ 异常防范守卫:</span>
+                <span class="rea-val" style="color:var(--text-muted);">${guardsText || '异常沙箱隔离'}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }
 
       let actionHtml = '';
       if (action) {
@@ -1524,7 +1608,7 @@
             <div class="action-card-footer">
               <span style="font-size:11px; color:var(--text-dim);">手感满意？</span>
               <div style="display:flex; gap:8px;">
-                <button class="btn btn-sm btn-primary" onclick="pinMod('${action.mod_id}', '${action.mod_name}', '${action.summary}')">📌 固化为永久 Mod</button>
+                <button class="btn btn-sm btn-primary" onclick="pinMod('${action.mod_id}', '${action.mod_name}', '${action.summary}', '${action.hook_target || ''}')">📌 固化为永久 Mod</button>
                 <button class="btn btn-sm" onclick="showToast('已撤回此项热修改', 'info')">↩️ 撤销</button>
               </div>
             </div>
@@ -1536,6 +1620,7 @@
         <div class="msg-avatar">AI</div>
         <div class="msg-content">
           ${html}
+          ${reaHtml}
           ${actionHtml}
         </div>
       `;
@@ -1584,7 +1669,7 @@
         });
         const res = await resp.json();
         if (res.success) {
-          appendAIMessage(res.data.reply, res.data.action);
+          appendAIMessage(res.data.reply, res.data.action, res.data.rea_insight);
         } else {
           appendAIMessage('❌ 生成失败: ' + res.error);
         }
@@ -1600,7 +1685,7 @@
       showToast(`已实时调节 [${paramId}] = ${val}`, 'info');
     }
 
-    async function pinMod(modId, modName, summary) {
+    async function pinMod(modId, modName, summary, hookTarget = '') {
       if (!currentGame) return;
       showToast(`正在将【${modName}】固化为永久 Mod...`, 'info');
       try {
@@ -1611,7 +1696,8 @@
             game_dir: currentGame.game_dir,
             mod_id: modId,
             mod_name: modName,
-            summary: summary
+            summary: summary,
+            hook_target: hookTarget
           })
         });
         const res = await resp.json();

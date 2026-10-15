@@ -17,7 +17,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable, Dict, Optional, Tuple
 
-from agmod import codegen, discovery, doctor, llm, log_repair, logs, paths, planning, process, registry, rollback, saves
+from agmod import codegen, discovery, doctor, inspector, llm, log_repair, logs, paths, planning, process, registry, rollback, saves
 
 logger = logging.getLogger("agmod.ui")
 
@@ -434,7 +434,25 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         reply = ""
         action = None
 
+        # 1. Reverse-Engineering Symbol & Boundary Analysis (REA Grounding)
+        rea_insight = inspector.analyze_reverse_engineering_context(game_dir, user_prompt)
+        target_binary = rea_insight.get("target_binary", "Game Binary")
+        matched_syms = rea_insight.get("matched_symbols", [])
+        boundary = rea_insight.get("boundary_scope", {})
+        guards = rea_insight.get("exception_guards", [])
+
         if has_llm:
+            rea_section = (
+                f"\n【REA 逆向工程与安全边界分析（必须严格遵守）】\n"
+                f"- 目标模块: {target_binary}\n"
+                f"- 命中逆向符号: {', '.join(matched_syms[:4])}\n"
+                f"- 推荐主挂钩点: {rea_insight.get('primary_hook', '')}\n"
+                f"- 安全边界范围: {boundary.get('boundary_warning', '')}\n"
+                f"- 参数约束: min={boundary.get('safe_min')}, max={boundary.get('safe_max')}, step={boundary.get('step')}, default={boundary.get('default_val')}\n"
+                f"- 异常规避原则: {'；'.join(guards)}\n"
+                f"- 核心规范: 你的 hook_target 必须基于上述逆向符号；生成的 tuning_params 滑块范围必须严格处于安全边界内，确保游戏无异常崩溃！\n"
+            )
+
             sys_prompt = (
                 f"你是一位顶尖的实时游戏 Mod 架构工程师兼 AI 创作助手。\n"
                 f"当前玩家正在玩的游戏信息：\n"
@@ -443,6 +461,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 f"- 游戏引擎: {engine_name} ({engine_id})\n"
                 f"- 框架环境: {framework_name}\n"
                 f"{engine_prompt_addon}\n"
+                f"{rea_section}\n"
                 f"【任务要求】\n"
                 f"根据玩家提出的需求，为该游戏设计并注入对应的 Mod 功能。\n"
                 f"请用亲切、充满极客魅力的中文回答，说明你注入了什么功能，以及如何切回游戏测试。\n"
@@ -454,7 +473,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 f'  "summary": "一句话功能描述",\n'
                 f'  "category": "player|combat|economy|visual",\n'
                 f'  "tuning_params": [\n'
-                f'    {{"id": "param_1", "label": "参数标签", "type": "slider", "min": 1.0, "max": 5.0, "step": 0.1, "value": 2.0}}\n'
+                f'    {{"id": "param_1", "label": "{boundary.get("param_label", "参数调节")}", "type": "slider", "min": {boundary.get("safe_min", 1.0)}, "max": {boundary.get("safe_max", 5.0)}, "step": {boundary.get("step", 0.1)}, "value": {boundary.get("default_val", 2.0)}}}\n'
                 f'  ],\n'
                 f'  "hook_target": "类名:方法名",\n'
                 f'  "can_pin": true\n'
@@ -569,6 +588,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             "data": {
                 "reply": reply,
                 "action": action,
+                "rea_insight": rea_insight,
             }
         }
 

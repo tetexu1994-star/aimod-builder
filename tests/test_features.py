@@ -100,6 +100,28 @@ class TestInspector(unittest.TestCase):
             self.assertEqual(res["engine"]["id"], "unreal")
             self.assertIn("ue4ss", res["recommended_strategy"]["persistent_mod"].lower())
 
+    def test_analyze_reverse_engineering_context(self):
+        from agmod.inspector import analyze_reverse_engineering_context
+        with tempfile.TemporaryDirectory() as game_dir:
+            # Unreal project
+            with open(os.path.join(game_dir, "PBZero.uproject"), "w") as f:
+                f.write("{}")
+
+            # Test movement speed prompt
+            res = analyze_reverse_engineering_context(game_dir, "移动速度翻倍并开启两倍移速")
+            self.assertEqual(res["category"], "movement_speed")
+            self.assertIn("UCharacterMovementComponent:SetMaxWalkSpeed", res["matched_symbols"])
+            self.assertTrue(res["boundary_scope"]["safe_min"] > 0)
+            self.assertTrue(len(res["exception_guards"]) > 0)
+            self.assertIn("ue4ss", res["implementation_strategy"].lower())
+
+            # Test defense / godmode prompt
+            res_def = analyze_reverse_engineering_context(game_dir, "无敌不死，免疫一切伤害")
+            self.assertEqual(res_def["category"], "combat_defense")
+            self.assertIn("ACharacter:TakeDamage", res_def["matched_symbols"])
+            self.assertIn("伤害", res_def["boundary_scope"]["param_label"])
+            self.assertTrue(len(res_def["exception_guards"]) > 0)
+
 
 class TestProcessDiscovery(unittest.TestCase):
     def test_find_game_executables(self):
