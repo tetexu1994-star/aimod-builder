@@ -1591,23 +1591,8 @@
         return;
       }
 
-      // 2. 逻辑分支：如果可以启动后实时修改，让用户启动游戏实时修改体验；
-      //    如果不行（必须要 mod 注入后再生效），直接进入 mod 生成界面，
-      //    由系统自动处理游戏路径下的游戏并分析出处理边界，直接开始对话与大模型交互！
-      const eng = (game.engine || game.engine_name || '').toLowerCase();
-      const requiresModInjectionFirst = (
-        eng.includes('unity') ||
-        eng.includes('unreal') ||
-        eng.includes('re-engine') ||
-        eng.includes('godot') ||
-        !game.can_live_modify
-      );
-
-      if (requiresModInjectionFirst) {
-        goToStage(3);
-      } else {
-        goToStage(2);
-      }
+      // 2. 正常流程进入第 2 步（启动与连接）：用户可自主选择启动游戏或直接进入工作台
+      goToStage(2);
     }
 
     // --- Stage 2: Gatekeeper Launch & Link ---
@@ -1623,6 +1608,16 @@
         coverImg.style.display = 'block';
       } else {
         coverImg.style.display = 'none';
+      }
+
+      const statusText = document.getElementById('gatekeeper-status-text');
+      if (statusText) {
+        statusText.textContent = '游戏未运行，可点击启动游戏开启实时修改，或直接进入 Mod 制作工作台';
+        statusText.style.color = 'var(--text-muted)';
+      }
+      const pulseDot = document.getElementById('gatekeeper-pulse');
+      if (pulseDot) {
+        pulseDot.style.background = 'var(--text-dim)';
       }
 
       startProcessPolling(game);
