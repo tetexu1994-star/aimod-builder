@@ -30,7 +30,7 @@ tools = [
     "scaffold_godot_mod", "install_godot_mod",
     "read_mod_logs", "diagnose_runtime_error", "create_save_backup", "list_save_backups", "restore_save_backup",
     "generate_hook_template", "generate_hook_from_evidence",
-    "check_game_status", "uninstall_mod", "rollback_game", "list_installs", "check_install_conflicts",
+    "check_game_status", "uninstall_mod", "rollback_game", "list_installs", "check_install_conflicts", "preview_install",
     "launch_ui",
     "check_update", "update_mod", "package_mod", "validate_package",
     "rea_managed_members", "rea_analyze_js", "rea_inspect_pe",

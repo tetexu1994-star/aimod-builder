@@ -8,6 +8,7 @@ installed and maintained than to a single hook file.
 from __future__ import annotations
 
 import json
+import glob
 import os
 import re
 from typing import Any
@@ -75,14 +76,21 @@ def _dependency(
 def _installed_loader(game_dir: str, engine_id: str) -> tuple[str, str]:
     """Return a conservative (status, evidence) pair for the local loader."""
     checks = {
-        "unity": (os.path.join(game_dir, "BepInEx", "core"), "BepInEx/core"),
-        "unreal": (os.path.join(game_dir, "ue4ss"), "ue4ss/"),
-        "re-engine": (os.path.join(game_dir, "reframework"), "reframework/"),
-        "godot": (os.path.join(game_dir, "mods-unpacked"), "mods-unpacked/"),
-        "dotnet-xna": (os.path.join(game_dir, "ModLoader"), "ModLoader/"),
+        "unity": ([os.path.join(game_dir, "BepInEx", "core")], "BepInEx/core"),
+        "unreal": (
+            glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64", "ue4ss"))
+            + [os.path.join(game_dir, "Binaries", "Win64", "ue4ss"), os.path.join(game_dir, "ue4ss")],
+            "Binaries/Win64/ue4ss",
+        ),
+        "re-engine": ([os.path.join(game_dir, "reframework")], "reframework/"),
+        "godot": ([os.path.join(game_dir, "mods-unpacked")], "mods-unpacked/"),
+        "dotnet-xna": ([os.path.join(game_dir, "ModLoader")], "ModLoader/"),
     }
-    path, label = checks.get(engine_id, ("", ""))
-    return ("installed", f"local loader directory: {label}") if path and os.path.isdir(path) else ("missing", "")
+    paths, label = checks.get(engine_id, ([], ""))
+    for path in paths:
+        if path and os.path.isdir(path):
+            return "installed", f"local loader directory: {label}"
+    return "missing", ""
 
 
 def resolve_package_dependencies(game_dir: str, package_spec: dict) -> dict:
@@ -120,6 +128,84 @@ def resolve_package_dependencies(game_dir: str, package_spec: dict) -> dict:
         "dependencies": dependencies,
         "manifest_dependencies": manifest_dependencies,
         "unresolved": [item["id"] for item in dependencies if item["status"] in {"missing", "unresolved"}],
+    }
+
+
+def _version_markers(engine_id: str, game_dir: str) -> list[str]:
+    roots = {
+        "unity": [os.path.join(game_dir, "BepInEx")],
+        "unreal": glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64", "ue4ss")) + [
+            os.path.join(game_dir, "Binaries", "Win64", "ue4ss"),
+            os.path.join(game_dir, "ue4ss"),
+            os.path.join(game_dir, "UE4SS"),
+        ],
+        "re-engine": [os.path.join(game_dir, "reframework")],
+        "godot": [os.path.join(game_dir, "mods-unpacked")],
+        "dotnet-xna": [os.path.join(game_dir, "ModLoader")],
+    }.get(engine_id, [])
+    names = ("version.txt", "Version", "VERSION", "version.json", "changelog.txt", "CHANGELOG.md")
+    values: list[str] = []
+    for root in roots:
+        for name in names:
+            path = os.path.join(root, name)
+            if not os.path.isfile(path):
+                continue
+            try:
+                with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                    values.append(f.read(16384))
+            except OSError:
+                continue
+    return values
+
+
+def check_dependency_compatibility(game_dir: str, package_spec: dict) -> dict:
+    """Check required loader/API prerequisites without claiming unreadable versions are verified."""
+    resolved = resolve_package_dependencies(game_dir, package_spec)
+    engine_id = str(package_spec.get("engine", {}).get("id", package_spec.get("engine_id", "generic")))
+    marker_text = "\n".join(_version_markers(engine_id, game_dir))
+    errors: list[str] = []
+    warnings: list[str] = []
+    compatibility_record = package_spec.get("compatibility", {}) if isinstance(package_spec.get("compatibility"), dict) else {}
+    if str(compatibility_record.get("game_version", "")).strip().lower() in {"", "record before release"}:
+        warnings.append("game version has not been recorded in compatibility.json")
+    checks: list[dict] = []
+    for dep in resolved["dependencies"]:
+        required = bool(dep.get("required"))
+        status = dep.get("status")
+        expected = str(dep.get("resolved_version") or dep.get("version") or "")
+        detected = ""
+        if marker_text:
+            match = re.search(r"\b\d+\.\d+\.\d+(?:\.\d+)?\b", marker_text)
+            detected = match.group(0) if match else ""
+        compatibility = "unknown"
+        if status == "missing":
+            compatibility = "missing"
+            if required:
+                errors.append(f"required dependency is missing: {dep.get('id')}@{expected}")
+        elif status == "installed":
+            if not detected:
+                warnings.append(f"installed dependency version is not readable: {dep.get('id')}")
+            elif detected == expected or detected.startswith(expected + ".") or expected.startswith(detected + "."):
+                compatibility = "compatible"
+            else:
+                compatibility = "incompatible"
+                errors.append(f"dependency version mismatch: {dep.get('id')} expected {expected}, found {detected}")
+        checks.append({
+            "id": dep.get("id"),
+            "kind": dep.get("kind"),
+            "required": required,
+            "status": status,
+            "expected_version": expected,
+            "detected_version": detected,
+            "compatibility": compatibility,
+            "evidence": dep.get("evidence", ""),
+        })
+    return {
+        "ready": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "checks": checks,
+        "manifest_dependencies": resolved["manifest_dependencies"],
     }
 
 

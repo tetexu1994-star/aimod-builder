@@ -185,6 +185,25 @@ System.NullReferenceException: Object reference not set to an instance of an obj
             self.assertTrue(res["success"])
             self.assertEqual(res["data"]["engine"]["id"], "unity")
 
+    def test_install_preview_endpoint(self):
+        with tempfile.TemporaryDirectory() as tmp_game, tempfile.TemporaryDirectory() as tmp_source:
+            Path(tmp_game, "UnityPlayer.dll").write_text("dummy", encoding="utf-8")
+            core = Path(tmp_game, "BepInEx", "core")
+            core.mkdir(parents=True)
+            Path(tmp_game, "BepInEx", "version.txt").write_text("5.4.23.0", encoding="utf-8")
+            source = Path(tmp_source, "Demo.dll")
+            source.write_bytes(b"demo")
+            code, res = _http_post(f"{self.base_url}/api/install/preview", {
+                "game_dir": tmp_game,
+                "mod_id": "demo-mod",
+                "engine_id": "unity",
+                "files": [{"source": str(source), "target": "BepInEx/plugins/Demo.dll"}],
+            })
+            self.assertEqual(code, 200)
+            self.assertTrue(res["success"])
+            self.assertTrue(res["data"]["ready"])
+            self.assertEqual(res["data"]["summary"]["add"], 1)
+
     def test_logs_read_endpoint(self):
         with tempfile.TemporaryDirectory() as tmp:
             log_dir = os.path.join(tmp, "BepInEx")

@@ -2,6 +2,14 @@
 
 ## 2026-10-15
 
+### Evidence Normalization and Install Dry-Run
+
+- Normalized UE4SS, REFramework, REA and Cpp2IL symbol shapes into typed `HookTarget` records with source/status/confidence and parameter signatures; generated hooks preserve this provenance.
+- `inspect_feature` and mod planning now carry `normalized_targets` alongside raw observed symbols.
+- Added `agmod/install_preview.py` for non-mutating install previews: add/overwrite/unchanged file-tree diff, required dependency compatibility, loader version evidence, duplicate paths, unsafe targets and ownership conflicts.
+- Pinning from the UI and the MCP tool surface now run the preview before `rollback.install_files`; high-risk ownership conflicts and missing/incompatible dependencies block installation.
+- UE4SS dependency detection now recognizes nested `Binaries/Win64/ue4ss` installs; compatibility records warn when game version or loader version cannot be read.
+
 ### Real Evidence and Package Structure
 
 - Added `agmod/symbols.py` to collect observed symbol evidence from REA managed-member search and local UE4SS, REFramework, Godot and text dump artifacts. Heuristic symbols remain explicitly `suggested`, never `verified`.

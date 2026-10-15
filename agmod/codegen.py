@@ -36,6 +36,8 @@ def _result(target: HookTarget, language: str, framework: str, code: str, instru
         "target": target.to_dict(),
         "evidence": {
             "source": target.evidence_source,
+            "status": target.evidence_status,
+            "verified": target.verified,
             "confidence": target.confidence,
             "signature": target.signature,
             "overload_key": target.overload_key,

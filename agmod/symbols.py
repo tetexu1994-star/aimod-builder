@@ -6,6 +6,7 @@ import re
 from dataclasses import asdict, dataclass
 
 from . import rea
+from .evidence import normalize_hook_target
 
 _TEXT_SUFFIXES = {".txt", ".json", ".lua", ".cs", ".h", ".hpp", ".cpp", ".log", ".md"}
 _SKIP_DIRS = {"content", "paks", "movies", "video", "sound", "audio", "textures", "__pycache__", ".git"}
@@ -22,6 +23,7 @@ class SymbolCandidate:
     path: str = ""
     line: int = 0
     signature: str = ""
+    hook_target: dict | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -68,7 +70,9 @@ def collect_symbol_evidence(game_dir: str, engine_id: str, query: str, limit: in
         if managed:
             try:
                 for raw in rea.fast_search_members(managed[0], query, limit=limit):
-                    candidates.append(SymbolCandidate(raw[:240], "rea_fast_search", "observed", 0.82, managed[0]))
+                    candidate = SymbolCandidate(raw[:240], "rea_fast_search", "observed", 0.82, managed[0], signature=raw[:500])
+                    candidate.hook_target = normalize_hook_target(candidate.to_dict(), "unity", source="rea_fast_search", status="observed", confidence=0.82)
+                    candidates.append(candidate)
             except Exception as exc:
                 errors.append(f"REA managed search failed: {exc}")
 
@@ -94,8 +98,20 @@ def collect_symbol_evidence(game_dir: str, engine_id: str, query: str, limit: in
                         if symbol in seen:
                             continue
                         seen.add(symbol)
-                        source = "ue4ss_dump" if engine_id == "unreal" else "reframework_dump" if engine_id == "re-engine" else "local_dump"
-                        candidates.append(SymbolCandidate(symbol, source, "observed", 0.68, path, line_no, line.strip()[:300]))
+                        path_lower = path.lower().replace("\\", "/")
+                        if engine_id == "unreal":
+                            source = "ue4ss_dump"
+                        elif engine_id == "re-engine":
+                            source = "reframework_dump"
+                        elif "il2cpp" in path_lower or os.path.basename(path_lower) in {"dump.cs", "script.json"}:
+                            source = "cpp2il_dump"
+                        elif ".decomp-" in path_lower:
+                            source = "ilspy_dump"
+                        else:
+                            source = "local_dump"
+                        candidate = SymbolCandidate(symbol, source, "observed", 0.68, path, line_no, line.strip()[:300])
+                        candidate.hook_target = normalize_hook_target(candidate.to_dict(), engine_id, source=source, status="observed", confidence=0.68)
+                        candidates.append(candidate)
                         if len(candidates) >= limit:
                             break
             except OSError as exc:

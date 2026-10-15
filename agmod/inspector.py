@@ -9,6 +9,7 @@ import glob
 import os
 
 from . import rea, symbols
+from .evidence import normalize_hook_target
 from .registry import detect_engine, get_adapter
 
 
@@ -31,6 +32,7 @@ def inspect_feature(game_dir: str, keyword: str) -> dict:
         "status": observed.get("status", "unknown"),
         "verified": False,
         "observations": observed.get("candidates", []),
+        "normalized_targets": [item["hook_target"] for item in observed.get("candidates", []) if item.get("hook_target")],
         "errors": observed.get("errors", []),
     }
     recommended_route = {}
@@ -48,6 +50,12 @@ def inspect_feature(game_dir: str, keyword: str) -> dict:
                         "source": "rea_fast_search",
                         "status": "observed" if matches else "unknown",
                         "observations": [{"symbol": item, "source": "rea_fast_search", "status": "observed"} for item in matches],
+                        "normalized_targets": [
+                            target for target in (
+                                normalize_hook_target(item, engine_id, source="rea_fast_search", status="observed", confidence=0.82)
+                                for item in matches
+                            ) if target
+                        ],
                     })
             except Exception:
                 pass
@@ -281,6 +289,7 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
             "status": evidence_status,
             "verified": evidence_status == "verified",
             "observations": observed.get("candidates", []),
+            "normalized_targets": [item["hook_target"] for item in observed.get("candidates", []) if item.get("hook_target")],
             "errors": observed.get("errors", []),
         },
         "primary_hook": matched_symbols[0] if matched_symbols else "",

@@ -33,7 +33,7 @@ except ImportError:  # pragma: no cover
         def run(self):
             print(f"FastMCP '{self.name}' stub: mcp not installed. Install with `pip install mcp`")
 
-from agmod import bepinex, codegen, config, doctor, inspector, knowledge, log_repair, logs, memory, pack, pattern, planning, process, rea, repair, rollback, safety, saves, tmodloader, updater
+from agmod import bepinex, codegen, config, doctor, inspector, install_preview, knowledge, log_repair, logs, memory, pack, pattern, planning, process, rea, repair, rollback, safety, saves, tmodloader, updater
 from agmod.adapters.godot import GodotAdapter
 from agmod.adapters.reengine import ReEngineAdapter
 from agmod.adapters.unreal import UnrealAdapter
@@ -507,6 +507,35 @@ def check_install_conflicts(game_dir: str, target_files_json: str) -> str:
     except json.JSONDecodeError as e:
         return json.dumps({"error": f"invalid JSON: {e}"})
     return json.dumps(rollback.check_conflicts(game_dir, files), ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def preview_install(
+    game_dir: str,
+    mod_id: str,
+    files_json: str,
+    package_spec_json: str = "",
+    project_dir: str = "",
+    engine_id: str = "",
+) -> str:
+    """Dry-run a file install and report tree changes, dependency compatibility and ownership conflicts."""
+    try:
+        files = json.loads(files_json)
+        package_spec = json.loads(package_spec_json) if package_spec_json else None
+    except json.JSONDecodeError as e:
+        return json.dumps({"error": f"invalid JSON: {e}"})
+    try:
+        result = install_preview.preview_install(
+            game_dir,
+            mod_id,
+            files,
+            package_spec=package_spec,
+            project_dir=project_dir,
+            engine_id=engine_id,
+        )
+    except (OSError, TypeError, ValueError) as e:
+        return json.dumps({"error": str(e)})
+    return json.dumps(result, ensure_ascii=False, indent=2)
 
 
 @mcp.tool()

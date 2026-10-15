@@ -89,7 +89,9 @@ The implementation should never jump directly from a user prompt to a guessed ho
 ## Current implementation checkpoints
 
 - `agmod/symbols.py` records REA and local dump observations separately from heuristic suggestions.
+- `agmod/evidence.py` normalizes UE4SS, REFramework, REA and Cpp2IL symbol shapes into typed `HookTarget` values used by code generation.
 - `agmod/packages.py` resolves loader/API dependency graphs and materializes code, config, assets, localization, manifest and documentation groups.
 - `plan_mod` emits `package-spec.json`, and `validate_project` checks both the source project and its distribution shape.
 - `pack.package_mod` carries dependency metadata and declared layers into the distributable ZIP.
+- `agmod/install_preview.py` produces the pre-install tree diff and blocks unsafe targets, ownership conflicts and missing/incompatible required dependencies.
 - Runtime installation and real Windows game verification remain intentionally separate release gates.

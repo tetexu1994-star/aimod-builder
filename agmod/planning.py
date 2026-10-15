@@ -129,6 +129,7 @@ def create_mod_plan(
     if not keywords:
         keywords = [request.strip()]
     candidate_symbols: list[str] = []
+    normalized_targets: list[dict] = []
     recommended_strategy: dict = {}
     inspection_warnings: list[str] = []
     for keyword in keywords:
@@ -136,10 +137,16 @@ def create_mod_plan(
             ins = inspector.inspect_feature(game_dir, keyword)
             if ins.get("success"):
                 candidate_symbols.extend(ins.get("symbol_matches", []))
+                normalized_targets.extend(ins.get("symbol_evidence", {}).get("normalized_targets", []))
                 recommended_strategy = recommended_strategy or ins.get("recommended_strategy", {})
         except Exception:
             inspection_warnings.append(f"inspection failed for keyword: {keyword}")
     candidate_symbols = list(dict.fromkeys(candidate_symbols))
+    unique_targets = {}
+    for target in normalized_targets:
+        if isinstance(target, dict):
+            unique_targets[(target.get("engine"), target.get("full_class_name"), target.get("method_name"), target.get("signature"))] = target
+    normalized_targets = list(unique_targets.values())
 
     package_spec = packages.build_package_spec(
         game_dir=game_dir,
@@ -164,6 +171,7 @@ def create_mod_plan(
         "package_spec": package_spec,
         "prerequisites": prerequisites,
         "candidate_symbols": candidate_symbols,
+        "normalized_targets": normalized_targets,
         "inspection_keywords": keywords,
         "inspection_warnings": inspection_warnings,
         "recommended_strategy": recommended_strategy,

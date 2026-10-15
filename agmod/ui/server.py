@@ -20,7 +20,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable, Dict, Optional, Tuple
 
-from agmod import codegen, discovery, doctor, inspector, llm, log_repair, logs, paths, planning, process, registry, rollback, saves
+from agmod import codegen, discovery, doctor, inspector, install_preview, llm, log_repair, logs, paths, planning, process, registry, rollback, saves
 
 logger = logging.getLogger("agmod.ui")
 
@@ -259,6 +259,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             "/api/codegen/evidence": self._handle_codegen_evidence,
             "/api/mods/list": self._handle_mods_list,
             "/api/mods/conflicts": self._handle_mods_conflicts,
+            "/api/install/preview": self._handle_install_preview,
             "/api/mods/uninstall": self._handle_mods_uninstall,
             "/api/mods/rollback": self._handle_mods_rollback,
             "/api/saves/list": self._handle_saves_list,
@@ -372,6 +373,21 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         incoming_files = body.get("incoming_files", [])
         conflicts = rollback.check_conflicts(game_dir, incoming_files)
         return HTTPStatus.OK, {"success": True, "data": conflicts}
+
+    def _handle_install_preview(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        game_dir = _safe_path(body.get("game_dir", ""))
+        mod_id = paths.slugify(body.get("mod_id", "preview_mod"))
+        files = body.get("files", [])
+        project_dir = _safe_path(body.get("project_dir", ""))
+        package_spec = body.get("package_spec")
+        engine_id = str(body.get("engine_id", ""))
+        try:
+            preview = install_preview.preview_install(
+                game_dir, mod_id, files, package_spec=package_spec, project_dir=project_dir, engine_id=engine_id
+            )
+        except (OSError, ValueError, TypeError) as exc:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": str(exc)}
+        return HTTPStatus.OK, {"success": True, "data": preview}
 
     def _handle_mods_uninstall(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
@@ -721,6 +737,18 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 message = f"Mod【{mod_name}】已成功固化到游戏目录！下次直接在 Steam 启动游戏依然生效。"
                 mods_root = mod_folder
 
+            preview = install_preview.preview_install(
+                game_dir,
+                mod_id,
+                pairs,
+                engine_id=engine_id,
+            )
+            if not preview.get("ready"):
+                return HTTPStatus.CONFLICT, {
+                    "success": False,
+                    "error": "install preview found blockers",
+                    "install_preview": preview,
+                }
             rollback.install_files(game_dir, mod_id, pairs)
         finally:
             shutil.rmtree(staging, ignore_errors=True)
@@ -733,6 +761,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 "path": mods_root,
                 "message": message,
                 "hook_target": normalized_target,
+                "install_preview": preview,
             }
         }
 

@@ -10,7 +10,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agmod import packages, symbols
+from agmod import codegen, evidence, packages, symbols
 from agmod.manifest import ModManifest
 from agmod.pack import package_mod, validate_package
 from agmod.planning import create_mod_plan, validate_project
@@ -27,6 +27,7 @@ class TestSymbolEvidence(unittest.TestCase):
             self.assertEqual(result["candidates"][0]["source"], "ue4ss_dump")
             self.assertEqual(result["candidates"][0]["status"], "observed")
             self.assertIn("TakeDamage", result["candidates"][0]["symbol"])
+            self.assertEqual(result["candidates"][0]["hook_target"]["method_name"], "TakeDamage")
 
     def test_reframework_dump_is_observed_evidence(self):
         with tempfile.TemporaryDirectory() as game:
@@ -48,6 +49,34 @@ class TestSymbolEvidence(unittest.TestCase):
             self.assertEqual(result["status"], "observed")
             self.assertEqual(result["candidates"][0]["source"], "rea_fast_search")
             self.assertEqual(result["candidates"][0]["status"], "observed")
+
+    def test_cpp2il_dump_preserves_normalized_target(self):
+        with tempfile.TemporaryDirectory() as game:
+            dump = Path(game, "GameAssembly.il2cpp-dump", "dump.cs")
+            dump.parent.mkdir(parents=True)
+            dump.write_text("System.Void Game.Player.Controller::AddGold(System.Int32 amount)\n", encoding="utf-8")
+            result = symbols.collect_symbol_evidence(game, "unity", "AddGold")
+            self.assertEqual(result["candidates"][0]["source"], "cpp2il_dump")
+            self.assertEqual(result["candidates"][0]["hook_target"]["full_class_name"], "Game.Player.Controller")
+
+    def test_symbol_shapes_normalize_to_hook_targets(self):
+        unreal = evidence.normalize_hook_target("ACharacter:TakeDamage(float amount)", "unreal", source="ue4ss_dump")
+        self.assertEqual(unreal["class_name"], "ACharacter")
+        self.assertEqual(unreal["method_name"], "TakeDamage")
+        self.assertEqual(unreal["parameters"][0]["name"], "amount")
+        ref = evidence.normalize_hook_target("sdk.hook('app.PlayerManager', 'update')", "re-engine", source="reframework_dump")
+        self.assertEqual(ref["full_class_name"], "app.PlayerManager")
+        self.assertEqual(ref["method_name"], "update")
+        cpp2il = evidence.normalize_hook_target("Game.Player::AddGold(int32 amount)", "unity", source="cpp2il_dump")
+        self.assertEqual(cpp2il["full_class_name"], "Game.Player")
+        self.assertEqual(cpp2il["method_name"], "AddGold")
+        rea_signature = evidence.normalize_hook_target("System.Void Game.Player.Controller::AddGold(System.Int32 amount)", "unity", source="rea_fast_search")
+        self.assertEqual(rea_signature["full_class_name"], "Game.Player.Controller")
+        self.assertEqual(rea_signature["method_name"], "AddGold")
+        generated = codegen.generate_hook_from_evidence(rea_signature)
+        self.assertTrue(generated["validation"]["valid"])
+        self.assertEqual(generated["evidence"]["status"], "observed")
+        self.assertFalse(generated["evidence"]["verified"])
 
 
 class TestPackagePlanning(unittest.TestCase):
