@@ -118,6 +118,20 @@ class TestProcessDiscovery(unittest.TestCase):
             self.assertIsInstance(running, bool)
             self.assertIsInstance(procs, list)
 
+    def test_is_subpath_and_status(self):
+        from agmod.process import _is_subpath, check_game_status
+        with tempfile.TemporaryDirectory() as game_dir:
+            sub = os.path.join(game_dir, "bin", "Game.exe")
+            outside = os.path.join(tempfile.gettempdir(), "other.exe")
+            self.assertTrue(_is_subpath(game_dir, sub))
+            self.assertFalse(_is_subpath(game_dir, outside))
+
+            status = check_game_status(game_dir)
+            self.assertIn("is_running", status)
+            self.assertIn("running_processes", status)
+            self.assertIn("processes", status)
+            self.assertIsInstance(status["processes"], list)
+
 
 class TestGodotAdapter(unittest.TestCase):
     def test_godot_lifecycle(self):

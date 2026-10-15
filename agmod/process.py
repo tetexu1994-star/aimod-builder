@@ -6,7 +6,10 @@ the agent before applying file modifications that could fail due to file locks
 """
 from __future__ import annotations
 
+import csv
+import io
 import os
+import subprocess
 import sys
 
 try:
@@ -24,6 +27,8 @@ _IGNORED_EXES = {
     "vcredist_x64.exe",
     "vcredist_x86.exe",
     "dxwebsetup.exe",
+    "vc_redist.x64.exe",
+    "vc_redist.x86.exe",
 }
 
 
@@ -44,46 +49,175 @@ def find_game_executables(game_dir: str) -> list[str]:
     return sorted(exes)
 
 
+def _is_subpath(parent: str, child: str) -> bool:
+    """Return True if child path is inside parent directory."""
+    if not parent or not child:
+        return False
+    try:
+        p = os.path.normcase(os.path.abspath(os.path.realpath(parent)))
+        c = os.path.normcase(os.path.abspath(os.path.realpath(child)))
+        return os.path.commonpath([p, c]) == p
+    except (ValueError, OSError):
+        return False
+
+
+def _get_running_processes_tasklist(known_exes_lower: set[str]) -> list[dict]:
+    """Native Windows fallback using tasklist command (zero dependency)."""
+    hits = []
+    creationflags = 0
+    if sys.platform == "win32":
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+
+    try:
+        proc = subprocess.run(
+            ["tasklist", "/FO", "CSV", "/NH"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="gbk",
+            errors="ignore",
+            creationflags=creationflags,
+            timeout=3,
+        )
+        if proc.returncode != 0:
+            return []
+
+        reader = csv.reader(io.StringIO(proc.stdout))
+        for row in reader:
+            if len(row) >= 2:
+                name = row[0].strip()
+                if name.lower() in known_exes_lower:
+                    try:
+                        pid = int(row[1].strip())
+                    except ValueError:
+                        continue
+                    hits.append({
+                        "pid": pid,
+                        "name": name,
+                        "exe": "",
+                    })
+    except Exception:
+        pass
+    return hits
+
+
+def _get_running_processes_ps(known_exes_lower: set[str]) -> list[dict]:
+    """Native POSIX fallback using ps command (zero dependency)."""
+    hits = []
+    try:
+        proc = subprocess.run(
+            ["ps", "-eo", "pid,comm"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=3,
+        )
+        if proc.returncode != 0:
+            return []
+        for line in proc.stdout.splitlines():
+            parts = line.strip().split(None, 1)
+            if len(parts) == 2:
+                pid_str, comm = parts
+                comm_base = os.path.basename(comm).lower()
+                if comm_base in known_exes_lower:
+                    try:
+                        pid = int(pid_str)
+                    except ValueError:
+                        continue
+                    hits.append({
+                        "pid": pid,
+                        "name": comm,
+                        "exe": "",
+                    })
+    except Exception:
+        pass
+    return hits
+
+
 def get_running_game_processes(game_dir: str) -> list[dict]:
     """Return active processes whose executable path or name matches game_dir."""
-    if psutil is None:
+    if not game_dir or not os.path.isdir(game_dir):
         return []
+
     game_dir_abs = os.path.realpath(game_dir)
+    found_exes = find_game_executables(game_dir)
+    known_exes_lower = {e.lower() for e in found_exes}
+
+    # Also include the folder name itself as possible binary name (e.g. Raft -> raft.exe)
+    base_name = os.path.basename(os.path.normpath(game_dir)).lower()
+    if base_name:
+        known_exes_lower.add(base_name)
+        known_exes_lower.add(f"{base_name}.exe")
+
     hits = []
-    for proc in psutil.process_iter(["pid", "name", "exe", "cwd"]):
+    seen_pids = set()
+
+    # Step 1: Use psutil if available
+    if psutil is not None:
         try:
-            info = proc.info
-            p_name = (info.get("name") or "").lower()
-            p_exe = info.get("exe") or ""
-            p_exe_abs = os.path.realpath(p_exe) if p_exe else ""
-
-            matched = False
-            # Check 1: Exe is inside game directory
-            if p_exe_abs:
+            for proc in psutil.process_iter(["pid", "name", "exe", "cwd"]):
                 try:
-                    matched = os.path.commonpath([game_dir_abs, p_exe_abs]) == game_dir_abs
-                except ValueError:
+                    info = proc.info
+                    pid = info.get("pid")
+                    if pid is None or pid in seen_pids:
+                        continue
+
+                    p_name = info.get("name") or ""
+                    p_name_low = p_name.lower()
+                    p_exe = info.get("exe") or ""
+                    cwd = info.get("cwd") or ""
+
                     matched = False
-            else:
-                cwd = info.get("cwd") or ""
-                try:
-                    cwd_abs = os.path.realpath(cwd) if cwd else ""
-                except OSError:
-                    cwd_abs = ""
-                if cwd_abs:
-                    try:
-                        matched = os.path.commonpath([game_dir_abs, cwd_abs]) == game_dir_abs
-                    except ValueError:
-                        matched = False
 
-            if matched:
-                hits.append({
-                    "pid": info["pid"],
-                    "name": info.get("name") or p_name,
-                    "exe": p_exe or "",
-                })
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            continue
+                    # Check 1: Executable path is inside game directory
+                    if p_exe and _is_subpath(game_dir_abs, p_exe):
+                        matched = True
+                    # Check 2: Working directory is inside game directory
+                    elif cwd and _is_subpath(game_dir_abs, cwd):
+                        matched = True
+                    # Check 3: Process name matches known game executables
+                    elif p_name_low and p_name_low in known_exes_lower:
+                        matched = True
+
+                    if matched:
+                        seen_pids.add(pid)
+                        hits.append({
+                            "pid": pid,
+                            "name": p_name or p_name_low,
+                            "exe": p_exe or "",
+                        })
+                except (psutil.NoSuchProcess, psutil.ZombieProcess):
+                    continue
+                except psutil.AccessDenied:
+                    # Windows access denied on exe/cwd: fall back to name check
+                    try:
+                        p_name = proc.name()
+                        if p_name and p_name.lower() in known_exes_lower:
+                            pid = proc.pid
+                            if pid not in seen_pids:
+                                seen_pids.add(pid)
+                                hits.append({
+                                    "pid": pid,
+                                    "name": p_name,
+                                    "exe": "",
+                                })
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+    # Step 2: If psutil is absent or found 0 hits, fall back to native OS commands
+    if not hits:
+        fallback_hits = []
+        if sys.platform == "win32":
+            fallback_hits = _get_running_processes_tasklist(known_exes_lower)
+        else:
+            fallback_hits = _get_running_processes_ps(known_exes_lower)
+
+        for h in fallback_hits:
+            if h["pid"] not in seen_pids:
+                seen_pids.add(h["pid"])
+                hits.append(h)
 
     return hits
 
@@ -104,6 +238,6 @@ def check_game_status(game_dir: str) -> dict:
         "executables": exes,
         "is_running": running,
         "running_processes": running_procs,
+        "processes": running_procs,
         "lock_warning": "Game is currently running! File operations (install/update/uninstall) may fail due to file locks." if running else None,
     }
-
