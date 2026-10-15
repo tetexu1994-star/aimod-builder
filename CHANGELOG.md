@@ -26,6 +26,7 @@
 - Enhanced Log console with level filtering (`All`, `Errors`, `Warnings`), instant copy feedback, and dedicated crash diagnostic preview cards.
 - Restyled Savegame Time Machine with visual snapshot cards, relative timestamps, and one-click restore.
 - Verified responsive layouts on 1440px desktop and 390px mobile viewports with zero horizontal overflow.
+- Tightened interaction states: hover styles no longer override disabled controls, focus rings are visible, workflow steppers and the brand are real buttons, game cards support keyboard activation, and password fields no longer trigger browser form warnings.
 
 ### Hardened
 

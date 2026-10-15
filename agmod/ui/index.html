@@ -125,6 +125,10 @@
       letter-spacing: -0.02em;
       cursor: pointer;
       user-select: none;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      text-align: left;
     }
     .brand-icon {
       width: 28px;
@@ -166,6 +170,8 @@
       gap: 7px;
       padding: 5px 12px;
       border-radius: 20px;
+      border: 0;
+      background: transparent;
       font-size: 12px;
       font-weight: 600;
       color: var(--text-dim);
@@ -227,11 +233,33 @@
       white-space: nowrap;
       user-select: none;
     }
-    button.btn:hover {
+    button.btn:hover:not(:disabled),
+    button.btn:focus-visible {
       background: var(--bg-card-hover);
       color: var(--text-main);
       border-color: var(--border-hover);
       transform: translateY(-1px);
+    }
+    button.btn:focus-visible,
+    .step-item:focus-visible,
+    .brand:focus-visible,
+    .pill-btn:focus-visible,
+    .sidebar-tab-btn:focus-visible {
+      outline: 2px solid var(--border-focus);
+      outline-offset: 3px;
+    }
+    button.btn:disabled,
+    button.btn[aria-disabled="true"] {
+      cursor: not-allowed;
+      opacity: 0.58;
+      filter: saturate(0.72);
+      transform: none;
+    }
+    button.btn:hover:disabled,
+    button.btn:hover[aria-disabled="true"] {
+      background: var(--bg-card);
+      border-color: var(--border);
+      transform: none;
     }
     button.btn:active {
       transform: translateY(0);
@@ -242,7 +270,8 @@
       border-color: var(--primary) !important;
       box-shadow: 0 2px 10px var(--primary-glow);
     }
-    button.btn-primary:hover {
+    button.btn-primary:hover:not(:disabled),
+    button.btn-primary:focus-visible {
       background: var(--primary-hover) !important;
       border-color: var(--primary-hover) !important;
       color: var(--primary-ink) !important;
@@ -254,7 +283,8 @@
       border: 1px solid #10b981 !important;
       box-shadow: 0 4px 16px var(--emerald-glow);
     }
-    button.btn-launch:hover {
+    button.btn-launch:hover:not(:disabled),
+    button.btn-launch:focus-visible {
       background: linear-gradient(135deg, #047857, #059669) !important;
       color: #ffffff !important;
       border-color: #059669 !important;
@@ -636,7 +666,8 @@
       white-space: nowrap;
       transition: all 0.15s ease;
     }
-    .pill-btn:hover {
+    .pill-btn:hover:not(:disabled),
+    .pill-btn:focus-visible {
       background: var(--primary);
       color: var(--primary-ink);
       border-color: var(--primary);
@@ -799,6 +830,11 @@
       border-bottom-color: var(--primary);
       background: var(--bg-card);
     }
+    .sidebar-tab-btn:hover,
+    .sidebar-tab-btn:focus-visible {
+      color: var(--text-main);
+      background: var(--bg-card-hover);
+    }
     .sidebar-content {
       flex: 1;
       padding: 22px;
@@ -933,33 +969,33 @@
 
   <!-- Top Navigation -->
   <header class="top-nav">
-    <div class="brand" onclick="goToStage(1)">
+    <button class="brand" type="button" onclick="goToStage(1)" aria-label="返回游戏选择">
       <div class="brand-icon">⚡</div>
       <span>AI Mod Builder</span>
       <span class="brand-badge">PRO</span>
-    </div>
+    </button>
 
     <!-- 4-Step Guided Workflow Stepper -->
     <div class="workflow-stepper">
-      <div class="step-item active" id="step-btn-1" onclick="goToStage(1)">
+      <button class="step-item active" id="step-btn-1" type="button" onclick="goToStage(1)">
         <span class="step-num">1</span>
         <span>挑选游戏</span>
-      </div>
+      </button>
       <span class="step-arrow">➔</span>
-      <div class="step-item" id="step-btn-2" onclick="goToStage(2)">
+      <button class="step-item" id="step-btn-2" type="button" onclick="goToStage(2)">
         <span class="step-num">2</span>
         <span>启动与连接</span>
-      </div>
+      </button>
       <span class="step-arrow">➔</span>
-      <div class="step-item" id="step-btn-3" onclick="goToStage(3)">
+      <button class="step-item" id="step-btn-3" type="button" onclick="goToStage(3)">
         <span class="step-num">3</span>
         <span>AI 创作与调优</span>
-      </div>
+      </button>
       <span class="step-arrow">➔</span>
-      <div class="step-item" id="step-btn-4" onclick="goToStage(4)">
+      <button class="step-item" id="step-btn-4" type="button" onclick="goToStage(4)">
         <span class="step-num">4</span>
         <span>固化 Mod</span>
-      </div>
+      </button>
     </div>
 
     <div class="nav-actions">
@@ -1098,7 +1134,7 @@
         <h3>大模型配置 (CC Switch / OpenAI 格式)</h3>
         <button class="btn btn-sm" onclick="closeLLMModal()">✕</button>
       </div>
-      <div class="modal-body">
+      <form class="modal-body" id="llm-config-form" onsubmit="return false;">
         <div class="form-group">
           <label>快速预设配置</label>
           <select id="llm-preset-select" onchange="onPresetChange()">
@@ -1116,13 +1152,13 @@
         </div>
         <div class="form-group">
           <label>API Key</label>
-          <input type="password" id="llm-key" placeholder="在此输入 API Key (如使用 CC Switch 或本地代理可留空或填默认key)">
+          <input type="password" id="llm-key" autocomplete="off" placeholder="在此输入 API Key (如使用 CC Switch 或本地代理可留空或填默认key)">
         </div>
         <div class="form-group">
           <label>模型名称 (Model Name)</label>
           <input type="text" id="llm-model" placeholder="claude-3-7-sonnet">
         </div>
-      </div>
+      </form>
       <div class="modal-footer">
         <button class="btn btn-sm" onclick="testLLMConnection()">⚡ 测试连接</button>
         <button class="btn btn-sm btn-primary" onclick="saveLLMConfig()">💾 保存配置</button>
@@ -1153,7 +1189,7 @@
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
       toast.className = 'toast';
-      toast.innerHTML = (type === 'success' ? '✅ ' : type === 'error' ? '❌ ' : 'ℹ️ ') + msg;
+      toast.textContent = (type === 'success' ? '✅ ' : type === 'error' ? '❌ ' : 'ℹ️ ') + String(msg ?? '');
       container.appendChild(toast);
       setTimeout(() => toast.remove(), 3500);
     }
@@ -1231,7 +1267,15 @@
       games.forEach(g => {
         const card = document.createElement('div');
         card.className = 'game-card';
+        card.setAttribute('role', 'button');
+        card.tabIndex = 0;
         card.onclick = () => selectGameAndAdvance(g);
+        card.onkeydown = (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            selectGameAndAdvance(g);
+          }
+        };
 
         const coverHtml = g.cover_url
           ? `<img src="${g.cover_url}" alt="${g.name}" onerror="this.parentElement.innerHTML='<div class=\\'cover-placeholder\\'>🎮</div>'">`

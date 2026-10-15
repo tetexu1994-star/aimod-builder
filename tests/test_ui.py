@@ -9,8 +9,9 @@ import unittest
 import urllib.error
 import urllib.request
 from unittest.mock import patch
+from pathlib import Path
 
-from agmod.ui.server import ModUIServer, launch_ui
+from agmod.ui.server import INDEX_HTML_PATH, ModUIServer, launch_ui
 
 
 def _get_free_port() -> int:
@@ -41,6 +42,13 @@ def _http_post(url: str, data: dict):
 
 
 class TestUIServer(unittest.TestCase):
+    def test_ui_interaction_contract(self):
+        html = Path(INDEX_HTML_PATH).read_text(encoding="utf-8")
+        self.assertIn("button.btn:hover:not(:disabled)", html)
+        self.assertIn("button.btn:disabled", html)
+        self.assertIn('class="step-item', html)
+        self.assertNotIn('<div class="step-item', html)
+
     @classmethod
     def setUpClass(cls):
         cls.port = _get_free_port()
