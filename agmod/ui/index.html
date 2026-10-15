@@ -1479,6 +1479,16 @@
 
     // --- Stage 1: Games Discovery & Selection ---
     async function scanGames() {
+      const grid = document.getElementById('games-grid');
+      if (grid && allGames.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1/-1; text-align:center; padding: 60px 20px; color: var(--text-muted);">
+            <div style="font-size: 32px; margin-bottom: 12px; display:inline-block; animation: pulse 1.2s infinite ease-in-out;">🎮</div>
+            <h3>正在扫描本地与 Steam 游戏库...</h3>
+            <p style="margin-top:8px; font-size:13px; color:var(--text-dim);">正在分析磁盘游戏引擎特征与进程状态</p>
+          </div>
+        `;
+      }
       try {
         const resp = await fetch('/api/games/scan');
         const json = await resp.json();
@@ -1884,9 +1894,6 @@
       `;
 
       appendRawAIMessage(cardHtml, `《${game.name}》创作助手与安全边界已就绪。`);
-    }
-
-      appendRawAIMessage(cardHtml, `已对《${game.name}》完成 REA 底层逆向检测。`);
     }
 
     function renderDefaultGreeting(game) {
