@@ -33,7 +33,7 @@ except ImportError:  # pragma: no cover
         def run(self):
             print(f"FastMCP '{self.name}' stub: mcp not installed. Install with `pip install mcp`")
 
-from agmod import bepinex, codegen, config, doctor, inspector, install_preview, knowledge, log_repair, logs, memory, pack, pattern, planning, process, rea, repair, rollback, safety, saves, tmodloader, updater
+from agmod import bepinex, codegen, config, doctor, gameprofiles, inspector, install_preview, knowledge, log_repair, logs, memory, pack, pattern, planning, process, rea, repair, rollback, safety, saves, tmodloader, updater
 from agmod.adapters.godot import GodotAdapter
 from agmod.adapters.reengine import ReEngineAdapter
 from agmod.adapters.unreal import UnrealAdapter
@@ -72,6 +72,28 @@ def detect_engine(game_dir: str) -> str:
     if r is None:
         return json.dumps({"detected": False, "hint": "not a supported engine"})
     return json.dumps(r, ensure_ascii=False)
+
+
+@mcp.tool()
+def probe_game(game_dir: str) -> str:
+    """确认能力边界 + 推荐：识别引擎后返回'这个游戏能改什么、怎么改、改到什么程度'，并标注 rea 是否可用。"""
+    info = _detect_engine(game_dir)
+    rea_available = False
+    try:
+        rea_available = rea._find_rea() is not None
+    except Exception:
+        pass
+    if info is None:
+        return json.dumps({
+            "engine": None,
+            "rea_available": rea_available,
+            "summary": "未识别到受支持引擎；可走通用内存改值。",
+            "capabilities": {"memory_edit": True},
+            "recommendations": [{"title": "临时改值", "route": "memory", "difficulty": "简单", "how": "scan_start/scan_next 扫描 → write_memory"}],
+        }, ensure_ascii=False, indent=2)
+    result = gameprofiles.get_recommendations(game_dir, info)
+    result["rea_available"] = rea_available
+    return json.dumps(result, ensure_ascii=False, indent=2)
 
 
 @mcp.tool()

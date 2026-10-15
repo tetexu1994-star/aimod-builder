@@ -151,6 +151,20 @@ class TestUnrealAdapter(unittest.TestCase):
             configs_list = adapter.list_configs(game_dir)
             self.assertIn("Saved/Config/Windows/GameUserSettings.ini", configs_list)
 
+    def test_gameprofiles_recommendations(self):
+        from agmod import gameprofiles
+        rec = gameprofiles.get_recommendations("X", {"id": "unreal", "variant": "ue5"})
+        self.assertEqual(rec["profile_key"], "unreal-ue5")
+        self.assertTrue(rec["capabilities"]["pak_override"])
+        self.assertEqual(rec["capabilities"]["hook"], "limited (UE4SS 对 UE5 不稳定)")
+
+        rec = gameprofiles.get_recommendations("X", {"id": "unity"})
+        self.assertEqual(rec["profile_key"], "unity")
+        self.assertTrue(rec["capabilities"]["memory_edit"])
+
+        rec = gameprofiles.get_recommendations("黑神话悟空", {"id": "unreal", "variant": "ue5"})
+        self.assertIsNotNone(rec["game_note"])
+
 
 class TestScanSessionLogic(unittest.TestCase):
     def test_session_filtering(self):
