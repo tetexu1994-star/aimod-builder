@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
-  <title>AI Mod Builder · 游戏 Mod 智能工作台</title>
+  <title>AI Mod Builder · 游戏 Mod 智能工作台 · 制作新 Mod</title>
   <script>
     (function() {
       try {
@@ -14,21 +14,64 @@
     })();
   </script>
   <style>
-    :root, [data-theme="light"] {
+    :root, [data-theme="dark"] {
+      --bg-root: #08090e;
+      --bg-ambient: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 65%), #08090e;
+      --bg-nav: rgba(11, 13, 20, 0.82);
+      --bg-card: #12141e;
+      --bg-card-hover: #171b28;
+      --bg-card-inner: #0b0d14;
+      --bg-input: #0a0b12;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-hover: rgba(255, 255, 255, 0.18);
+      --border-focus: #6366f1;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --primary-glow: rgba(99, 102, 241, 0.35);
+      --primary-ink: #ffffff;
+      --emerald: #10b981;
+      --emerald-bg: rgba(16, 185, 129, 0.12);
+      --emerald-glow: rgba(16, 185, 129, 0.4);
+      --amber: #f59e0b;
+      --amber-bg: rgba(245, 158, 11, 0.12);
+      --rose: #f43f5e;
+      --rose-bg: rgba(244, 63, 94, 0.12);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --code-bg: #05060a;
+      --code-text: #e2e8f0;
+      --chat-assistant-bg: #12141f;
+      --chat-user-bg: #1e2236;
+      --chat-user-border: rgba(99, 102, 241, 0.3);
+      --radius-sm: 8px;
+      --radius: 14px;
+      --radius-lg: 20px;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "JetBrains Mono", monospace;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+      --shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5);
+      --shadow-lg: 0 24px 48px -12px rgba(0, 0, 0, 0.7);
+    }
+
+    [data-theme="light"] {
       --bg-root: #f8fafc;
-      --bg-nav: rgba(255, 255, 255, 0.92);
+      --bg-ambient: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 60%), #f8fafc;
+      --bg-nav: rgba(255, 255, 255, 0.88);
       --bg-card: #ffffff;
       --bg-card-hover: #f1f5f9;
       --bg-card-inner: #f8fafc;
       --bg-input: #ffffff;
       --border: rgba(15, 23, 42, 0.08);
-      --border-hover: rgba(15, 23, 42, 0.16);
+      --border-hover: rgba(15, 23, 42, 0.18);
       --border-focus: #4f46e5;
       --primary: #4f46e5;
       --primary-hover: #4338ca;
+      --primary-glow: rgba(79, 70, 229, 0.25);
       --primary-ink: #ffffff;
       --emerald: #059669;
       --emerald-bg: rgba(16, 185, 129, 0.1);
+      --emerald-glow: rgba(16, 185, 129, 0.3);
       --amber: #d97706;
       --amber-bg: rgba(217, 119, 6, 0.1);
       --rose: #e11d48;
@@ -41,52 +84,15 @@
       --chat-assistant-bg: #ffffff;
       --chat-user-bg: #eef2ff;
       --chat-user-border: rgba(79, 70, 229, 0.2);
-      --radius-sm: 8px;
-      --radius: 12px;
-      --radius-lg: 16px;
-      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "JetBrains Mono", monospace;
-      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
-      --shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.08);
-      --shadow-lg: 0 20px 35px -8px rgba(15, 23, 42, 0.12);
-    }
-
-    [data-theme="dark"] {
-      --bg-root: #0b0d13;
-      --bg-nav: rgba(15, 17, 26, 0.92);
-      --bg-card: #151824;
-      --bg-card-hover: #1c2030;
-      --bg-card-inner: #0f111a;
-      --bg-input: #0f111a;
-      --border: rgba(255, 255, 255, 0.08);
-      --border-hover: rgba(255, 255, 255, 0.16);
-      --border-focus: #818cf8;
-      --primary: #6366f1;
-      --primary-hover: #818cf8;
-      --primary-ink: #ffffff;
-      --emerald: #10b981;
-      --emerald-bg: rgba(16, 185, 129, 0.12);
-      --amber: #f59e0b;
-      --amber-bg: rgba(245, 158, 11, 0.12);
-      --rose: #f43f5e;
-      --rose-bg: rgba(244, 63, 94, 0.12);
-      --text-main: #f1f5f9;
-      --text-muted: #94a3b8;
-      --text-dim: #64748b;
-      --code-bg: #08090d;
-      --code-text: #cbd5e1;
-      --chat-assistant-bg: #151824;
-      --chat-user-bg: #1e2235;
-      --chat-user-border: rgba(99, 102, 241, 0.3);
-      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-      --shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.4);
-      --shadow-lg: 0 20px 35px -8px rgba(0, 0, 0, 0.5);
+      --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
+      --shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.08);
+      --shadow-lg: 0 24px 48px -12px rgba(15, 23, 42, 0.14);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: var(--sans);
-      background: var(--bg-root);
+      background: var(--bg-ambient);
       color: var(--text-main);
       min-height: 100vh;
       display: flex;
@@ -95,19 +101,19 @@
       line-height: 1.5;
     }
 
-    /* Top Nav */
+    /* Top Navigation */
     header.top-nav {
       position: sticky;
       top: 0;
       z-index: 50;
-      height: 64px;
-      backdrop-filter: blur(12px);
+      height: 68px;
+      backdrop-filter: blur(16px);
       background: var(--bg-nav);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 24px;
+      padding: 0 28px;
     }
 
     .brand {
@@ -118,45 +124,84 @@
       font-size: 17px;
       letter-spacing: -0.02em;
       cursor: pointer;
+      user-select: none;
+    }
+    .brand-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 15px;
+      box-shadow: 0 0 12px var(--primary-glow);
     }
     .brand-badge {
-      font-size: 11px;
-      font-weight: 600;
-      background: var(--primary);
-      color: var(--primary-ink);
+      font-size: 10px;
+      font-weight: 700;
+      background: var(--emerald-bg);
+      color: var(--emerald);
+      border: 1px solid rgba(16, 185, 129, 0.25);
       padding: 2px 7px;
       border-radius: 6px;
-      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
-    .nav-center {
+    /* Guided Workflow Stepper in Header */
+    .workflow-stepper {
       display: flex;
       align-items: center;
-      gap: 12px;
-    }
-
-    .game-pill {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      gap: 6px;
       background: var(--bg-card);
       border: 1px solid var(--border);
-      padding: 6px 14px;
+      padding: 5px 8px;
+      border-radius: 30px;
+      box-shadow: var(--shadow-sm);
+    }
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 12px;
       border-radius: 20px;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
+      color: var(--text-dim);
+      transition: all 0.2s ease;
       cursor: pointer;
-      transition: all 0.15s ease;
+      user-select: none;
     }
-    .game-pill:hover {
-      border-color: var(--border-hover);
-      background: var(--bg-card-hover);
-    }
-    .game-pill .dot {
-      width: 8px;
-      height: 8px;
+    .step-num {
+      width: 18px;
+      height: 18px;
       border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+    }
+    .step-item.active {
+      background: var(--primary);
+      color: var(--primary-ink);
+      box-shadow: 0 0 12px var(--primary-glow);
+    }
+    .step-item.active .step-num {
+      background: rgba(255, 255, 255, 0.25);
+      color: #fff;
+    }
+    .step-item.completed {
+      color: var(--emerald);
+    }
+    .step-item.completed .step-num {
       background: var(--emerald);
+      color: #fff;
+    }
+    .step-arrow {
+      color: var(--border-hover);
+      font-size: 10px;
     }
 
     .nav-actions {
@@ -168,8 +213,8 @@
     button.btn {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 8px 14px;
+      gap: 7px;
+      padding: 8px 15px;
       border-radius: var(--radius-sm);
       font-size: 13px;
       font-weight: 600;
@@ -179,31 +224,51 @@
       color: var(--text-main);
       transition: all 0.15s ease;
       white-space: nowrap;
+      user-select: none;
     }
     button.btn:hover {
       background: var(--bg-card-hover);
       border-color: var(--border-hover);
+      transform: translateY(-1px);
     }
     button.btn-primary {
       background: var(--primary);
       color: var(--primary-ink);
       border-color: var(--primary);
+      box-shadow: 0 2px 10px var(--primary-glow);
     }
     button.btn-primary:hover {
       background: var(--primary-hover);
       border-color: var(--primary-hover);
     }
     button.btn-launch {
-      background: var(--emerald);
+      background: linear-gradient(135deg, #059669, #10b981);
       color: #fff;
-      border-color: var(--emerald);
+      border-color: #10b981;
+      box-shadow: 0 0 16px var(--emerald-glow);
     }
     button.btn-launch:hover {
       filter: brightness(1.1);
+      transform: translateY(-1px);
     }
     button.btn-sm {
-      padding: 5px 10px;
+      padding: 6px 12px;
       font-size: 12px;
+    }
+
+    /* Pulse dot */
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 0 rgba(16, 185, 129, 0.7);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
     }
 
     /* Main Container */
@@ -214,15 +279,17 @@
       max-width: 1560px;
       width: 100%;
       margin: 0 auto;
-      padding: 24px;
-      height: calc(100vh - 64px);
+      padding: 24px 28px;
+      height: calc(100vh - 68px);
     }
 
-    /* View: Game Library Grid */
-    #view-library {
+    /* ========================================================
+       STAGE 1: Game Library View
+       ======================================================== */
+    #stage-library {
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 24px;
       height: 100%;
     }
     .library-header {
@@ -231,15 +298,24 @@
       justify-content: space-between;
       gap: 16px;
       flex-wrap: wrap;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 20px 24px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
     }
     .library-title h1 {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 700;
       letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     .library-title p {
       font-size: 13px;
       color: var(--text-muted);
+      margin-top: 4px;
     }
     .library-search {
       display: flex;
@@ -250,10 +326,10 @@
       background: var(--bg-input);
       border: 1px solid var(--border);
       color: var(--text-main);
-      padding: 8px 14px;
+      padding: 9px 14px;
       border-radius: var(--radius-sm);
       font-size: 13px;
-      width: 240px;
+      width: 260px;
       outline: none;
     }
     .library-search input:focus {
@@ -262,8 +338,8 @@
 
     .games-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 22px;
       overflow-y: auto;
       padding-bottom: 30px;
     }
@@ -275,18 +351,19 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      transition: all 0.2s ease;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       cursor: pointer;
       position: relative;
+      box-shadow: var(--shadow-sm);
     }
     .game-card:hover {
-      transform: translateY(-2px);
+      transform: translateY(-4px) scale(1.01);
       box-shadow: var(--shadow);
-      border-color: var(--border-hover);
+      border-color: rgba(99, 102, 241, 0.4);
     }
     .game-card-cover {
       width: 100%;
-      height: 135px;
+      height: 140px;
       background: var(--bg-card-inner);
       display: flex;
       align-items: center;
@@ -298,31 +375,38 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+    .game-card:hover .game-card-cover img {
+      transform: scale(1.05);
     }
     .game-card-cover .cover-placeholder {
-      font-size: 38px;
-      opacity: 0.5;
+      font-size: 40px;
+      opacity: 0.4;
     }
     .game-card-status {
       position: absolute;
       top: 10px;
       right: 10px;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(10, 12, 18, 0.75);
       backdrop-filter: blur(8px);
       color: #fff;
       font-size: 11px;
       font-weight: 600;
-      padding: 3px 8px;
+      padding: 3px 9px;
       border-radius: 12px;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
     .game-card-status.running {
       background: rgba(16, 185, 129, 0.9);
+      border-color: #10b981;
+      box-shadow: 0 0 10px var(--emerald-glow);
     }
     .game-card-body {
-      padding: 16px;
+      padding: 18px;
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -340,28 +424,133 @@
       font-size: 11px;
       font-weight: 600;
       color: var(--primary);
-      background: var(--bg-card-inner);
+      background: rgba(99, 102, 241, 0.1);
       padding: 3px 8px;
       border-radius: 6px;
       align-self: flex-start;
-      border: 1px solid var(--border);
+      border: 1px solid rgba(99, 102, 241, 0.2);
     }
     .game-card-actions {
       margin-top: auto;
-      padding-top: 12px;
+      padding-top: 14px;
       border-top: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
-    /* View: AI Mod Studio (Split Workspace) */
-    #view-studio {
+    /* ========================================================
+       STAGE 2: Gatekeeper Card (Launch & Attach Game)
+       ======================================================== */
+    #stage-gatekeeper {
       display: none;
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+    }
+    #stage-gatekeeper.active {
+      display: flex;
+    }
+
+    .gatekeeper-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      max-width: 680px;
+      width: 100%;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      animation: fadeInScale 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes fadeInScale {
+      from { opacity: 0; transform: scale(0.97); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .gatekeeper-cover {
+      width: 100%;
+      height: 180px;
+      position: relative;
+      background: #000;
+      overflow: hidden;
+    }
+    .gatekeeper-cover img {
+      width: 100%;
       height: 100%;
+      object-fit: cover;
+      filter: brightness(0.65) blur(1px);
+    }
+    .gatekeeper-overlay-info {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 24px;
+      background: linear-gradient(to top, rgba(18, 20, 30, 0.98), transparent);
+    }
+    .gatekeeper-overlay-info h2 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .gatekeeper-overlay-info p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .gatekeeper-body {
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
       gap: 20px;
     }
-    #view-studio.active {
+    .gatekeeper-step-desc {
+      background: var(--bg-card-inner);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .gatekeeper-step-icon {
+      font-size: 24px;
+    }
+    .gatekeeper-step-text h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .gatekeeper-step-text p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+    .gatekeeper-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+    }
+    .gatekeeper-status-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* ========================================================
+       STAGE 3 & 4: AI Mod Studio (Split Workspace)
+       ======================================================== */
+    #stage-studio {
+      display: none;
+      height: 100%;
+      gap: 22px;
+    }
+    #stage-studio.active {
       display: flex;
     }
 
@@ -377,7 +566,7 @@
       box-shadow: var(--shadow-sm);
     }
     .chat-header {
-      padding: 14px 20px;
+      padding: 14px 22px;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
@@ -393,14 +582,22 @@
       font-size: 16px;
       font-weight: 700;
     }
-    .chat-header-info span {
-      font-size: 12px;
-      color: var(--text-muted);
+    .chat-running-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--emerald);
+      background: var(--emerald-bg);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      padding: 3px 9px;
+      border-radius: 12px;
     }
 
     /* Inspiration Pills */
     .chat-pills-bar {
-      padding: 10px 20px;
+      padding: 10px 22px;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
@@ -417,7 +614,7 @@
     }
     .pill-btn {
       font-size: 12px;
-      padding: 4px 10px;
+      padding: 4px 11px;
       border-radius: 14px;
       border: 1px solid var(--border);
       background: var(--bg-card-inner);
@@ -435,17 +632,17 @@
     /* Chat Stream */
     .chat-messages {
       flex: 1;
-      padding: 20px;
+      padding: 22px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 18px;
     }
 
     .msg {
       display: flex;
       gap: 12px;
-      max-width: 85%;
+      max-width: 86%;
     }
     .msg-user {
       align-self: flex-end;
@@ -454,23 +651,25 @@
     .msg-avatar {
       width: 32px;
       height: 32px;
-      border-radius: 50%;
-      background: var(--primary);
+      border-radius: 8px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
       color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 700;
       flex-shrink: 0;
+      box-shadow: 0 0 10px var(--primary-glow);
     }
     .msg-user .msg-avatar {
       background: var(--text-muted);
+      box-shadow: none;
     }
     .msg-content {
       background: var(--chat-assistant-bg);
       border: 1px solid var(--border);
-      padding: 14px 18px;
+      padding: 15px 18px;
       border-radius: var(--radius);
       font-size: 14px;
       line-height: 1.6;
@@ -480,16 +679,17 @@
       border-color: var(--chat-user-border);
     }
 
-    /* Interactive Action Card Inside Message */
+    /* HUD Action Card inside AI Message */
     .action-card {
-      margin-top: 12px;
+      margin-top: 14px;
       background: var(--bg-card-inner);
-      border: 1px solid var(--border);
+      border: 1px solid rgba(16, 185, 129, 0.3);
       border-radius: var(--radius-sm);
-      padding: 14px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 14px;
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.08);
     }
     .action-card-header {
       display: flex;
@@ -501,13 +701,17 @@
     .tuning-group {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
     }
     .tuning-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 14px;
       font-size: 13px;
     }
     .tuning-item input[type="range"] {
@@ -517,14 +721,14 @@
     .action-card-footer {
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
       border-top: 1px solid var(--border);
-      padding-top: 10px;
+      padding-top: 12px;
     }
 
     /* Bottom Chat Bar */
     .chat-input-bar {
-      padding: 16px 20px;
+      padding: 16px 22px;
       border-top: 1px solid var(--border);
       background: var(--bg-card);
       display: flex;
@@ -566,7 +770,7 @@
     }
     .sidebar-tab-btn {
       flex: 1;
-      padding: 12px 14px;
+      padding: 13px 14px;
       text-align: center;
       font-size: 13px;
       font-weight: 600;
@@ -584,7 +788,7 @@
     }
     .sidebar-content {
       flex: 1;
-      padding: 20px;
+      padding: 22px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -612,8 +816,8 @@
     .modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(6px);
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
       z-index: 100;
       display: none;
       align-items: center;
@@ -714,26 +918,41 @@
 </head>
 <body>
 
-  <!-- Top Nav -->
+  <!-- Top Navigation -->
   <header class="top-nav">
-    <div class="brand" onclick="showLibrary()">
+    <div class="brand" onclick="goToStage(1)">
+      <div class="brand-icon">⚡</div>
       <span>AI Mod Builder</span>
       <span class="brand-badge">PRO</span>
     </div>
 
-    <div class="nav-center">
-      <div class="game-pill" id="nav-game-pill" onclick="showLibrary()">
-        <span class="dot" id="nav-game-dot"></span>
-        <span id="nav-game-name">正在加载 Steam 游戏库...</span>
-        <span style="font-size:10px; opacity:0.6;">▼</span>
+    <!-- 4-Step Guided Workflow Stepper -->
+    <div class="workflow-stepper">
+      <div class="step-item active" id="step-btn-1" onclick="goToStage(1)">
+        <span class="step-num">1</span>
+        <span>挑选游戏</span>
+      </div>
+      <span class="step-arrow">➔</span>
+      <div class="step-item" id="step-btn-2" onclick="goToStage(2)">
+        <span class="step-num">2</span>
+        <span>启动与连接</span>
+      </div>
+      <span class="step-arrow">➔</span>
+      <div class="step-item" id="step-btn-3" onclick="goToStage(3)">
+        <span class="step-num">3</span>
+        <span>AI 创作与调优</span>
+      </div>
+      <span class="step-arrow">➔</span>
+      <div class="step-item" id="step-btn-4" onclick="goToStage(4)">
+        <span class="step-num">4</span>
+        <span>固化 Mod</span>
       </div>
     </div>
 
     <div class="nav-actions">
-      <button class="btn btn-sm" onclick="scanGames()">🔍 刷新游戏</button>
-      <button class="btn btn-sm btn-launch" id="btn-launch-game" onclick="launchCurrentGame()">▶ 启动游戏</button>
+      <button class="btn btn-sm" onclick="scanGames()">🔍 扫描游戏</button>
       <button class="btn btn-sm" id="btn-save-backup" onclick="createSaveBackup()">🛡️ 备份存档</button>
-      <button class="btn btn-sm" onclick="openLLMModal()">⚙️ 模型 (CC Switch)</button>
+      <button class="btn btn-sm" onclick="openLLMModal()">⚙️ 模型配置 (CC Switch)</button>
       <button class="btn btn-sm" onclick="toggleTheme()" title="切换亮/暗模式" id="theme-btn">🌙</button>
     </div>
   </header>
@@ -741,15 +960,17 @@
   <!-- App Shell -->
   <main class="app-shell">
 
-    <!-- View A: Steam Game Library -->
-    <section id="view-library">
+    <!-- ==========================================
+         STAGE 1: Steam Game Library
+         ========================================== -->
+    <section id="stage-library">
       <div class="library-header">
         <div class="library-title">
           <h1>本地 Steam 游戏大厅 · 制作新 Mod</h1>
-          <p>已自动发现你电脑上的已安装游戏，点击任意卡片即可一键进入 AI Mod 创作空间。</p>
+          <p>第 1 步：请选择你要进行 Mod 制作的游戏。点击卡片将进入专属引导流程。</p>
         </div>
         <div class="library-search">
-          <input type="text" id="game-search-input" placeholder="搜索游戏名称..." oninput="filterGames()">
+          <input type="text" id="game-search-input" placeholder="搜索游戏名称或引擎..." oninput="filterGames()">
           <button class="btn btn-sm" onclick="addCustomGame()">➕ 手动路径</button>
         </div>
       </div>
@@ -759,25 +980,68 @@
       </div>
     </section>
 
-    <!-- View B: AI Mod Studio Workspace -->
-    <section id="view-studio">
+    <!-- ==========================================
+         STAGE 2: Gatekeeper (Launch & Attach Game)
+         ========================================== -->
+    <section id="stage-gatekeeper">
+      <div class="gatekeeper-card">
+        <div class="gatekeeper-cover" id="gatekeeper-cover-box">
+          <img src="" id="gatekeeper-cover-img" alt="Cover">
+          <div class="gatekeeper-overlay-info">
+            <h2 id="gatekeeper-game-title">游戏名称</h2>
+            <p id="gatekeeper-game-meta">引擎: Unity Mono · 适配器已就绪</p>
+          </div>
+        </div>
+        <div class="gatekeeper-body">
+          <div class="gatekeeper-step-desc">
+            <div class="gatekeeper-step-icon">🔒</div>
+            <div class="gatekeeper-step-text">
+              <h4>必须先启动游戏，AI 才能进行实时修改</h4>
+              <p>为了让 AI 写的每一个 Mod 能够<strong>在游戏画面里立刻生效</strong>，我们需要建立与游戏运行进程（PID）的双向热挂钩通道。请点击下方按钮启动游戏。</p>
+            </div>
+          </div>
+
+          <div class="gatekeeper-actions">
+            <button class="btn btn-launch" style="padding: 12px 32px; font-size: 15px;" onclick="launchAndAdvance()">
+              ▶ 一键启动游戏并建立 AI 连接
+            </button>
+            <div class="gatekeeper-status-banner">
+              <span class="pulse-dot" id="gatekeeper-pulse"></span>
+              <span id="gatekeeper-status-text">正在监测游戏进程启动中...</span>
+            </div>
+            <div style="display:flex; gap:16px; margin-top:8px;">
+              <a href="javascript:void(0)" onclick="manualProcessRefresh()" style="font-size:12px; color:var(--primary); text-decoration:none;">手动刷新连接状态 ↻</a>
+              <a href="javascript:void(0)" onclick="skipLaunchToStudio()" style="font-size:12px; color:var(--text-dim); text-decoration:none;">暂不启动，直接编写离线 Mod ➔</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         STAGE 3 & 4: AI Mod Studio (Split Workspace)
+         ========================================== -->
+    <section id="stage-studio">
       
       <!-- Left Column: AI Mod Copilot -->
       <div class="studio-chat">
         <div class="chat-header">
           <div class="chat-header-info">
             <h2 id="studio-game-title">游戏名称</h2>
-            <span id="studio-game-engine">引擎: Unity Mono</span>
+            <div class="chat-running-pill" id="studio-running-pill">
+              <span class="pulse-dot"></span>
+              <span id="studio-pid-text">实时通道已连接</span>
+            </div>
           </div>
           <div style="display:flex; gap:8px;">
-            <button class="btn btn-sm" onclick="showLibrary()">← 更换游戏</button>
+            <button class="btn btn-sm" onclick="goToStage(1)">← 更换游戏</button>
             <button class="btn btn-sm btn-launch" id="studio-launch-btn" onclick="launchCurrentGame()">▶ 启动游戏</button>
           </div>
         </div>
 
         <!-- Inspiration Pills -->
         <div class="chat-pills-bar">
-          <span class="label">灵感气泡:</span>
+          <span class="label">快捷灵感:</span>
           <button class="pill-btn" onclick="sendPrompt('角色移动速度提升 100%')">⚡ 移速翻倍</button>
           <button class="pill-btn" onclick="sendPrompt('解锁空中二段跳')">🦘 空中二段跳</button>
           <button class="pill-btn" onclick="sendPrompt('金币掉落倍率提高 5 倍')">💰 5倍金币</button>
@@ -818,7 +1082,7 @@
   <div class="modal-overlay" id="llm-modal">
     <div class="modal-box">
       <div class="modal-header">
-        <h3>大模型设置 (CC Switch / DeepSeek)</h3>
+        <h3>大模型配置 (CC Switch / OpenAI 格式)</h3>
         <button class="btn btn-sm" onclick="closeLLMModal()">✕</button>
       </div>
       <div class="modal-body">
@@ -857,12 +1121,14 @@
 
   <script>
     // State
+    let currentStage = 1; // 1: Library, 2: Gatekeeper, 3: Studio, 4: Pinned
     let allGames = [];
     let currentGame = null;
     let activeActions = [];
     let installedMods = [];
     let chatHistory = [];
     let currentSidebarTab = 'live';
+    let processPollTimer = null;
 
     // Initialization
     window.addEventListener('DOMContentLoaded', async () => {
@@ -887,7 +1153,42 @@
       document.getElementById('theme-btn').textContent = target === 'dark' ? '🌙' : '☀️';
     }
 
-    // --- Games Discovery & Switching ---
+    // --- Guided Stage Management ---
+    function goToStage(stage) {
+      if (stage > 1 && !currentGame) {
+        showToast('请先选择一个游戏', 'error');
+        return;
+      }
+      currentStage = stage;
+
+      // Update Top Stepper Pills
+      for (let i = 1; i <= 4; i++) {
+        const btn = document.getElementById('step-btn-' + i);
+        if (btn) {
+          btn.className = 'step-item';
+          if (i === stage) {
+            btn.classList.add('active');
+          } else if (i < stage) {
+            btn.classList.add('completed');
+          }
+        }
+      }
+
+      // Hide all stage sections
+      document.getElementById('stage-library').style.display = 'none';
+      document.getElementById('stage-gatekeeper').classList.remove('active');
+      document.getElementById('stage-studio').classList.remove('active');
+
+      if (stage === 1) {
+        document.getElementById('stage-library').style.display = 'flex';
+      } else if (stage === 2) {
+        setupGatekeeper(currentGame);
+      } else if (stage >= 3) {
+        setupStudio(currentGame);
+      }
+    }
+
+    // --- Stage 1: Games Discovery & Selection ---
     async function scanGames() {
       try {
         const resp = await fetch('/api/games/scan');
@@ -895,9 +1196,6 @@
         if (json.success) {
           allGames = json.data || [];
           renderGameCards(allGames);
-          if (allGames.length > 0 && !currentGame) {
-            updateNavGamePill(allGames[0]);
-          }
         }
       } catch (e) {
         showToast('扫描游戏失败: ' + e.message, 'error');
@@ -920,14 +1218,14 @@
       games.forEach(g => {
         const card = document.createElement('div');
         card.className = 'game-card';
-        card.onclick = () => selectGame(g);
+        card.onclick = () => selectGameAndAdvance(g);
 
         const coverHtml = g.cover_url
           ? `<img src="${g.cover_url}" alt="${g.name}" onerror="this.parentElement.innerHTML='<div class=\\'cover-placeholder\\'>🎮</div>'">`
           : `<div class="cover-placeholder">🎮</div>`;
 
         const statusHtml = g.is_running
-          ? `<div class="game-card-status running">🟢 运行中 (PID: ${g.running_pid})</div>`
+          ? `<div class="game-card-status running"><span class="pulse-dot"></span> 运行中 (PID: ${g.running_pid})</div>`
           : `<div class="game-card-status">● 未运行</div>`;
 
         card.innerHTML = `
@@ -940,7 +1238,7 @@
             <div class="game-card-engine">${g.engine_name || '通用引擎'}</div>
             <div class="game-card-actions">
               <span style="font-size:12px; color:var(--text-muted);">${g.source === 'steam' ? 'Steam 游戏' : '本地目录'}</span>
-              <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); selectGame(${JSON.stringify(g).replace(/"/g, '&quot;')})">进入工作台 →</button>
+              <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); selectGameAndAdvance(${JSON.stringify(g).replace(/"/g, '&quot;')})">选择并下一步 →</button>
             </div>
           </div>
         `;
@@ -954,47 +1252,37 @@
       renderGameCards(filtered);
     }
 
-    function selectGame(game) {
+    function selectGameAndAdvance(game) {
       currentGame = game;
-      updateNavGamePill(game);
-
-      document.getElementById('studio-game-title').textContent = game.name;
-      document.getElementById('studio-game-engine').textContent = `引擎: ${game.engine_name || '检测中'} · ${game.is_running ? '🟢 游戏中' : '○ 未运行'}`;
-
-      document.getElementById('view-library').style.display = 'none';
-      const studio = document.getElementById('view-studio');
-      studio.classList.add('active');
-
-      // Reset chat stream with welcome message
-      initChatForGame(game);
-      loadGameMods(game);
-      loadGameSaves(game);
-    }
-
-    function showLibrary() {
-      document.getElementById('view-library').style.display = 'flex';
-      document.getElementById('view-studio').classList.remove('active');
-    }
-
-    function updateNavGamePill(game) {
-      document.getElementById('nav-game-name').textContent = game.name;
-      document.getElementById('nav-game-dot').style.background = game.is_running ? 'var(--emerald)' : 'var(--text-dim)';
-      const btn = document.getElementById('btn-launch-game');
+      // If already running, skip Gatekeeper straight to Stage 3!
       if (game.is_running) {
-        btn.textContent = '🟢 游戏中';
-        btn.className = 'btn btn-sm';
+        goToStage(3);
       } else {
-        btn.textContent = '▶ 启动游戏';
-        btn.className = 'btn btn-sm btn-launch';
+        goToStage(2);
       }
     }
 
-    async function launchCurrentGame() {
-      if (!currentGame) {
-        showToast('请先选择游戏', 'error');
-        return;
+    // --- Stage 2: Gatekeeper Launch & Link ---
+    function setupGatekeeper(game) {
+      document.getElementById('stage-gatekeeper').classList.add('active');
+
+      document.getElementById('gatekeeper-game-title').textContent = game.name;
+      document.getElementById('gatekeeper-game-meta').textContent = `引擎: ${game.engine_name || '已识别'} · 适配器就绪`;
+
+      const coverImg = document.getElementById('gatekeeper-cover-img');
+      if (game.cover_url) {
+        coverImg.src = game.cover_url;
+        coverImg.style.display = 'block';
+      } else {
+        coverImg.style.display = 'none';
       }
-      showToast('正在启动游戏并创建存档快照...', 'info');
+
+      startProcessPolling(game);
+    }
+
+    async function launchAndAdvance() {
+      if (!currentGame) return;
+      showToast('正在启动游戏并自动创建存档快照...', 'info');
       try {
         const resp = await fetch('/api/games/launch', {
           method: 'POST',
@@ -1006,36 +1294,88 @@
         });
         const res = await resp.json();
         if (res.success) {
-          showToast(res.message || '启动指令已发送！', 'success');
-          setTimeout(scanGames, 3000);
+          showToast(res.message || '启动指令已发送！正在等待游戏进程连接...', 'success');
+          document.getElementById('gatekeeper-status-text').textContent = '游戏已启动，正在等待进程就绪...';
         } else {
-          showToast('启动失败: ' + res.error, 'error');
+          showToast('启动出错: ' + res.error, 'error');
         }
       } catch (e) {
-        showToast('启动游戏网络错误: ' + e.message, 'error');
+        showToast('网络异常: ' + e.message, 'error');
       }
     }
 
-    async function createSaveBackup() {
+    function startProcessPolling(game) {
+      if (processPollTimer) clearInterval(processPollTimer);
+      processPollTimer = setInterval(async () => {
+        if (!currentGame || currentStage !== 2) return;
+        try {
+          const resp = await fetch('/api/process', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ game_dir: currentGame.game_dir })
+          });
+          const res = await resp.json();
+          if (res.success && res.data.is_running) {
+            clearInterval(processPollTimer);
+            currentGame.is_running = true;
+            currentGame.running_pid = res.data.processes[0]?.pid;
+            showToast('🟢 游戏进程已连接！自动进入 AI 创作工作台', 'success');
+            setTimeout(() => goToStage(3), 600);
+          }
+        } catch (e) {}
+      }, 2000);
+    }
+
+    async function manualProcessRefresh() {
       if (!currentGame) return;
-      showToast('正在创建游戏存档安全快照...', 'info');
+      showToast('正在探测游戏进程...', 'info');
       try {
-        const resp = await fetch('/api/saves/create', {
+        const resp = await fetch('/api/process', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ game_dir: currentGame.game_dir, reason: 'Manual_Backup' })
+          body: JSON.stringify({ game_dir: currentGame.game_dir })
         });
         const res = await resp.json();
-        if (res.success) {
-          showToast('🛡️ 存档安全快照已创建！', 'success');
-          loadGameSaves(currentGame);
+        if (res.success && res.data.is_running) {
+          currentGame.is_running = true;
+          currentGame.running_pid = res.data.processes[0]?.pid;
+          showToast('🟢 已侦测到运行中的游戏进程！', 'success');
+          goToStage(3);
+        } else {
+          showToast('未检测到该游戏的运行进程，请先点击启动。', 'info');
         }
       } catch (e) {
-        showToast('备份失败: ' + e.message, 'error');
+        showToast('探测失败: ' + e.message, 'error');
       }
     }
 
-    // --- Chat & AI Interaction ---
+    function skipLaunchToStudio() {
+      goToStage(3);
+    }
+
+    // --- Stage 3 & 4: AI Mod Studio ---
+    function setupStudio(game) {
+      document.getElementById('stage-studio').classList.add('active');
+
+      document.getElementById('studio-game-title').textContent = game.name;
+      const pill = document.getElementById('studio-running-pill');
+      if (game.is_running) {
+        pill.innerHTML = `<span class="pulse-dot"></span><span>已连接 PID: ${game.running_pid || 'Active'}</span>`;
+        pill.style.background = 'var(--emerald-bg)';
+        pill.style.color = 'var(--emerald)';
+      } else {
+        pill.innerHTML = `<span>○ 离线编写模式</span>`;
+        pill.style.background = 'rgba(255, 255, 255, 0.05)';
+        pill.style.color = 'var(--text-muted)';
+      }
+
+      if (chatHistory.length === 0) {
+        initChatForGame(game);
+      }
+      loadGameMods(game);
+      loadGameSaves(game);
+    }
+
     function initChatForGame(game) {
       const container = document.getElementById('chat-messages');
       container.innerHTML = '';
@@ -1094,13 +1434,16 @@
           <div class="action-card">
             <div class="action-card-header">
               <span>✨ ${action.mod_name}</span>
-              <span style="font-size:11px; background:var(--emerald-bg); color:var(--emerald); padding:2px 6px; border-radius:4px;">🟢 实时生效中</span>
+              <span style="font-size:11px; background:var(--emerald-bg); color:var(--emerald); padding:2px 7px; border-radius:4px;">🟢 实时生效中</span>
             </div>
             <div style="font-size:12px; color:var(--text-muted);">${action.summary}</div>
             ${tuningHtml ? `<div class="tuning-group">${tuningHtml}</div>` : ''}
             <div class="action-card-footer">
-              <button class="btn btn-sm btn-primary" onclick="pinMod('${action.mod_id}', '${action.mod_name}', '${action.summary}')">📌 固化为永久 Mod</button>
-              <button class="btn btn-sm" onclick="showToast('已撤回此项热修改', 'info')">↩️ 撤销</button>
+              <span style="font-size:11px; color:var(--text-dim);">手感满意？</span>
+              <div style="display:flex; gap:8px;">
+                <button class="btn btn-sm btn-primary" onclick="pinMod('${action.mod_id}', '${action.mod_name}', '${action.summary}')">📌 固化为永久 Mod</button>
+                <button class="btn btn-sm" onclick="showToast('已撤回此项热修改', 'info')">↩️ 撤销</button>
+              </div>
             </div>
           </div>
         `;
@@ -1192,6 +1535,8 @@
         if (res.success) {
           showToast(`🎉 ${res.data.message}`, 'success');
           loadGameMods(currentGame);
+          goToStage(4);
+          switchSidebarTab('mods');
         } else {
           showToast('固化失败: ' + res.error, 'error');
         }
@@ -1356,10 +1701,34 @@
       }
     }
 
+    async function createSaveBackup() {
+      if (!currentGame) return;
+      showToast('正在创建游戏存档安全快照...', 'info');
+      try {
+        const resp = await fetch('/api/saves/create', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ game_dir: currentGame.game_dir, reason: 'Manual_Backup' })
+        });
+        const res = await resp.json();
+        if (res.success) {
+          showToast('🛡️ 存档安全快照已创建！', 'success');
+          loadGameSaves(currentGame);
+        }
+      } catch (e) {
+        showToast('备份失败: ' + e.message, 'error');
+      }
+    }
+
+    async function launchCurrentGame() {
+      if (!currentGame) return;
+      launchAndAdvance();
+    }
+
     function addCustomGame() {
       const p = prompt('请输入你的游戏根目录完整路径 (例如: D:\\Games\\MyGame):');
       if (!p || !p.trim()) return;
-      selectGame({
+      selectGameAndAdvance({
         id: 'custom_' + Date.now(),
         name: p.split(/[\\/]/).filter(Boolean).pop() || '自定义游戏',
         game_dir: p.trim(),

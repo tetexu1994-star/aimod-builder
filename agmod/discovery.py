@@ -6,6 +6,7 @@ with pre-launch savegame protection.
 """
 from __future__ import annotations
 
+import logging
 import os
 import re
 import subprocess
@@ -13,6 +14,8 @@ import sys
 from typing import Any, Dict, List, Optional, Set
 
 from agmod import process, registry, saves
+
+logger = logging.getLogger("agmod.discovery")
 
 try:
     import winreg
@@ -258,35 +261,35 @@ def launch_game(game_dir: str, appid: str = "") -> Dict[str, Any]:
     except Exception:
         pass
 
-    # 2. If Steam appid is provided on Windows, try launching via Steam URI protocol
+    # 2. Prioritize direct game executable launch (safer for modding and avoids Steam protocol crash)
+    exes = process.find_game_executables(game_dir)
+    if exes:
+        main_exe = os.path.join(game_dir, exes[0])
+        try:
+            if sys.platform == "win32":
+                os.startfile(main_exe)
+            else:
+                subprocess.Popen([main_exe], cwd=game_dir)
+            return {
+                "success": True,
+                "method": "direct_executable",
+                "exe": main_exe,
+                "message": f"游戏主程序已安全启动: {exes[0]}",
+            }
+        except Exception as e:
+            logger.warning("Direct launch failed, attempting fallback: %s", e)
+
+    # 3. Fallback to Steam URI protocol only if direct executable failed or not found
     if sys.platform == "win32" and appid and appid.isdigit():
         try:
-            os.system(f'start steam://run/{appid}')
+            os.system(f'start "" "steam://run/{appid}"')
             return {
                 "success": True,
                 "method": "steam_protocol",
                 "appid": appid,
                 "message": f"Steam 启动指令已发送 (AppID: {appid})",
             }
-        except Exception:
-            pass
+        except Exception as e:
+            return {"success": False, "error": f"Failed to launch via Steam protocol: {e}"}
 
-    # 3. Direct executable launch fallback
-    exes = process.find_game_executables(game_dir)
-    if not exes:
-        return {"success": False, "error": "No game executable found in directory"}
-
-    main_exe = os.path.join(game_dir, exes[0])
-    try:
-        if sys.platform == "win32":
-            os.startfile(main_exe)
-        else:
-            subprocess.Popen([main_exe], cwd=game_dir)
-        return {
-            "success": True,
-            "method": "direct_executable",
-            "exe": main_exe,
-            "message": f"游戏主程序已启动: {exes[0]}",
-        }
-    except Exception as e:
-        return {"success": False, "error": f"Failed to launch game executable: {str(e)}"}
+    return {"success": False, "error": "未在游戏目录中找到有效的主程序 (.exe)"}
