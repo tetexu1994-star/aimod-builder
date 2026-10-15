@@ -25,31 +25,41 @@ except ImportError:
 
 def get_steam_roots() -> List[str]:
     """Find all Steam installation root directories on the host."""
-    roots: Set[str] = set()
+    roots: List[str] = []
+    seen_cases: Set[str] = set()
+
+    def add_root(p: str):
+        if not p:
+            return
+        norm = os.path.normpath(p)
+        if not os.path.isdir(norm):
+            return
+        key = os.path.normcase(os.path.realpath(norm))
+        if key not in seen_cases:
+            seen_cases.add(key)
+            roots.append(norm)
 
     # 1. Windows Registry detection
     if winreg is not None:
         try:
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam") as key:
                 val, _ = winreg.QueryValueEx(key, "SteamPath")
-                if val and os.path.isdir(val):
-                    roots.add(os.path.normpath(val))
+                add_root(val)
         except OSError:
             pass
 
         try:
             with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Valve\Steam") as key:
                 val, _ = winreg.QueryValueEx(key, "InstallPath")
-                if val and os.path.isdir(val):
-                    roots.add(os.path.normpath(val))
+                add_root(val)
         except OSError:
             pass
 
     # 2. Known standard paths
     candidates = [
-        r"D:\steam",
         r"C:\Program Files (x86)\Steam",
         r"C:\Program Files\Steam",
+        r"D:\steam",
         r"E:\steam",
         r"F:\steam",
         r"D:\SteamLibrary",
@@ -63,19 +73,23 @@ def get_steam_roots() -> List[str]:
     ]
 
     for p in candidates:
-        if os.path.isdir(p):
-            roots.add(os.path.normpath(p))
+        add_root(p)
 
     return sorted(roots)
 
 
 def find_all_steam_libraries() -> List[str]:
     """Find all Steam library folders (from all drive partitions) via libraryfolders.vdf."""
-    lib_folders: Set[str] = set()
+    lib_folders: List[str] = []
+    seen_cases: Set[str] = set()
     roots = get_steam_roots()
 
     for root in roots:
-        lib_folders.add(root)
+        key = os.path.normcase(os.path.realpath(root))
+        if key not in seen_cases:
+            seen_cases.add(key)
+            lib_folders.append(root)
+
         vdf_path = os.path.join(root, "steamapps", "libraryfolders.vdf")
         if not os.path.isfile(vdf_path):
             continue
@@ -89,7 +103,10 @@ def find_all_steam_libraries() -> List[str]:
                 raw_path = match.group(1).replace(r"\\", os.sep)
                 norm_p = os.path.normpath(raw_path)
                 if os.path.isdir(norm_p):
-                    lib_folders.add(norm_p)
+                    k = os.path.normcase(os.path.realpath(norm_p))
+                    if k not in seen_cases:
+                        seen_cases.add(k)
+                        lib_folders.append(norm_p)
         except Exception:
             pass
 

@@ -32,6 +32,44 @@ _IGNORED_EXES = {
     "vc_redist.x86.exe",
 }
 
+_SKIP_DIR_NAMES = {
+    "content", "paks", "streamingassets", "assetbundles", "assets",
+    "resources", "media", "shaders", "sound", "sounds", "audio", "music",
+    "video", "videos", "movies", "textures", "texture", ".git", ".svn",
+    "workshop", "temp", "cache", "logs", "crashdumps"
+}
+
+_PROCESS_CACHE: dict[str, Any] = {"timestamp": 0.0, "processes": []}
+_PROCESS_CACHE_TTL = 3.0  # seconds
+
+
+def _scan_dir_executables(game_dir: str) -> list[str]:
+    """Fast shallow walk of game directory to locate executables, skipping heavy asset folders."""
+    if not os.path.isdir(game_dir):
+        return []
+    game_dir_abs = os.path.abspath(game_dir)
+    found_paths = []
+
+    for root, dirs, files in os.walk(game_dir_abs, topdown=True):
+        rel = os.path.relpath(root, game_dir_abs)
+        if rel != ".":
+            # Cap depth to 3 subfolder levels
+            if rel.count(os.sep) >= 3:
+                dirs.clear()
+        # Prune known heavy non-executable asset subdirectories
+        dirs[:] = [d for d in dirs if d.lower() not in _SKIP_DIR_NAMES]
+
+        for fn in files:
+            low = fn.lower()
+            if low.endswith(".exe") and low not in _IGNORED_EXES:
+                found_paths.append(os.path.join(root, fn))
+            elif sys.platform != "win32" and not low.endswith((".dll", ".so", ".dylib", ".txt", ".json", ".pck", ".pak")):
+                p = os.path.join(root, fn)
+                if os.access(p, os.X_OK) and not os.path.isdir(p):
+                    found_paths.append(p)
+
+    return found_paths
+
 
 def find_primary_executable_path(game_dir: str) -> str | None:
     """Find the full absolute path of the primary game executable.
@@ -72,24 +110,18 @@ def find_primary_executable_path(game_dir: str) -> str | None:
         return root_exes[0]
 
     # 3, 4, 5: Nested executables (common in Unreal Engine / AAA titles)
+    all_exes = _scan_dir_executables(game_dir_abs)
+    if not all_exes:
+        return None
+
     shippings = []
     win64_exes = []
-    all_exes = []
-
-    for root, _, files in os.walk(game_dir_abs):
-        for fn in files:
-            low = fn.lower()
-            if low.endswith(".exe") and low not in _IGNORED_EXES:
-                full_p = os.path.join(root, fn)
-                all_exes.append(full_p)
-                if "-shipping.exe" in low:
-                    shippings.append(full_p)
-                elif "binaries" in root.lower() and "win64" in root.lower():
-                    win64_exes.append(full_p)
-            elif sys.platform != "win32" and not low.endswith((".dll", ".so", ".dylib", ".txt", ".json", ".pck", ".pak")):
-                full_p = os.path.join(root, fn)
-                if os.access(full_p, os.X_OK) and not os.path.isdir(full_p):
-                    all_exes.append(full_p)
+    for full_p in all_exes:
+        low = os.path.basename(full_p).lower()
+        if "-shipping.exe" in low:
+            shippings.append(full_p)
+        elif "binaries" in full_p.lower() and "win64" in full_p.lower():
+            win64_exes.append(full_p)
 
     if shippings:
         for p in shippings:
@@ -100,10 +132,7 @@ def find_primary_executable_path(game_dir: str) -> str | None:
     if win64_exes:
         return win64_exes[0]
 
-    if all_exes:
-        return all_exes[0]
-
-    return None
+    return all_exes[0]
 
 
 def find_game_executables(game_dir: str) -> list[str]:
@@ -114,15 +143,25 @@ def find_game_executables(game_dir: str) -> list[str]:
     primary = find_primary_executable_path(game_dir)
     primary_name = os.path.basename(primary) if primary else None
 
-    for root, _, files in os.walk(game_dir):
-        for fn in files:
+    # Check root level first
+    game_dir_abs = os.path.abspath(game_dir)
+    try:
+        for fn in os.listdir(game_dir_abs):
             low = fn.lower()
             if low.endswith(".exe") and low not in _IGNORED_EXES:
                 exes.add(fn)
             elif sys.platform != "win32" and not low.endswith((".dll", ".so", ".dylib", ".txt", ".json", ".pck", ".pak")):
-                p = os.path.join(root, fn)
-                if os.access(p, os.X_OK) and not os.path.isdir(p):
+                p = os.path.join(game_dir_abs, fn)
+                if os.path.isfile(p) and os.access(p, os.X_OK):
                     exes.add(fn)
+    except OSError:
+        pass
+
+    # If root had executables and primary is among them, avoid deep scan
+    if not exes or (primary_name and primary_name not in exes):
+        all_paths = _scan_dir_executables(game_dir_abs)
+        for p in all_paths:
+            exes.add(os.path.basename(p))
 
     res = sorted(exes)
     if primary_name and primary_name in res:
@@ -144,75 +183,87 @@ def _is_subpath(parent: str, child: str) -> bool:
 
 
 def _get_running_processes_tasklist(known_exes_lower: set[str]) -> list[dict]:
-    """Native Windows fallback using tasklist command (zero dependency)."""
+    """Native Windows fallback using tasklist command with snapshot caching."""
+    global _PROCESS_CACHE
+    now = time.time()
+
+    if now - _PROCESS_CACHE["timestamp"] >= _PROCESS_CACHE_TTL:
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if sys.platform == "win32" else 0
+        parsed = []
+        try:
+            proc = subprocess.run(
+                ["tasklist", "/FO", "CSV", "/NH"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="gbk",
+                errors="ignore",
+                creationflags=creationflags,
+                timeout=3,
+            )
+            if proc.returncode == 0:
+                reader = csv.reader(io.StringIO(proc.stdout))
+                for row in reader:
+                    if len(row) >= 2:
+                        name = row[0].strip()
+                        try:
+                            pid = int(row[1].strip())
+                            parsed.append((name, pid))
+                        except ValueError:
+                            continue
+        except Exception:
+            pass
+        _PROCESS_CACHE = {"timestamp": now, "processes": parsed}
+
     hits = []
-    creationflags = 0
-    if sys.platform == "win32":
-        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
-
-    try:
-        proc = subprocess.run(
-            ["tasklist", "/FO", "CSV", "/NH"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="gbk",
-            errors="ignore",
-            creationflags=creationflags,
-            timeout=3,
-        )
-        if proc.returncode != 0:
-            return []
-
-        reader = csv.reader(io.StringIO(proc.stdout))
-        for row in reader:
-            if len(row) >= 2:
-                name = row[0].strip()
-                if name.lower() in known_exes_lower:
-                    try:
-                        pid = int(row[1].strip())
-                    except ValueError:
-                        continue
-                    hits.append({
-                        "pid": pid,
-                        "name": name,
-                        "exe": "",
-                    })
-    except Exception:
-        pass
+    for name, pid in _PROCESS_CACHE["processes"]:
+        if name.lower() in known_exes_lower:
+            hits.append({
+                "pid": pid,
+                "name": name,
+                "exe": "",
+            })
     return hits
 
 
 def _get_running_processes_ps(known_exes_lower: set[str]) -> list[dict]:
-    """Native POSIX fallback using ps command (zero dependency)."""
+    """Native POSIX fallback using ps command with snapshot caching."""
+    global _PROCESS_CACHE
+    now = time.time()
+
+    if now - _PROCESS_CACHE["timestamp"] >= _PROCESS_CACHE_TTL:
+        parsed = []
+        try:
+            proc = subprocess.run(
+                ["ps", "-eo", "pid,comm"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=3,
+            )
+            if proc.returncode == 0:
+                for line in proc.stdout.splitlines():
+                    parts = line.strip().split(None, 1)
+                    if len(parts) == 2:
+                        try:
+                            pid = int(parts[0])
+                            comm = parts[1].strip()
+                            parsed.append((comm, pid))
+                        except ValueError:
+                            continue
+        except Exception:
+            pass
+        _PROCESS_CACHE = {"timestamp": now, "processes": parsed}
+
     hits = []
-    try:
-        proc = subprocess.run(
-            ["ps", "-eo", "pid,comm"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            timeout=3,
-        )
-        if proc.returncode != 0:
-            return []
-        for line in proc.stdout.splitlines():
-            parts = line.strip().split(None, 1)
-            if len(parts) == 2:
-                pid_str, comm = parts
-                comm_base = os.path.basename(comm).lower()
-                if comm_base in known_exes_lower:
-                    try:
-                        pid = int(pid_str)
-                    except ValueError:
-                        continue
-                    hits.append({
-                        "pid": pid,
-                        "name": comm,
-                        "exe": "",
-                    })
-    except Exception:
-        pass
+    for comm, pid in _PROCESS_CACHE["processes"]:
+        comm_base = os.path.basename(comm).lower()
+        if comm_base in known_exes_lower or comm.lower() in known_exes_lower:
+            hits.append({
+                "pid": pid,
+                "name": comm,
+                "exe": "",
+            })
     return hits
 
 
