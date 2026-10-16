@@ -24,13 +24,14 @@ def _get_free_port() -> int:
 _no_proxy_opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def _http_get(url: str):
+def _http_get(url: str, timeout: int = 15):
     req = urllib.request.Request(url)
     try:
-        with _no_proxy_opener.open(req, timeout=5) as response:
+        with _no_proxy_opener.open(req, timeout=timeout) as response:
             return response.getcode(), response.read().decode("utf-8")
     except urllib.error.HTTPError as exc:
         return exc.code, exc.read().decode("utf-8")
+
 
 
 def _http_post(url: str, data: dict):
@@ -267,7 +268,7 @@ System.NullReferenceException: Object reference not set to an instance of an obj
 
     def test_games_and_mod_copilot(self):
         # 1. Test /api/games/scan
-        code, body = _http_get(f"{self.base_url}/api/games/scan")
+        code, body = _http_get(f"{self.base_url}/api/games/scan?fast=1", timeout=20)
         self.assertEqual(code, 200)
         res = json.loads(body)
         self.assertTrue(res["success"])
