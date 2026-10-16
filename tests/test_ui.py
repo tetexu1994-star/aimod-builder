@@ -301,6 +301,16 @@ System.NullReferenceException: Object reference not set to an instance of an obj
             self.assertTrue(pin_res["success"])
             self.assertTrue(os.path.exists(pin_res["data"]["path"]))
 
+            # 4. Test /api/games/restart
+            with unittest.mock.patch("agmod.discovery.launch_game", return_value={"success": True, "message": "restarted"}):
+                code, restart_res = _http_post(f"{self.base_url}/api/games/restart", {
+                    "game_dir": tmp_game,
+                    "appid": ""
+                })
+                self.assertEqual(code, 200)
+                self.assertTrue(restart_res["success"])
+
+
     def test_anticheat_api_blocking(self):
         with tempfile.TemporaryDirectory() as protected_game:
             os.makedirs(os.path.join(protected_game, "EasyAntiCheat"))

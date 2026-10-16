@@ -244,3 +244,98 @@ def build_plugin(project_dir: str, game_dir: str) -> str:
             msg += "\nSuggested fixes:\n" + "\n".join(f"  - {f}" for f in fixes)
         raise RuntimeError(msg)
     return res["installed"]
+
+
+def compile_unity_plugin(
+    game_dir: str,
+    mod_id: str,
+    cs_source_path: str,
+    out_dll_path: str,
+) -> dict:
+    """Directly compile a C# source file into a BepInEx plugin DLL using csc.exe or dotnet."""
+    refs = []
+    # 1. BepInEx core references
+    bepin_core = os.path.join(game_dir, "BepInEx", "core")
+    for r in ["BepInEx.dll", "0Harmony.dll"]:
+        rp = os.path.join(bepin_core, r)
+        if os.path.isfile(rp):
+            refs.append(rp)
+
+    # 2. Game managed references
+    managed_dir = None
+    try:
+        for entry in os.listdir(game_dir):
+            if entry.lower().endswith(("_data", "_data")):
+                cand = os.path.join(game_dir, entry, "Managed")
+                if os.path.isdir(cand):
+                    managed_dir = cand
+                    break
+    except OSError:
+        pass
+
+    if managed_dir:
+        for r in ["UnityEngine.dll", "UnityEngine.CoreModule.dll", "Assembly-CSharp.dll"]:
+            rp = os.path.join(managed_dir, r)
+            if os.path.isfile(rp):
+                refs.append(rp)
+
+    os.makedirs(os.path.dirname(out_dll_path), exist_ok=True)
+
+    # 3. Try csc.exe (built-in Windows .NET Framework compiler)
+    csc_candidates = [
+        r"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe",
+        r"C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe",
+    ]
+    which_csc = shutil.which("csc")
+    if which_csc:
+        csc_candidates.insert(0, which_csc)
+
+    for csc in csc_candidates:
+        if os.path.isfile(csc):
+            ref_args = [f"/reference:{r}" for r in refs]
+            cmd = [csc, "/target:library", f"/out:{out_dll_path}"] + ref_args + [cs_source_path]
+            try:
+                res = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                if res.returncode == 0 and os.path.isfile(out_dll_path):
+                    return {"success": True, "method": "csc", "dll_path": out_dll_path}
+            except Exception as e:
+                logger.warning("csc compilation error: %s", e)
+
+    # 4. Try dotnet build fallback
+    if shutil.which("dotnet"):
+        tmp_proj = tempfile.mkdtemp(prefix="aimod-bepin-compile-")
+        try:
+            proj_file = os.path.join(tmp_proj, f"{mod_id}.csproj")
+            cs_copy = os.path.join(tmp_proj, "Plugin.cs")
+            shutil.copyfile(cs_source_path, cs_copy)
+
+            ref_items = "\n".join([
+                f'    <Reference Include="{os.path.splitext(os.path.basename(r))[0]}"><HintPath>{r.replace(chr(92), "/")}</HintPath><Private>false</Private></Reference>'
+                for r in refs
+            ])
+            csproj_content = f'''<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>{mod_id}</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+{ref_items}
+  </ItemGroup>
+</Project>'''
+            with open(proj_file, "w", encoding="utf-8") as f:
+                f.write(csproj_content)
+
+            out_dir = os.path.join(tmp_proj, "out")
+            res = subprocess.run(["dotnet", "build", "-c", "Release", "-o", out_dir], cwd=tmp_proj, capture_output=True, text=True, check=False)
+            built_dll = os.path.join(out_dir, f"{mod_id}.dll")
+            if res.returncode == 0 and os.path.isfile(built_dll):
+                shutil.copyfile(built_dll, out_dll_path)
+                return {"success": True, "method": "dotnet", "dll_path": out_dll_path}
+        except Exception as e:
+            logger.warning("dotnet compilation error: %s", e)
+        finally:
+            shutil.rmtree(tmp_proj, ignore_errors=True)
+
+    return {"success": False, "error": "No available C# compiler found (csc / dotnet)"}
+

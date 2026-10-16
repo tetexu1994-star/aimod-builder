@@ -407,3 +407,41 @@ def check_game_status(game_dir: str, force_refresh: bool = False) -> dict:
         "processes": running_procs,
         "lock_warning": "Game is currently running! File operations (install/update/uninstall) may fail due to file locks." if running else None,
     }
+
+
+def terminate_game_processes(game_dir: str) -> bool:
+
+    """Terminate any running processes associated with the game directory."""
+    procs = get_running_game_processes(game_dir, force_refresh=True)
+    if not procs:
+        return True
+
+    for p in procs:
+        pid = p.get("pid")
+        if not pid:
+            continue
+        try:
+            if psutil is not None:
+                try:
+                    proc = psutil.Process(pid)
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=2)
+                    except (psutil.TimeoutExpired, Exception):
+                        try:
+                            proc.kill()
+                        except Exception:
+                            pass
+                    continue
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+            if sys.platform == "win32":
+                subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True, check=False)
+            else:
+                subprocess.run(["kill", "-9", str(pid)], capture_output=True, check=False)
+        except Exception:
+            pass
+
+    clear_process_cache()
+    time.sleep(0.5)
+    return True

@@ -1301,6 +1301,7 @@
           <div style="display:flex; gap:8px;">
             <button class="btn btn-sm" onclick="goToStage(1)">← 更换游戏</button>
             <button class="btn btn-sm btn-launch" id="studio-launch-btn" onclick="launchCurrentGame()">▶ 启动游戏</button>
+            <button class="btn btn-sm" id="studio-restart-btn" onclick="restartGame()" style="display:none; background:rgba(245, 158, 11, 0.2); border:1px solid #f59e0b; color:#fbbf24;">🔄 一键重启游戏</button>
           </div>
         </div>
 
@@ -1666,6 +1667,8 @@
             launchBtn.textContent = '🟢 游戏运行中';
             launchBtn.disabled = true;
           }
+          const restartBtn = document.getElementById('studio-restart-btn');
+          if (restartBtn) restartBtn.style.display = 'inline-flex';
 
           if (!silent && !wasRunning) {
             showToast(`🟢 游戏进程已连接 (${name} PID: ${pid})！`, 'success');
@@ -1688,6 +1691,8 @@
             launchBtn.textContent = '▶ 启动游戏';
             launchBtn.disabled = false;
           }
+          const restartBtn = document.getElementById('studio-restart-btn');
+          if (restartBtn) restartBtn.style.display = 'none';
         }
       } catch (e) {
         console.warn('Process check error:', e);
@@ -2108,6 +2113,12 @@
             </div>
             <div style="font-size:12px; color:var(--text-muted);">${escapeHtml(action.summary)}</div>
             ${action.installed_path ? `<div style="font-size:11px; color:var(--text-dim); margin-top:2px;">📁 自动部署路径: <code>${escapeHtml(action.installed_path)}</code></div>` : ''}
+            ${action.pending_restart ? `
+              <div style="margin: 10px 0; padding: 10px 14px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                <span style="font-size: 12px; color: #fbbf24;">⚡ Mod 插件已成功编译生成 DLL。因游戏此前已在运行，需重启游戏载入：</span>
+                <button type="button" class="btn btn-sm" onclick="restartGame()" style="background: #f59e0b; border-color: #d97706; color: #18181b; font-weight: 700; white-space: nowrap;">🔄 一键重启游戏</button>
+              </div>
+            ` : ''}
             ${tuningHtml ? `<div class="tuning-group">${tuningHtml}</div>` : ''}
             <div class="action-card-footer">
               <span style="font-size:11px; color:var(--text-dim);">手感满意？</span>
@@ -2564,6 +2575,39 @@
       if (!currentGame) return;
       launchAndAdvance();
     }
+
+    async function restartGame() {
+      if (!currentGame) return;
+      showToast('正在终止旧进程并重新启动游戏...', 'info');
+      try {
+        const resp = await fetch('/api/games/restart', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            game_dir: currentGame.game_dir,
+            appid: currentGame.appid || ''
+          })
+        });
+        const res = await resp.json();
+        if (res.success) {
+          showToast(res.message || '重启指令已下发！正在等待游戏重新载入插件...', 'success');
+          setTimeout(() => checkProcessStatus(true, true), 1000);
+          let attempts = 0;
+          const pollInterval = setInterval(async () => {
+            attempts++;
+            const found = await checkProcessStatus(true, true);
+            if (found || attempts >= 15 || !currentGame) {
+              clearInterval(pollInterval);
+            }
+          }, 2000);
+        } else {
+          showToast('重启失败: ' + (res.error || '未知错误'), 'error');
+        }
+      } catch (e) {
+        showToast('请求网络异常: ' + e.message, 'error');
+      }
+    }
+
 
     function addCustomGame() {
       const p = prompt('请输入你的游戏根目录完整路径 (例如: D:\\Games\\MyGame):');

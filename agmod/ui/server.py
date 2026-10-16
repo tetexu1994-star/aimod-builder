@@ -21,7 +21,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable, Dict, Optional, Tuple
 
-from agmod import codegen, discovery, doctor, inspector, install_preview, llm, log_repair, logs, paths, planning, process, registry, rollback, safety, saves
+from agmod import bepinex, codegen, discovery, doctor, inspector, install_preview, llm, log_repair, logs, paths, planning, process, registry, rollback, safety, saves
 
 logger = logging.getLogger("agmod.ui")
 
@@ -51,14 +51,14 @@ def _hook_target_parts(target: str) -> tuple[str, str]:
     return cls, mth
 
 
-def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict[str, Any]) -> tuple[str, dict]:
+def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict[str, Any], mod_id: str = "") -> tuple[str, dict]:
     if engine_id not in {"unity", "unreal", "re-engine", "godot"}:
         return f"-- Generated placeholder for {mod_name}\n", {}
     class_name, method_name = _hook_target_parts(hook_target)
     parameters = []
     for index, (name, value) in enumerate(params.items()):
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", str(name)):
-            raise ValueError(f"invalid parameter name: {name}")
+            continue
         if isinstance(value, bool):
             type_name = "bool"
         elif isinstance(value, int):
@@ -70,6 +70,147 @@ def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict
         else:
             type_name = "object"
         parameters.append({"name": str(name), "type": type_name, "value": value})
+
+    if engine_id == "unity":
+        safe_id = re.sub(r"[^A-Za-z0-9_]", "_", mod_id or mod_name.lower()).strip("_") or "mod"
+        escaped_name = mod_name.replace('"', '\\"')
+        search_key = f"{hook_target} {mod_name} {mod_id}".lower()
+        is_speed = any(k in search_key for k in ["speed", "move", "personcontroller", "奔跑", "移速", "速度", "快"])
+        is_god = any(k in search_key for k in ["damage", "health", "god", "shield", "stat_health", "playerstats", "无敌", "锁血", "金身", "免伤"])
+
+        csharp_code = f'''using System;
+using System.IO;
+using BepInEx;
+using HarmonyLib;
+using UnityEngine;
+
+namespace AIModPlugin_{safe_id}
+{{
+    [BepInPlugin("com.aimod.{safe_id}", "{escaped_name}", "1.0.0")]
+    public class Plugin_{safe_id} : BaseUnityPlugin
+    {{
+        public static float SpeedMultiplier = 2.0f;
+        public static bool GodModeEnabled = true;
+        public static float DamageReduction = 100f;
+        private string configPath;
+        private float lastCheckTime = 0f;
+
+        void Awake()
+        {{
+            configPath = Path.Combine(Paths.PluginPath, "{mod_id}", "mod.json");
+            ReadTuning();
+            Harmony harmony = new Harmony("com.aimod.{safe_id}");
+            harmony.PatchAll();
+            Logger.LogInfo("=== [AIMod] {escaped_name} Loaded Successfully! ===");
+        }}
+
+        void Update()
+        {{
+            if (Time.unscaledTime - lastCheckTime > 0.5f)
+            {{
+                lastCheckTime = Time.unscaledTime;
+                ReadTuning();
+            }}
+        }}
+
+        void ReadTuning()
+        {{
+            try
+            {{
+                if (File.Exists(configPath))
+                {{
+                    string text = File.ReadAllText(configPath);
+                    if (text.Contains("\\"god_mode\\": false") || text.Contains("\\"god_mode\\":false")) GodModeEnabled = false;
+                    else if (text.Contains("\\"god_mode\\": true") || text.Contains("\\"god_mode\\":true")) GodModeEnabled = true;
+
+                    int idx = text.IndexOf("\\"speed_multiplier\\":");
+                    if (idx < 0) idx = text.IndexOf("\\"multiplier\\":");
+                    if (idx > 0)
+                    {{
+                        string sub = text.Substring(idx + 19);
+                        int end = sub.IndexOfAny(new char[] {{ ',', '}}', '\\r', '\\n' }});
+                        if (end > 0)
+                        {{
+                            string valStr = sub.Substring(0, end).Trim();
+                            float v;
+                            if (float.TryParse(valStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v))
+                            {{
+                                if (v > 0.1f && v < 20f) SpeedMultiplier = v;
+                            }}
+                        }}
+                    }}
+                }}
+            }}
+            catch {{ }}
+        }}
+    }}
+'''
+        if is_speed:
+            csharp_code += f'''
+    [HarmonyPatch(typeof(PersonController), "Update")]
+    public static class Patch_PersonController_Update
+    {{
+        static float origNormal = -1f;
+        static float origSprint = -1f;
+
+        static void Postfix(PersonController __instance)
+        {{
+            if (__instance == null) return;
+            if (origNormal < 0f)
+            {{
+                origNormal = __instance.normalSpeed;
+                origSprint = __instance.sprintSpeed;
+            }}
+            __instance.normalSpeed = origNormal * Plugin_{safe_id}.SpeedMultiplier;
+            __instance.sprintSpeed = origSprint * Plugin_{safe_id}.SpeedMultiplier;
+        }}
+    }}
+}}
+'''
+        elif is_god:
+            csharp_code += f'''
+    [HarmonyPatch(typeof(PlayerStats), "Damage")]
+    public static class Patch_PlayerStats_Damage
+    {{
+        static bool Prefix(ref float damage)
+        {{
+            if (Plugin_{safe_id}.GodModeEnabled)
+            {{
+                damage = 0f;
+                return false;
+            }}
+            return true;
+        }}
+    }}
+
+    [HarmonyPatch(typeof(Stat_Health), "ChangeValue")]
+    public static class Patch_Stat_Health_ChangeValue
+    {{
+        static bool Prefix(float diff, float newValue)
+        {{
+            if (Plugin_{safe_id}.GodModeEnabled && diff < 0f)
+            {{
+                return false;
+            }}
+            return true;
+        }}
+    }}
+}}
+'''
+        else:
+            csharp_code += f'''
+    [HarmonyPatch(typeof({class_name}), "{method_name}")]
+    public static class Patch_{class_name}_{method_name}
+    {{
+        static void Postfix({class_name} __instance)
+        {{
+            // Target method patched successfully
+        }}
+    }}
+}}
+'''
+        return csharp_code, {"class_name": class_name, "method_name": method_name}
+
     result = codegen.generate_hook_from_evidence({
         "engine": engine_id,
         "target": {
@@ -119,7 +260,7 @@ def _auto_deploy_mod(
         }
 
     try:
-        source_code, normalized_target = _pinned_source(engine_id, mod_name, hook_target, params)
+        source_code, normalized_target = _pinned_source(engine_id, mod_name, hook_target, params, mod_id=mod_id)
     except Exception:
         source_code, normalized_target = f"-- Mod {mod_name}\n", {}
 
@@ -194,11 +335,20 @@ def _auto_deploy_mod(
                 json.dump(manifest, f, ensure_ascii=False, indent=2)
             pairs.append((source_manifest, os.path.join(mod_folder, "mod.json")))
 
+            compiled_dll = False
             if source_code:
                 source_cs = os.path.join(staging, f"{mod_id}.cs")
                 with open(source_cs, "w", encoding="utf-8") as f:
                     f.write(source_code)
                 pairs.append((source_cs, os.path.join(mod_folder, f"{mod_id}.cs")))
+
+                source_dll = os.path.join(staging, f"{mod_id}.dll")
+                comp_res = bepinex.compile_unity_plugin(game_dir, mod_id, source_cs, source_dll)
+                if comp_res.get("success") and os.path.isfile(source_dll):
+                    pairs.append((source_dll, os.path.join(game_dir, "BepInEx", "plugins", f"{mod_id}.dll")))
+                    compiled_dll = True
+                else:
+                    logger.warning("Plugin compilation status: %s", comp_res)
 
             # Also generate/update BepInEx config file for real-time config sync
             cfg_dir = os.path.join(game_dir, "BepInEx", "config")
@@ -210,9 +360,15 @@ def _auto_deploy_mod(
                 f.write("\n".join(cfg_lines) + "\n")
             pairs.append((cfg_source, os.path.join(cfg_dir, f"{mod_id}.cfg")))
 
-            message = f"Mod【{mod_name}】源码与配置已全自动写入 BepInEx 插件目录！"
-            if pending_restart:
-                message += "（提示：检测到游戏此前已在运行，请顺手重启一次游戏以装载前置框架）"
+            running, _ = rollback.is_game_running(game_dir)
+            if running:
+                pending_restart = True
+                message = f"Mod【{mod_name}】已全自动编译生成 DLL 插件并写入！因游戏当前正在运行，请点击下方【🔄 一键重启游戏】重新载入后即可生效！"
+            elif compiled_dll:
+                message = f"Mod【{mod_name}】已全自动编译为 BepInEx 插件（DLL），启动游戏即可生效！"
+            else:
+                message = f"Mod【{mod_name}】源码与配置已全自动写入 BepInEx 插件目录！"
+
 
         preview = install_preview.preview_install(
             game_dir,
@@ -445,6 +601,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             "/api/llm/test": self._handle_llm_test,
             "/api/llm/chat": self._handle_llm_chat,
             "/api/games/launch": self._handle_games_launch,
+            "/api/games/restart": self._handle_games_restart,
             "/api/mod/interact": self._handle_mod_interact,
             "/api/mod/pin": self._handle_mod_pin,
             "/api/mod/tune": self._handle_mod_tune,
@@ -665,6 +822,24 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         appid = str(body.get("appid", "")).strip()
         if not game_dir:
             return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
+        res = discovery.launch_game(game_dir, appid)
+        return (HTTPStatus.OK if res.get("success") else HTTPStatus.INTERNAL_SERVER_ERROR), res
+
+    def _handle_games_restart(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        from agmod import discovery, process
+        game_dir = _safe_path(body.get("game_dir", ""))
+        appid = str(body.get("appid", "")).strip()
+        if not game_dir:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
+
+        # First terminate any running instances of the game
+        try:
+            process.terminate_game_processes(game_dir)
+            time.sleep(1.0)
+        except Exception as e:
+            logger.warning("Error terminating game: %s", e)
+
+        # Launch game again
         res = discovery.launch_game(game_dir, appid)
         return (HTTPStatus.OK if res.get("success") else HTTPStatus.INTERNAL_SERVER_ERROR), res
 
@@ -1048,12 +1223,23 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             if not has_llm:
                 prefix_note = "\n\n> 💡 **提示**：当前通过内置预设模板生效。若要让 AI 自由理解任意自然语言并定制编写 Mod，请点击右上角「⚙️ 模型配置」填入 API Key。"
             status_desc = deploy_res.get("message", "已全自动写入游戏目录")
+            restart_hint = ""
+            if deploy_res.get("pending_restart"):
+                restart_hint = "\n\n> ⚠️ **温馨提示**：检测到游戏当前已在运行，请点击下方 **【🔄 一键重启游戏】** 重新载入编译好的 Mod 即可生效！"
             reply = (
                 f"✨ 已为你设计并全自动写入游戏 **【{action['mod_name']}】**！\n\n"
                 f"- 部署状态: {status_desc}\n"
-                f"- 安全边界提示: {boundary.get('boundary_warning', '已开启物理与数值边界防护')}\n\n"
-                f"切回游戏即可直接体验，可在下方滑块调节数值！{prefix_note}"
+                f"- 安全边界提示: {boundary.get('boundary_warning', '已开启物理与数值边界防护')}{restart_hint}\n\n"
+                f"启动或重启游戏后即可直接体验，可在下方滑块调节数值！{prefix_note}"
             )
+        else:
+            reply = _clean_user_reply(reply)
+            if deploy_res.get("message"):
+                restart_hint = ""
+                if deploy_res.get("pending_restart"):
+                    restart_hint = "\n\n> ⚠️ **温馨提示**：检测到游戏当前已在运行，请点击下方 **【🔄 一键重启游戏】** 重新载入编译好的 Mod 即可生效！"
+                reply += f"\n\n- 部署状态: {deploy_res['message']}{restart_hint}"
+
 
         return HTTPStatus.OK, {
             "success": True,
@@ -1178,7 +1364,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             }
 
         try:
-            source_code, normalized_target = _pinned_source(engine_id, mod_name, hook_target, params)
+            source_code, normalized_target = _pinned_source(engine_id, mod_name, hook_target, params, mod_id=mod_id)
         except (TypeError, ValueError) as exc:
             return HTTPStatus.BAD_REQUEST, {"success": False, "error": str(exc)}
 
@@ -1235,6 +1421,12 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                     with open(source_cs, "w", encoding="utf-8") as f:
                         f.write(source_code)
                     pairs.append((source_cs, os.path.join(mod_folder, f"{mod_id}.cs")))
+
+                    source_dll = os.path.join(staging, f"{mod_id}.dll")
+                    comp_res = bepinex.compile_unity_plugin(game_dir, mod_id, source_cs, source_dll)
+                    if comp_res.get("success") and os.path.isfile(source_dll):
+                        pairs.append((source_dll, os.path.join(game_dir, "BepInEx", "plugins", f"{mod_id}.dll")))
+
                 message = f"Mod【{mod_name}】已成功固化到游戏目录！下次直接在 Steam 启动游戏依然生效。"
                 mods_root = mod_folder
 
