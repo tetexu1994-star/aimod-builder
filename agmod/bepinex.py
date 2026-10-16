@@ -9,6 +9,7 @@ Harmony. This module:
 """
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import subprocess
@@ -22,6 +23,8 @@ from .paths import safe_component, safe_extract_zip
 
 BEPINEX_VERSION = "5.4.23.5"
 _BASE_URL = "https://github.com/BepInEx/BepInEx/releases/download"
+
+logger = logging.getLogger(__name__)
 
 
 def _find_bundled_zip() -> str | None:
@@ -246,6 +249,24 @@ def build_plugin(project_dir: str, game_dir: str) -> str:
     return res["installed"]
 
 
+def find_compiler() -> dict:
+    """Locate an available C# compiler: Windows built-in csc.exe, else dotnet SDK."""
+    csc_candidates = [
+        r"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe",
+        r"C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe",
+    ]
+    which_csc = shutil.which("csc")
+    if which_csc:
+        csc_candidates.insert(0, which_csc)
+    for csc in csc_candidates:
+        if os.path.isfile(csc):
+            return {"type": "csc", "path": csc}
+    dotnet = shutil.which("dotnet")
+    if dotnet:
+        return {"type": "dotnet", "path": dotnet}
+    return {"type": None, "path": None}
+
+
 def compile_unity_plugin(
     game_dir: str,
     mod_id: str,
@@ -281,27 +302,9 @@ def compile_unity_plugin(
 
     os.makedirs(os.path.dirname(out_dll_path), exist_ok=True)
 
-    # 3. Try csc.exe (built-in Windows .NET Framework compiler)
-    csc_candidates = [
-        r"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe",
-        r"C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe",
-    ]
-    which_csc = shutil.which("csc")
-    if which_csc:
-        csc_candidates.insert(0, which_csc)
+    last_error = ""
 
-    for csc in csc_candidates:
-        if os.path.isfile(csc):
-            ref_args = [f"/reference:{r}" for r in refs]
-            cmd = [csc, "/target:library", f"/out:{out_dll_path}"] + ref_args + [cs_source_path]
-            try:
-                res = subprocess.run(cmd, capture_output=True, text=True, check=False)
-                if res.returncode == 0 and os.path.isfile(out_dll_path):
-                    return {"success": True, "method": "csc", "dll_path": out_dll_path}
-            except Exception as e:
-                logger.warning("csc compilation error: %s", e)
-
-    # 4. Try dotnet build fallback
+    # 1. Prefer dotnet SDK (supports modern C#; the plugin template uses C# 6+ syntax)
     if shutil.which("dotnet"):
         tmp_proj = tempfile.mkdtemp(prefix="aimod-bepin-compile-")
         try:
@@ -332,12 +335,45 @@ def compile_unity_plugin(
             if res.returncode == 0 and os.path.isfile(built_dll):
                 shutil.copyfile(built_dll, out_dll_path)
                 return {"success": True, "method": "dotnet", "dll_path": out_dll_path}
+            last_error = (res.stderr or res.stdout or "").strip()[-800:]
         except Exception as e:
             logger.warning("dotnet compilation error: %s", e)
+            last_error = str(e)
         finally:
             shutil.rmtree(tmp_proj, ignore_errors=True)
 
-    return {"success": False, "error": "No available C# compiler found (csc / dotnet)"}
+    # 2. Fall back to csc.exe (Windows built-in, C# 5 only)
+    csc_candidates = [
+        r"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe",
+        r"C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe",
+    ]
+    which_csc = shutil.which("csc")
+    if which_csc:
+        csc_candidates.insert(0, which_csc)
+
+    for csc in csc_candidates:
+        if os.path.isfile(csc):
+            ref_args = [f"/reference:{r}" for r in refs]
+            cmd = [csc, "/target:library", f"/out:{out_dll_path}"] + ref_args + [cs_source_path]
+            try:
+                res = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                if res.returncode == 0 and os.path.isfile(out_dll_path):
+                    return {"success": True, "method": "csc", "dll_path": out_dll_path}
+                last_error = (res.stderr or res.stdout or "").strip()[-800:]
+            except Exception as e:
+                logger.warning("csc compilation error: %s", e)
+                last_error = str(e)
+
+    compiler = find_compiler()
+    if compiler.get("type") is None:
+        error = (
+            "未找到 C# 编译器（csc.exe / dotnet），插件无法编译。"
+            "请安装 .NET Framework 4.x Developer Pack 或 .NET SDK（https://dotnet.microsoft.com/download）。"
+        )
+    else:
+        detail = last_error or "未知错误"
+        error = f"编译失败（{compiler['type']}）：{detail}"
+    return {"success": False, "error": error, "compiler": compiler}
 
 
 def verify_plugin(game_dir: str, mod_id: str) -> dict:

@@ -276,6 +276,8 @@ def _auto_deploy_mod(
         }
         pairs: list[tuple[str, str]] = []
         pending_restart = False
+        compiled_dll = False
+        compilation_error = ""
         message = ""
 
         if engine_id == "unreal":
@@ -336,6 +338,7 @@ def _auto_deploy_mod(
             pairs.append((source_manifest, os.path.join(mod_folder, "mod.json")))
 
             compiled_dll = False
+            compilation_error = ""
             if source_code:
                 source_cs = os.path.join(staging, f"{mod_id}.cs")
                 with open(source_cs, "w", encoding="utf-8") as f:
@@ -348,6 +351,7 @@ def _auto_deploy_mod(
                     pairs.append((source_dll, os.path.join(game_dir, "BepInEx", "plugins", f"{mod_id}.dll")))
                     compiled_dll = True
                 else:
+                    compilation_error = comp_res.get("error", "未知编译错误")
                     logger.warning("Plugin compilation status: %s", comp_res)
 
             # Also generate/update BepInEx config file for real-time config sync
@@ -361,13 +365,14 @@ def _auto_deploy_mod(
             pairs.append((cfg_source, os.path.join(cfg_dir, f"{mod_id}.cfg")))
 
             running, _ = rollback.is_game_running(game_dir)
-            if running:
-                pending_restart = True
-                message = f"Mod【{mod_name}】已全自动编译生成 DLL 插件并写入！因游戏当前正在运行，请点击下方【🔄 一键重启游戏】重新载入后即可生效！"
-            elif compiled_dll:
-                message = f"Mod【{mod_name}】已全自动编译为 BepInEx 插件（DLL），启动游戏即可生效！"
+            if compiled_dll:
+                if running:
+                    pending_restart = True
+                    message = f"Mod【{mod_name}】已编译生成 DLL 插件并写入。因游戏正在运行，请一键重启后生效。"
+                else:
+                    message = f"Mod【{mod_name}】已编译为 BepInEx 插件（DLL），启动游戏即可生效。"
             else:
-                message = f"Mod【{mod_name}】源码与配置已全自动写入 BepInEx 插件目录！"
+                message = f"⚠️ 编译失败，Mod 未生效：{compilation_error}"
 
 
         preview = install_preview.preview_install(
@@ -380,11 +385,21 @@ def _auto_deploy_mod(
         if preview.get("ready"):
             rollback.install_files(game_dir, mod_id, pairs, check_running=False)
 
+        verified = {}
+        if engine_id not in {"unreal", "re-engine", "godot"} and compiled_dll:
+            try:
+                verified = bepinex.verify_plugin(game_dir, mod_id)
+            except Exception:
+                verified = {}
+
         return {
             "success": True,
             "installed_path": mods_root,
             "message": message,
             "pending_restart": pending_restart,
+            "compiled": compiled_dll,
+            "compilation_error": compilation_error,
+            "verified": verified,
             "preview": preview,
         }
     finally:
