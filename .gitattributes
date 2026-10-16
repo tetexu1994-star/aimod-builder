@@ -1,0 +1,30 @@
+# Normalize line endings to LF in the repository. This is a cross-platform repo
+# (macOS + Windows contributors), so text files must stay LF in the index to
+# avoid whole-file churn every time a Windows editor re-saves them.
+* text=auto eol=lf
+
+# Treat these as binary so Git never converts their line endings or applies
+# text normalization to them (game assets / compiled artifacts).
+*.pak binary
+*.utoc binary
+*.ucas binary
+*.uasset binary
+*.umap binary
+*.ubulk binary
+*.uexp binary
+*.dll binary
+*.exe binary
+*.so binary
+*.dylib binary
+*.zip binary
+*.7z binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.wav binary
+*.ogg binary
+*.mp3 binary
+*.bundle binary
+*.unity3d binary

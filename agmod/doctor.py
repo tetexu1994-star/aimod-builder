@@ -16,6 +16,7 @@ import subprocess
 import sys
 from dataclasses import asdict, dataclass
 
+from .compiler import find_roslyn_csc as _find_roslyn_csc
 from .config import CACHE_ROOT
 from .rea import _find_rea
 
@@ -94,6 +95,25 @@ def check_environment() -> dict:
             )
         )
         actions_needed.append("Install .NET 6/8 SDK: https://dotnet.microsoft.com/download")
+
+    # 2b. Standalone Roslyn csc.exe (auto-downloaded fallback for modern C#)
+    roslyn_csc = _find_roslyn_csc()
+    if dotnet:
+        roslyn_status, roslyn_version, roslyn_path, roslyn_remedy = "optional_missing", "", "using dotnet SDK", ""
+    elif roslyn_csc:
+        roslyn_status, roslyn_version, roslyn_path, roslyn_remedy = "ok", "auto-downloaded", roslyn_csc, ""
+    else:
+        roslyn_status, roslyn_version, roslyn_path, roslyn_remedy = "optional_missing", "", "auto-download on first build", "Downloaded automatically from Microsoft.Net.Compilers on the first Unity mod build"
+    checks.append(
+        ToolCheck(
+            name="Roslyn csc (standalone)",
+            category="compiler",
+            status=roslyn_status,
+            version=roslyn_version,
+            path=roslyn_path,
+            remedy=roslyn_remedy,
+        )
+    )
 
     # 3. REA CLI (morluto/rea)
     rea_bin = _find_rea()
