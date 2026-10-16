@@ -402,6 +402,22 @@ def _auto_deploy_mod(
             "error": "UE5 IoStore hook auto-deployment is disabled; use loose .pak workflow instead",
         }
 
+    # Best-effort symbol grounding: confirm the hook-target class actually exists in
+    # the game's real symbols, so a hallucinated target is flagged before restart.
+    symbol_check = {"verified": None, "query": "", "candidates": []}
+    try:
+        from agmod import symbols as _symbols
+        cls_name, _mth = _hook_target_parts(hook_target)
+        if cls_name and cls_name not in {"GameLogic", "Update", "GameManager", "Main", "Plugin"}:
+            evidence = _symbols.collect_symbol_evidence(game_dir, engine_id, cls_name, limit=5)
+            symbol_check = {
+                "verified": evidence.get("status") == "observed",
+                "query": cls_name,
+                "candidates": [c.get("symbol", "") for c in evidence.get("candidates", [])][:5],
+            }
+    except Exception:
+        pass
+
     try:
         source_code, normalized_target = _pinned_source(engine_id, mod_name, hook_target, params, mod_id=mod_id)
     except Exception:
@@ -586,6 +602,8 @@ def _auto_deploy_mod(
             "compiled": compiled_dll,
             "compilation_error": compilation_error,
             "verified": verified,
+            "symbol_verified": symbol_check["verified"],
+            "symbol_candidates": symbol_check["candidates"],
             "preview": preview,
         }
     finally:
@@ -1127,7 +1145,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 or glob.glob(os.path.join(game_dir, "*_data", "il2cpp_data"))
             )
             flavor = "IL2CPP (Cpp2IL / BepInEx-IL2CPP)" if is_il2cpp else "Mono (HarmonyX / BepInEx)"
-            framework_name = f"Unity {flavor} 运行时注入"
+            framework_name = f"Unity {flavor} 运行时适配"
             engine_prompt_addon = (
                 f"- Unity 引擎专有架构（{flavor}）：支持 Harmony 前缀/后缀补丁（Prefix / Postfix）。\n"
                 f"- 钩子目标请遵循 C# 类名与方法名规范，例如 `PlayerController:Update`、`HeroController:TakeDamage`、`CharacterMotor:Move` 等。\n"
@@ -1164,7 +1182,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                     "- 纯原生 C# 逻辑使用 Environment.TickCount 或游戏 Update 驱动。\n"
                 )
         else:
-            framework_name = f"{engine_name} 运行时注入"
+            framework_name = f"{engine_name} 运行时适配"
             engine_prompt_addon = ""
 
         reply = ""
@@ -1364,7 +1382,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 else:
                     mod_id = f"custom_mod_{int(time.time())}"
                     mod_name = f"增强特性: {user_prompt[:12]}"
-                    summary = f"已针对虚幻引擎注入运行时补丁: {user_prompt}"
+                    summary = f"已针对虚幻引擎应用运行时补丁: {user_prompt}"
                     tuning = [{"id": "effect_intensity", "label": "效果强度", "type": "slider", "min": 1, "max": 10, "step": 1, "value": 2}]
                     target = primary_hook if primary_hook != "GameLogic:Update" else "ACharacter:Tick"
             else:
@@ -1457,6 +1475,8 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             action["compiled"] = deploy_res.get("compiled", False)
             action["compilation_error"] = deploy_res.get("compilation_error", "")
             action["verified"] = deploy_res.get("verified", {})
+            action["symbol_verified"] = deploy_res.get("symbol_verified")
+            action["symbol_candidates"] = deploy_res.get("symbol_candidates", [])
 
         comp_err = deploy_res.get("compilation_error", "")
         if comp_err and "未找到 C# 编译器" not in comp_err:
@@ -1475,10 +1495,16 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             restart_hint = ""
             if deploy_res.get("pending_restart"):
                 restart_hint = "\n\n> ⚠️ **温馨提示**：检测到游戏当前已在运行，请点击顶部或卡片中的 **【🔄 一键重启游戏】** 重新载入编译好的 Mod 即可生效！"
+            symbol_note = ""
+            if action.get("symbol_verified") is False:
+                symbol_note = (
+                    "\n\n> ⚠️ **目标符号未确认**：未在游戏内找到对应目标，该 Mod 可能不会生效。"
+                    "建议补充更具体的类名/字段名后再试，或让 AI 先分析游戏内真实符号。"
+                )
             reply = (
                 f"✨ 已为你设计并全自动写入游戏 **【{action['mod_name']}】**！\n\n"
                 f"- 部署状态: {status_desc}\n"
-                f"- 安全边界提示: {boundary.get('boundary_warning', '已开启物理与数值边界防护')}{restart_hint}\n\n"
+                f"- 安全边界提示: {boundary.get('boundary_warning', '已开启物理与数值边界防护')}{restart_hint}{symbol_note}\n\n"
                 f"启动或重启游戏后即可直接体验，可在下方滑块调节数值！{prefix_note}"
             )
         else:

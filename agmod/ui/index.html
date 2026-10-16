@@ -1331,7 +1331,7 @@
             <div class="gatekeeper-step-icon">🎮</div>
             <div class="gatekeeper-step-text">
               <h4>启动游戏开启实时修改体验</h4>
-              <p>启动游戏建立双向通信通道，在游戏画面中实时体验数值调节；你也可以直接进入 Mod 制作工作台，由系统分析安全边界并自动生成注入 Mod 后再启动体验。</p>
+              <p>启动游戏建立双向通信通道，在游戏画面中实时体验数值调节；你也可以直接进入 Mod 制作工作台，由系统分析安全边界并自动生成适配 Mod 后再启动体验。</p>
             </div>
           </div>
 
@@ -1406,7 +1406,7 @@
         <!-- Anti-Cheat Warning Banner -->
         <div id="anticheat-warning-banner" style="display:none; padding:12px 20px; background:rgba(239, 68, 68, 0.12); border-bottom:1px solid rgba(239, 68, 68, 0.3); color:#f87171; font-size:13px; align-items:center; gap:8px;">
           <span style="font-size:16px;">🛡️</span>
-          <span><strong>反作弊保护生效：</strong>检测到该游戏受 <strong id="anticheat-system-name">反作弊系统</strong> 保护。为保障您的账号安全防止封号，已严格阻断此游戏的自定义 Mod 编写、热注入与固化操作。</span>
+          <span><strong>反作弊保护生效：</strong>检测到该游戏受 <strong id="anticheat-system-name">反作弊系统</strong> 保护。为保障您的账号安全防止封号，已严格阻断此游戏的自定义 Mod 编写、实时修改与固化操作。</span>
         </div>
 
         <!-- Chat Messages -->
@@ -1817,7 +1817,7 @@
           fwBadge.style.background = 'rgba(255,255,255,0.06)';
           fwBadge.style.color = 'var(--text-muted)';
           fwBadge.style.border = '1px solid var(--border)';
-          fwDesc.textContent = fw.summary || '标准游戏运行目录，支持安全代码注入。';
+          fwDesc.textContent = fw.summary || '标准游戏运行目录，支持安全代码适配。';
           fwAction.style.display = 'none';
         }
       }
@@ -2060,7 +2060,7 @@
         appendAIMessage(
           `🛡️ **反作弊安全保护生效中**\n\n` +
           `检测到 **${game.name}** 受 **${game.anticheat_system || '反作弊系统'}** 保护。\n\n` +
-          `为了防止玩家账号受到游戏官方的封禁与安全处罚，系统已严格阻断此游戏的自定义 Mod 编写、热注入与固化操作。\n\n` +
+          `为了防止玩家账号受到游戏官方的封禁与安全处罚，系统已严格阻断此游戏的自定义 Mod 编写、实时修改与固化操作。\n\n` +
           `若您希望体验 AI Mod 创作，请选择单机或无竞技反作弊的游戏（如 黑神话：悟空、艾尔登法环（离线）、幻兽帕鲁、博德之门3 等）。`
         );
         return;
@@ -2157,7 +2157,7 @@
         `- **“解锁空中二段跳”**\n` +
         `- **“敌人掉落金币提高 5 倍”**\n` +
         `- **“受到攻击减免 100% 伤害”**\n\n` +
-        `我会直接在后台分析游戏逻辑并完成注入，游戏内立刻生效！`
+        `我会直接在后台分析游戏逻辑并完成适配，游戏内立刻生效！`
       );
     }
 
@@ -2320,6 +2320,12 @@
           bodyNotice = `<div style="margin:8px 0; padding:10px 14px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.3); border-radius:6px; color:#f87171; font-size:12px;">⚠️ <strong>编译提示：</strong>${escapeHtml(action.compilation_error)}</div>`;
         }
 
+        let symbolNotice = '';
+        if (action.symbol_verified === false && !(action.compiled === false && action.compilation_error)) {
+          const cands = (action.symbol_candidates || []).slice(0, 3).join('、');
+          symbolNotice = `<div style="margin:8px 0; padding:10px 14px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); border-radius:6px; color:#fbbf24; font-size:12px;">⚠️ <strong>目标未确认：</strong>未在游戏内找到目标符号，本 Mod 可能不生效${cands ? `。游戏内相近符号：${escapeHtml(cands)}` : ''}。</div>`;
+        }
+
         actionHtml = `
           <div class="action-card">
             <div class="action-card-header">
@@ -2329,6 +2335,7 @@
             <div style="font-size:12px; color:var(--text-muted);">${escapeHtml(action.summary)}</div>
             ${action.installed_path ? `<div style="font-size:11px; color:var(--text-dim); margin-top:2px;">📁 自动部署路径: <code>${escapeHtml(action.installed_path)}</code></div>` : ''}
             ${bodyNotice}
+            ${symbolNotice}
             ${action.pending_restart ? `
               <div style="margin: 10px 0; padding: 10px 14px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                 <span style="font-size: 12px; color: #fbbf24;">⚡ Mod 插件已成功编译生成 DLL。因游戏此前已在运行，需重启游戏载入：</span>
@@ -2476,7 +2483,7 @@
       const btn = document.getElementById('btn-send');
       if (btn) {
         btn.disabled = true;
-        btn.textContent = '分析注入中...';
+        btn.textContent = '分析与适配中...';
       }
 
       try {

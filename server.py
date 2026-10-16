@@ -33,7 +33,7 @@ except ImportError:  # pragma: no cover
         def run(self):
             print(f"FastMCP '{self.name}' stub: mcp not installed. Install with `pip install mcp`")
 
-from agmod import bepinex, codegen, config, cue4parse, doctor, gameprofiles, ilspy, inspector, install_preview, knowledge, log_repair, logs, melonloader, memory, pack, pattern, planning, process, rea, repair, rollback, safety, saves, sdk, tmodloader, uassetgui, updater
+from agmod import bepinex, codegen, config, cue4parse, doctor, gameprofiles, ilspy, inspector, install_preview, knowledge, log_repair, logs, melonloader, memory, pack, pattern, planning, process, rea, repair, rollback, safety, saves, sdk, symbols, tmodloader, uassetgui, updater
 from agmod.adapters.godot import GodotAdapter
 from agmod.adapters.reengine import ReEngineAdapter
 from agmod.adapters.unreal import UnrealAdapter
@@ -616,6 +616,18 @@ def rea_fast_search(path: str, query: str) -> str:
     """Fast-search .NET types and fields without running full decompiler."""
     matches = rea.fast_search_members(path, query)
     return json.dumps({"query": query, "matches": matches}, ensure_ascii=False)
+
+
+@mcp.tool()
+def find_symbol(game_dir: str, query: str) -> str:
+    """Ground a class/field/method name against the game's REAL symbols (REA managed members + local dumps).
+
+    Returns only observed candidates, never guesses. Call this BEFORE writing a
+    mod to confirm the hook target exists and pick a real symbol.
+    """
+    r = _detect_engine(game_dir)
+    engine_id = r["id"] if r else "generic"
+    return json.dumps(symbols.collect_symbol_evidence(game_dir, engine_id, query), ensure_ascii=False, indent=2)
 
 
 @mcp.tool()

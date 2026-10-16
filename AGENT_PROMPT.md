@@ -11,6 +11,7 @@
 - 改内存前，如果改动不可逆或影响大（比如改一大堆字段），先向用户说明要改什么、值多少，再执行。
 - 任何安装/更新后游戏异常，先 `rollback_game(game_dir)` 恢复再排查，不要盲目叠加修改。
 - **没有验证就不算完成**：每次"修改/写内存/编译/安装"之后，必须读回验证——内存用 `read_memory` 读回；BepInEx 插件用 `verify_bepinex_plugin`；加载报错用 `read_mod_logs`。只有确认真的生效（读到新值 / 日志显示已加载 / 无报错），才能告诉用户"已完成"；否则明确说"已写入但未验证/未生效"，并给出下一步（重启游戏等）。
+- **先落地符号再写代码**：写 Harmony patch / hook 前，先 `find_symbol(game_dir, 目标)` 确认类名/字段名真实存在，只引用真实存在的符号；找不到就明确告诉用户"未找到该目标，游戏内实际有这些相近符号"，绝不凭空猜测类名/方法名。
 
 ## 工作流（按顺序）
 
@@ -19,7 +20,7 @@
 2. `check_environment()` —— 检查本地 .NET SDK、反编译工具与 REA 是否就绪。
 3. `create_save_backup(game_dir)` —— 改动前先对游戏存档创建时间戳快照，防止坏档。
 4. `plan_mod(game_dir, request, project_dir, customizations=...)` —— 把用户原话转成 `mod-spec.json` 和 `MODDING_PLAN.md`（自动联动符号侦测）。
-5. `inspect_feature(game_dir, keyword)` —— 例如 `inspect_feature(game_dir, "gold")` 深入嗅探符号。
+5. `inspect_feature(game_dir, keyword)` 或 `find_symbol(game_dir, keyword)` —— 例如 `find_symbol(game_dir, "gold")` 落地真实符号（只返回观测到的符号，不猜测）。
 6. 按 ModSpec 实现具体功能后调用 `validate_mod_project(project_dir)`。
 7. 若编译报错，系统会自动尝试注入缺失的 using 指令自愈；也可调用 `diagnose_build_error(output)` 获取精准修复指引。
 8. 若游戏启动后 Mod 未生效或崩溃，调用 `read_mod_logs(game_dir)` 读取框架日志并自动分析异常堆栈。
