@@ -33,7 +33,7 @@ except ImportError:  # pragma: no cover
         def run(self):
             print(f"FastMCP '{self.name}' stub: mcp not installed. Install with `pip install mcp`")
 
-from agmod import bepinex, codegen, config, doctor, gameprofiles, inspector, install_preview, knowledge, log_repair, logs, memory, pack, pattern, planning, process, rea, repair, rollback, safety, saves, tmodloader, updater
+from agmod import bepinex, codegen, config, doctor, gameprofiles, ilspy, inspector, install_preview, knowledge, log_repair, logs, melonloader, memory, pack, pattern, planning, process, rea, repair, rollback, safety, saves, tmodloader, uassetgui, updater
 from agmod.adapters.godot import GodotAdapter
 from agmod.adapters.reengine import ReEngineAdapter
 from agmod.adapters.unreal import UnrealAdapter
@@ -360,6 +360,55 @@ def build_mod(project_dir: str, game_dir: str) -> str:
     """Build the BepInEx plugin and install the DLL into the game's BepInEx/plugins/."""
     result = bepinex.build_plugin_with_diagnostics(project_dir, game_dir)
     return json.dumps(result, ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def is_il2cpp_unity(game_dir: str) -> str:
+    """Detect whether a Unity game is IL2CPP (GameAssembly.dll + global-metadata.dat) rather than Mono."""
+    return json.dumps({"is_il2cpp": melonloader.is_il2cpp_unity(game_dir)})
+
+
+@mcp.tool()
+def install_melonloader(game_dir: str) -> str:
+    """Install MelonLoader (Unity IL2CPP mod loader) into a game directory. Use for IL2CPP Unity games where BepInEx 5 (Mono) doesn't apply."""
+    return melonloader.install_melonloader(game_dir)
+
+
+@mcp.tool()
+def scaffold_melon_mod(project_dir: str, game_dir: str, mod_id: str, mod_name: str, mod_version: str = "1.0.0") -> str:
+    """Write a MelonLoader (MelonMod) C# project for a Unity IL2CPP game."""
+    melonloader.scaffold_melon_mod(project_dir, game_dir, mod_id, mod_name, mod_version)
+    return json.dumps({"project_dir": project_dir, "mod_id": mod_id, "hint": "edit Mod.cs, then call build_melon_mod"})
+
+
+@mcp.tool()
+def build_melon_mod(project_dir: str, game_dir: str) -> str:
+    """Build a MelonLoader mod (needs the .NET SDK) and install it into the game's Mods/ folder."""
+    return json.dumps(melonloader.build_melon_mod(project_dir, game_dir), ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def ilspy_decompile_project(assembly: str, out_dir: str) -> str:
+    """Decompile a .NET / Unity Mono assembly into a rebuildable C# project via ilspycmd."""
+    return ilspy.decompile_project(assembly, out_dir)
+
+
+@mcp.tool()
+def ilspy_decompile_type(assembly: str, type_name: str) -> str:
+    """Decompile a single .NET type to C# source via ilspycmd."""
+    return ilspy.decompile_type(assembly, type_name)
+
+
+@mcp.tool()
+def uasset_to_json(source: str, dest: str, engine_version: str, mappings: str = "") -> str:
+    """Export an Unreal .uasset/.umap to UAssetAPI JSON for editing (via UAssetGUI)."""
+    return uassetgui.to_json(source, dest, engine_version, mappings)
+
+
+@mcp.tool()
+def uasset_from_json(source: str, dest: str, mappings: str = "") -> str:
+    """Import UAssetAPI JSON back into an Unreal .uasset/.umap (via UAssetGUI)."""
+    return uassetgui.from_json(source, dest, mappings)
 
 
 @mcp.tool()

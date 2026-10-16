@@ -34,17 +34,27 @@
 
 ### 路线 B：持久化 Mod（按引擎选择）
 
-#### 1. Unity 游戏（Mono / IL2CPP）
-1. `plan_mod(...)` 或 `install_bepinex(game_dir)` —— 安装 BepInEx 前置；
-2. `dump_structures(game_dir)` / `find_field(game_dir, query)` —— 找到目标类与方法；
-3. `scaffold_mod(project_dir, game_dir, mod_id, mod_name)` —— 生成工程；
-4. 在 `Plugin.cs` 里编写 Harmony patch 实现逻辑切面；
-5. `build_mod(project_dir, game_dir)` —— 自动编译并安装到 `BepInEx/plugins/`。
+#### 1. Unity 游戏（Mono → BepInEx；IL2CPP → MelonLoader）
+先 `is_il2cpp_unity(game_dir)` 判断运行时：
+
+- **Mono**（有 `*_Data/Managed/Assembly-CSharp.dll`）：
+  1. `install_bepinex(game_dir)` —— 安装 BepInEx 前置；
+  2. `dump_structures(game_dir)` / `find_field(game_dir, query)` —— 找到目标类与方法；
+  3. `scaffold_mod(project_dir, game_dir, mod_id, mod_name)` —— 生成工程；
+  4. 在 `Plugin.cs` 里编写 Harmony patch 实现逻辑切面；
+  5. `build_mod(project_dir, game_dir)` —— 自动编译并安装到 `BepInEx/plugins/`。
+
+- **IL2CPP**（有 `GameAssembly.dll` + `global-metadata.dat`）：
+  1. `install_melonloader(game_dir)` —— 安装 MelonLoader（IL2CPP 运行时注入）；
+  2. `scaffold_melon_mod(project_dir, game_dir, mod_id, mod_name)` —— 生成 MelonMod 工程；
+  3. 在 `Mod.cs` 里编写逻辑；
+  4. `build_melon_mod(project_dir, game_dir)` —— 编译并安装到 `Mods/`（需 .NET SDK）。
 
 #### 2. 虚幻引擎游戏（Unreal Engine 4 / 5）
 1. `scaffold_ue4ss_mod(project_dir, mod_id, mod_name)` —— 生成基于 UE4SS 的免编译 Lua Mod 骨架；
 2. 在 `scripts/main.lua` 中使用 UE4SS 提供的 `RegisterHook` 或 `StaticFindObject` 实现功能修改；
 3. `install_ue4ss_mod(project_dir, game_dir, mod_id)` —— 自动安装至游戏的 `Binaries/Win64/ue4ss/Mods/<mod_id>/`。
+4. 修改具体资产：`uasset_to_json(source, dest, engine_version)` 把 `.uasset/.umap` 导出为 JSON → 编辑 → `uasset_from_json(source, dest)` 写回，再用 `build_unreal_pak_mod` / `repack_unreal_iostore` 回封。
 
 #### 3. Terraria（tModLoader）
 1. `plan_mod(...)` 或 `scaffold_tmod_mod(project_dir, mod_id, mod_name)`；

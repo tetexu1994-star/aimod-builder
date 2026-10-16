@@ -17,6 +17,7 @@ import sys
 from dataclasses import asdict, dataclass
 
 from .compiler import find_roslyn_csc as _find_roslyn_csc
+from .uassetgui import find_uassetgui as _find_uassetgui
 from .config import CACHE_ROOT
 from .rea import _find_rea
 
@@ -112,6 +113,19 @@ def check_environment() -> dict:
             version=roslyn_version,
             path=roslyn_path,
             remedy=roslyn_remedy,
+        )
+    )
+
+    # 2c. UAssetGUI (Unreal .uasset/.umap edit via UAssetAPI JSON)
+    uassetgui_exe = _find_uassetgui()
+    checks.append(
+        ToolCheck(
+            name="UAssetGUI (Unreal asset edit)",
+            category="asset_tools",
+            status="ok" if uassetgui_exe else "optional_missing",
+            version="auto-downloaded" if uassetgui_exe else "",
+            path=uassetgui_exe or "auto-download on first use",
+            remedy="" if uassetgui_exe else "Downloaded automatically from GitHub on the first Unreal asset edit",
         )
     )
 
