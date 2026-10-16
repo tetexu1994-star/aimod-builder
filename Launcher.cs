@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Net;
 using System.Threading;
@@ -11,10 +10,10 @@ namespace AIModBuilder
     static class Program
     {
         private static Process serverProcess = null;
-        private static NotifyIcon trayIcon = null;
+        private static Process appWindowProcess = null;
         private static string appDir = "";
         private const string MutexName = "AIModBuilder_App_SingleInstance_Mutex";
-        private const string Url = "http://localhost:8765";
+        private const string Url = "http://127.0.0.1:8765";
 
         [STAThread]
         static void Main()
@@ -24,25 +23,16 @@ namespace AIModBuilder
             {
                 if (!createdNew)
                 {
-                    OpenBrowser(Url);
                     return;
                 }
-
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
 
                 appDir = AppDomain.CurrentDomain.BaseDirectory;
                 Directory.SetCurrentDirectory(appDir);
 
                 StartServer();
-                SetupTray();
-
-                new Thread(() =>
-                {
-                    WaitForServerAndOpenBrowser();
-                }) { IsBackground = true }.Start();
-
-                Application.Run();
+                WaitForServer();
+                LaunchAppWindow();
+                StopServer();
             }
         }
 
@@ -79,82 +69,94 @@ namespace AIModBuilder
                 };
 
                 serverProcess = Process.Start(psi);
-                AppDomain.CurrentDomain.ProcessExit += (s, e) => StopServer();
             }
             catch (Exception ex)
             {
-                MessageBox.Show("启动服务失败: " + ex.Message + "\n请确保 runtime 文件夹完整。", "AI Mod Builder", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                Application.Exit();
+                MessageBox.Show("启动服务失败: " + ex.Message, "AI Mod Builder", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Environment.Exit(1);
             }
         }
 
-        static void WaitForServerAndOpenBrowser()
+        static void WaitForServer()
         {
-            for (int i = 0; i < 30; i++)
+            for (int i = 0; i < 40; i++)
             {
                 try
                 {
-                    HttpWebRequest req = (HttpWebRequest)WebRequest.Create("http://127.0.0.1:8765/api/health");
-                    req.Timeout = 800;
+                    HttpWebRequest req = (HttpWebRequest)WebRequest.Create(Url + "/api/health");
+                    req.Timeout = 600;
                     using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
                     {
                         if (resp.StatusCode == HttpStatusCode.OK)
                         {
-                            break;
+                            return;
                         }
                     }
                 }
                 catch
                 {
-                    Thread.Sleep(300);
+                    Thread.Sleep(200);
                 }
             }
+        }
 
-            OpenBrowser(Url);
-            if (trayIcon != null)
+        static void LaunchAppWindow()
+        {
+            string profileDir = Path.Combine(Path.GetTempPath(), "AIModBuilder_AppProfile");
+            string browserExe = FindAppBrowser();
+
+            if (!string.IsNullOrEmpty(browserExe))
             {
-                trayIcon.ShowBalloonTip(3000, "AI Mod Builder", "工作台已就绪，正在浏览器中打开！\n若关闭网页可随时双击托盘图标重新打开。", ToolTipIcon.Info);
+                string args = string.Format(
+                    "--app=\"{0}\" --window-size=1420,900 --user-data-dir=\"{1}\" --app-id=AIModBuilder --disable-extensions",
+                    Url,
+                    profileDir
+                );
+
+                ProcessStartInfo psi = new ProcessStartInfo
+                {
+                    FileName = browserExe,
+                    Arguments = args,
+                    UseShellExecute = false
+                };
+
+                try
+                {
+                    appWindowProcess = Process.Start(psi);
+                    if (appWindowProcess != null)
+                    {
+                        appWindowProcess.WaitForExit();
+                        return;
+                    }
+                }
+                catch { }
             }
-        }
 
-        static void SetupTray()
-        {
-            trayIcon = new NotifyIcon
-            {
-                Icon = SystemIcons.Application,
-                Text = "AI Mod Builder (运行中)",
-                Visible = true
-            };
-
-            ContextMenu menu = new ContextMenu();
-            menu.MenuItems.Add("🌐 打开工作台", (s, e) => OpenBrowser(Url));
-            menu.MenuItems.Add("📁 打开程序目录", (s, e) => Process.Start("explorer.exe", appDir));
-            menu.MenuItems.Add("-");
-            menu.MenuItems.Add("🔄 重启服务", (s, e) => RestartService());
-            menu.MenuItems.Add("❌ 退出程序", (s, e) => ExitApp());
-
-            trayIcon.ContextMenu = menu;
-            trayIcon.DoubleClick += (s, e) => OpenBrowser(Url);
-        }
-
-        static void OpenBrowser(string url)
-        {
             try
             {
-                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+                Process p = Process.Start(new ProcessStartInfo(Url) { UseShellExecute = true });
+                if (p != null) p.WaitForExit();
             }
-            catch
-            {
-                Process.Start("explorer.exe", url);
-            }
+            catch { }
         }
 
-        static void RestartService()
+        static string FindAppBrowser()
         {
-            StopServer();
-            Thread.Sleep(500);
-            StartServer();
-            new Thread(() => WaitForServerAndOpenBrowser()) { IsBackground = true }.Start();
+            string[] paths = new string[]
+            {
+                @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+                @"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+                @"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                @"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"\Microsoft\Edge\Application\msedge.exe",
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"\Google\Chrome\Application\chrome.exe"
+            };
+
+            foreach (var p in paths)
+            {
+                if (File.Exists(p)) return p;
+            }
+            return "";
         }
 
         static void StopServer()
@@ -167,17 +169,6 @@ namespace AIModBuilder
                 }
             }
             catch { }
-        }
-
-        static void ExitApp()
-        {
-            if (trayIcon != null)
-            {
-                trayIcon.Visible = false;
-                trayIcon.Dispose();
-            }
-            StopServer();
-            Application.Exit();
         }
     }
 }
