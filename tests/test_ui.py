@@ -74,8 +74,21 @@ class TestUIServer(unittest.TestCase):
         self.assertIn("Terraria.Player", source)
         self.assertIn("void Awake()", source)
         self.assertIn("ReadTuning", source)
+        self.assertIn("ApplyMultiplier", source)
+        self.assertIn("Postfix(object __instance)", source)
+        self.assertIn("dll_size", source)
+        self.assertNotIn("is bool b", source)
         # must NOT be the old dead static-class entrypoint
         self.assertNotIn("public static void Initialize()", source)
+
+        source, target = _pinned_source(
+            "dotnet-xna", "自定义目标", "Terraria.Item:Update", {}, "custom_target"
+        )
+        self.assertEqual(target["class_name"], "Terraria.Item")
+        self.assertIn("typeof(Terraria.Item)", source)
+
+        with self.assertRaises(ValueError):
+            _pinned_source("dotnet-xna", "星露谷测试", "StardewValley.Farmer:Update", {}, "stardew_mod")
 
     @classmethod
     def setUpClass(cls):
@@ -417,6 +430,26 @@ System.NullReferenceException: Object reference not set to an instance of an obj
             self.assertFalse(result["success"])
             self.assertEqual(result["compilation_error"], "compile failed")
             self.assertFalse(Path(game, "BepInEx", "plugins", "demo").exists())
+
+    def test_auto_deploy_requires_restart_for_new_plugin_while_game_is_running(self):
+        with tempfile.TemporaryDirectory() as game:
+            Path(game, "UnityPlayer.dll").write_text("dummy", encoding="utf-8")
+            core = Path(game, "BepInEx", "core")
+            core.mkdir(parents=True)
+            (core / "BepInEx.dll").write_bytes(b"")
+
+            def compile_success(game_dir, mod_id, source_path, output_path):
+                Path(output_path).write_bytes(b"dll")
+                return {"success": True, "method": "test", "dll_path": output_path}
+
+            with mock.patch("agmod.bepinex.compile_unity_plugin", side_effect=compile_success), mock.patch(
+                "agmod.rollback.is_game_running", return_value=(True, [{"pid": 1, "name": "game.exe"}])
+            ):
+                result = _auto_deploy_mod(game, "demo", "Demo", "test", "Player:Update", {})
+            self.assertTrue(result["success"])
+            self.assertTrue(result["pending_restart"])
+            self.assertIn("重启", result["message"])
+            self.assertNotIn("无需重启", result["message"])
 
     def test_mod_pin_does_not_install_when_compilation_fails(self):
         with tempfile.TemporaryDirectory() as game:

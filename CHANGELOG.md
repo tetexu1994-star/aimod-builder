@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-17
+
+### Runtime Modding Audit
+
+- Replaced the Traverse-only tuning path with C# 5-compatible reflection semantics: speed/jump/damage/reward multipliers scale matching fields from a per-instance baseline, while god/invincibility settings restore health and survival flags.
+- Generated BepInEx code now honors the requested hook target instead of silently forcing `Terraria.Player.Update`, and rejects invalid C# class names.
+- New DLL deployment is now reported honestly as requiring a game restart when the game is already running; install failures remain fail-closed instead of falling back to untracked file copies.
+- Stardew/SMAPI is explicitly routed to its package workflow instead of generating an unloadable BepInEx-style entry point.
+- Plugin heartbeat reports include DLL size and remain subject to freshness and identity checks.
+
 ## 2026-10-16
 
 ### Deployment and Verification Audit

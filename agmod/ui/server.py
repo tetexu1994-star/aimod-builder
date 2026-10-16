@@ -58,16 +58,20 @@ def _hook_target_parts(target: str, default_class: str = "", default_method: str
 
 
 def _bepinex_plugin_source(class_name: str, method_name: str, mod_id: str, mod_name: str, safe_id: str, plugin_class: str = "Plugin") -> tuple[str, dict]:
-    """Generate a generic BepInEx plugin for any BepInEx-loaded game (Unity, Terraria, ...).
-
-    The Harmony patch targets `class_name.method_name` (grounded via find_symbol),
-    and applies tunable fields generically through Harmony's Traverse (by name), so
-    no game-specific symbols are hardcoded.
-    """
-    escaped_name = mod_name.replace('"', '\\"')
+    """Generate a C# 5-compatible BepInEx plugin with generic semantic tuning."""
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", safe_id):
+        raise ValueError("invalid plugin safe_id")
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", plugin_class):
+        raise ValueError("invalid plugin class name")
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", mod_id):
+        raise ValueError("invalid mod_id")
+    escaped_name = mod_name.replace("\\", "\\\\").replace('"', '\\"').replace("\r", " ").replace("\n", " ")
     csharp = r'''using System;
-using System.IO;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using BepInEx;
 using HarmonyLib;
 
@@ -77,6 +81,7 @@ namespace AIModPlugin_@SAFEID@
     public class @PLUGINCLASS@_@SAFEID@ : BaseUnityPlugin
     {
         public static Dictionary<string, object> Tunables = new Dictionary<string, object>();
+        private static readonly ConditionalWeakTable<object, Dictionary<string, object>> Originals = new ConditionalWeakTable<object, Dictionary<string, object>>();
         private static string configPath = "";
         private static int lastCheckTick = 0;
 
@@ -89,7 +94,9 @@ namespace AIModPlugin_@SAFEID@
             Logger.LogInfo("=== [AIMod] @NAME@ Loaded Successfully! ===");
             try
             {
-                File.WriteAllText(Path.Combine(Paths.PluginPath, "@MODID@.verified.json"), "{\"mod_id\":\"@MODID@\",\"loaded\":true}");
+                var dllFile = new FileInfo(typeof(@PLUGINCLASS@_@SAFEID@).Assembly.Location);
+                string report = "{\"mod_id\":\"@MODID@\",\"loaded\":true,\"dll_size\":" + dllFile.Length + "}";
+                File.WriteAllText(Path.Combine(Paths.PluginPath, "@MODID@.verified.json"), report);
             }
             catch { }
         }
@@ -134,46 +141,184 @@ namespace AIModPlugin_@SAFEID@
                 else
                 {
                     double d;
-                    if (double.TryParse(val, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out d)) map[key] = d;
+                    if (double.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out d)) map[key] = d;
                 }
             }
             return map;
+        }
+
+        public static void Apply(object instance)
+        {
+            if (instance == null) return;
+            foreach (var kv in Tunables)
+            {
+                try { ApplyOne(instance, kv.Key, kv.Value); }
+                catch { }
+            }
+        }
+
+        static void ApplyOne(object instance, string key, object value)
+        {
+            string norm = Normalize(key);
+            double number;
+            bool numeric = TryDouble(value, out number);
+            if (norm.Contains("god") || norm.Contains("invinc") || norm.Contains("unvulnerable") || norm.Contains("immortal") || (norm.Contains("damagereduction") && numeric && number >= 50.0))
+            {
+                bool enabled = value is bool ? (bool)value : (!numeric || number > 0.0);
+                if (enabled) ApplyImmortality(instance);
+                return;
+            }
+            if (numeric && number > 0.0 && (norm.Contains("speed") || norm.Contains("move") || norm.Contains("run")))
+            {
+                ApplyMultiplier(instance, number, "speed", "move", "run");
+                return;
+            }
+            if (numeric && number > 0.0 && norm.Contains("jump"))
+            {
+                ApplyMultiplier(instance, number, "jump", "air");
+                return;
+            }
+            if (numeric && number > 0.0 && (norm.Contains("damage") || norm.Contains("attack") || norm.Contains("power")))
+            {
+                ApplyMultiplier(instance, number, "damage", "attack", "power");
+                return;
+            }
+            if (numeric && number > 0.0 && (norm.Contains("gold") || norm.Contains("coin") || norm.Contains("money") || norm.Contains("reward") || norm.Contains("loot")))
+            {
+                ApplyMultiplier(instance, number, "gold", "coin", "money", "reward", "loot");
+                return;
+            }
+            SetMember(instance, key, value);
+        }
+
+        static void ApplyImmortality(object instance)
+        {
+            object maxHealth = null;
+            foreach (var member in GetMembers(instance.GetType()))
+            {
+                string name = Normalize(member.Name);
+                if (IsHealthName(name) && name.Contains("max"))
+                {
+                    object candidate;
+                    if (TryGetMember(instance, member, out candidate)) { maxHealth = candidate; break; }
+                }
+            }
+            foreach (var member in GetMembers(instance.GetType()))
+            {
+                string name = Normalize(member.Name);
+                if (IsHealthName(name) && !name.Contains("max") && maxHealth != null) SetMemberValue(instance, member, maxHealth);
+                else if (name.Contains("immune") || name.Contains("invinc") || name.Contains("invulnerable") || name.Contains("godmode"))
+                {
+                    object current;
+                    if (!TryGetMember(instance, member, out current)) continue;
+                    if (current is bool) SetMemberValue(instance, member, true);
+                    else if (current is byte || current is sbyte || current is short || current is ushort || current is int || current is uint || current is long || current is ulong) SetMemberValue(instance, member, 1);
+                }
+            }
+        }
+
+        static void ApplyMultiplier(object instance, double factor, params string[] kinds)
+        {
+            foreach (var member in GetMembers(instance.GetType()))
+            {
+                string name = Normalize(member.Name);
+                bool match = false;
+                foreach (var kind in kinds) if (name.Contains(kind)) { match = true; break; }
+                if (!match) continue;
+                object current;
+                if (!TryGetMember(instance, member, out current)) continue;
+                double value;
+                if (!TryDouble(current, out value)) continue;
+                double original = GetOriginal(instance, member, value);
+                SetMemberValue(instance, member, original * factor);
+            }
+        }
+
+        static double GetOriginal(object instance, MemberInfo member, double current)
+        {
+            var map = Originals.GetOrCreateValue(instance);
+            string key = member.DeclaringType.FullName + "." + member.Name;
+            object raw;
+            double value;
+            if (map.TryGetValue(key, out raw) && TryDouble(raw, out value)) return value;
+            map[key] = current;
+            return current;
+        }
+
+        static bool IsHealthName(string name)
+        {
+            return name.Contains("health") || name.Contains("statlife") || name.Contains("life") || name.Contains("hp");
+        }
+
+        static List<MemberInfo> GetMembers(Type type)
+        {
+            var members = new List<MemberInfo>();
+            while (type != null && type != typeof(object))
+            {
+                members.AddRange(type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly));
+                members.AddRange(type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly));
+                type = type.BaseType;
+            }
+            return members;
+        }
+
+        static bool TryGetMember(object instance, MemberInfo member, out object value)
+        {
+            value = null;
+            var field = member as FieldInfo;
+            if (field != null) { value = field.GetValue(instance); return true; }
+            var property = member as PropertyInfo;
+            if (property != null && property.CanRead && property.GetIndexParameters().Length == 0) { value = property.GetValue(instance, null); return true; }
+            return false;
+        }
+
+        static bool SetMember(object instance, string name, object value)
+        {
+            foreach (var member in GetMembers(instance.GetType()))
+            {
+                if (!string.Equals(member.Name, name, StringComparison.OrdinalIgnoreCase)) continue;
+                return SetMemberValue(instance, member, value);
+            }
+            return false;
+        }
+
+        static bool SetMemberValue(object instance, MemberInfo member, object value)
+        {
+            Type type = member is FieldInfo ? ((FieldInfo)member).FieldType : ((PropertyInfo)member).PropertyType;
+            object converted = ConvertValue(value, type);
+            var field = member as FieldInfo;
+            if (field != null) { field.SetValue(instance, converted); return true; }
+            var property = member as PropertyInfo;
+            if (property != null && property.CanWrite && property.GetIndexParameters().Length == 0) { property.SetValue(instance, converted, null); return true; }
+            return false;
+        }
+
+        static object ConvertValue(object value, Type type)
+        {
+            Type target = Nullable.GetUnderlyingType(type) ?? type;
+            if (target.IsInstanceOfType(value)) return value;
+            if (target.IsEnum) return Enum.ToObject(target, Convert.ToInt64(value, CultureInfo.InvariantCulture));
+            return Convert.ChangeType(value, target, CultureInfo.InvariantCulture);
+        }
+
+        static bool TryDouble(object value, out double number)
+        {
+            try { number = Convert.ToDouble(value, CultureInfo.InvariantCulture); return true; }
+            catch { number = 0.0; return false; }
+        }
+
+        static string Normalize(string value)
+        {
+            return (value ?? "").Replace("_", "").Replace("-", "").Replace(" ", "").ToLowerInvariant();
         }
     }
 
     [HarmonyPatch(typeof(@CLASS@), "@METHOD@")]
     public static class Patch_@SAFEID@
     {
-        static void Postfix(@CLASS@ __instance)
+        static void Postfix(object __instance)
         {
-            if (__instance == null) return;
-            var t = Traverse.Create(__instance);
-            foreach (var kv in @PLUGINCLASS@_@SAFEID@.Tunables)
-            {
-                try
-                {
-                    var f = t.Field(kv.Key);
-                    if (f.FieldExists())
-                    {
-                        if (kv.Value is bool b) f.SetValue(b);
-                        else f.SetValue(Convert.ToDouble(kv.Value));
-                    }
-                }
-                catch { }
-            }
-        }
-    }
-
-    // AI companion dialogue dispatcher (triggered from the companion UI)
-    public static class AICompanionHelper
-    {
-        public static void SummonDialogue()
-        {
-            try
-            {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("http://127.0.0.1:8765") { UseShellExecute = true });
-            }
-            catch { }
+            @PLUGINCLASS@_@SAFEID@.Apply(__instance);
         }
     }
 }
@@ -196,6 +341,10 @@ def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict
     if engine_id in {"dotnet-xna", "dotnet", "tmodloader"}:
         def_cls = "StardewValley.Farmer" if "stardew" in (mod_id + " " + mod_name).lower() else "Terraria.Player"
         class_name, method_name = _hook_target_parts(hook_target, default_class=def_cls, default_method="Update")
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]*", class_name):
+            raise ValueError(f"invalid C# class name in hook_target: {class_name}")
+        if def_cls == "StardewValley.Farmer":
+            raise ValueError("SMAPI package workflow is required for Stardew Valley; BepInEx auto-generation is disabled")
     else:
         class_name, method_name = _hook_target_parts(hook_target)
     parameters = []
@@ -216,68 +365,16 @@ def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict
 
     if engine_id in {"dotnet-xna", "dotnet", "tmodloader"}:
         safe_id = re.sub(r"[^A-Za-z0-9_]", "_", mod_id or mod_name.lower()).strip("_") or "mod"
-        escaped_name = mod_name.replace('"', '\\"')
         search_key = f"{hook_target} {mod_name} {mod_id}".lower()
         is_stardew = any(k in search_key for k in ["stardew", "smapi", "星露谷"])
-        is_pet = any(k in search_key for k in ["pet", "companion", "宠物", "随从", "助手", "召唤", "对话"])
-        is_speed = any(k in search_key for k in ["speed", "move", "run", "奔跑", "移速", "速度", "快"])
-        is_god = any(k in search_key for k in ["damage", "health", "god", "shield", "stat_health", "playerstats", "无敌", "锁血", "金身", "免伤", "护盾", "命", "五合一", "体力", "stamina"])
-
         if is_stardew:
-            csharp_code = f'''using System;
-using System.IO;
+            raise ValueError("SMAPI package workflow is required for Stardew Valley; BepInEx auto-generation is disabled")
 
-namespace StardewMod_{safe_id}
-{{
-    // Stardew Valley SMAPI Mod Entry
-    public class ModEntry_{safe_id}
-    {{
-        public static bool InfiniteStamina = {str(is_god).lower()};
-        public static float SpeedMultiplier = 2.0f;
-        public static int MoneyBonusMultiplier = 3;
-        private static int lastCheckTick = 0;
-        private static string configPath = "";
-
-        public static void Initialize()
-        {{
-            try
-            {{
-                configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Mods", "{mod_id}", "mod.json");
-                ReadTuning();
-            }}
-            catch {{ }}
-        }}
-
-        public static void Update()
-        {{
-            if (Environment.TickCount - lastCheckTick > 500)
-            {{
-                lastCheckTick = Environment.TickCount;
-                ReadTuning();
-            }}
-        }}
-
-        private static void ReadTuning()
-        {{
-            try
-            {{
-                if (!string.IsNullOrEmpty(configPath) && File.Exists(configPath))
-                {{
-                    string text = File.ReadAllText(configPath);
-                    if (text.Contains("\\"infinite_stamina\\": false")) InfiniteStamina = false;
-                    else if (text.Contains("\\"infinite_stamina\\": true")) InfiniteStamina = true;
-                }}
-            }}
-            catch {{ }}
-        }}
-    }}
-}}
-'''
-            return csharp_code, {"class_name": "StardewValley.Farmer", "method_name": "Update"}
-
-        return _bepinex_plugin_source("Terraria.Player", "Update", mod_id, mod_name, safe_id, plugin_class="TerrariaPlugin")
+        return _bepinex_plugin_source(class_name, method_name, mod_id, mod_name, safe_id, plugin_class="TerrariaPlugin")
 
     if engine_id == "unity":
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]*", class_name):
+            raise ValueError(f"invalid C# class name in hook_target: {class_name}")
         safe_id = re.sub(r"[^A-Za-z0-9_]", "_", mod_id or mod_name.lower()).strip("_") or "mod"
         return _bepinex_plugin_source(class_name, method_name, mod_id, mod_name, safe_id, plugin_class="Plugin")
 
@@ -315,6 +412,9 @@ def _auto_deploy_mod(
 
     if not game_dir:
         return {"success": False, "error": "game_dir is required"}
+    mod_id = paths.slugify(mod_id or mod_name or "pinned_mod")
+    if not mod_id:
+        return {"success": False, "error": "mod_id must contain a safe identifier"}
 
     allowed, reason = safety.check_game_target(game_dir)
     if not allowed:
@@ -340,7 +440,7 @@ def _auto_deploy_mod(
         from agmod import symbols as _symbols
         cls_name, _mth = _hook_target_parts(hook_target)
         if cls_name and any(cls_name.startswith(p) for p in ["Terraria.", "StardewValley.", "HeroController", "PlayerController", "PersonController"]):
-            symbol_check = {"verified": True, "query": cls_name, "candidates": [hook_target]}
+            symbol_check = {"verified": None, "query": cls_name, "candidates": [hook_target]}
         elif cls_name and cls_name not in {"GameLogic", "Update", "GameManager", "Main", "Plugin"}:
             evidence = _symbols.collect_symbol_evidence(game_dir, engine_id, cls_name, limit=5)
             symbol_check = {
@@ -389,6 +489,7 @@ def _auto_deploy_mod(
         compiled_dll = False
         compilation_error = ""
         message = ""
+        running, _ = rollback.is_game_running(game_dir)
 
         if engine_id == "unreal":
             import glob
@@ -477,7 +578,6 @@ def _auto_deploy_mod(
             if not os.path.isdir(bepin_core):
                 try:
                     bepinex.install_bepinex(game_dir, allow_running=True)
-                    running, _ = rollback.is_game_running(game_dir)
                     if running:
                         pending_restart = True
                 except Exception:
@@ -517,10 +617,8 @@ def _auto_deploy_mod(
                 f.write("\n".join(cfg_lines) + "\n")
             pairs.append((cfg_source, os.path.join(cfg_dir, f"{mod_id}.cfg")))
 
-            running, _ = rollback.is_game_running(game_dir)
             if running:
-                pending_restart = False
-                message = f"⚡ 边玩边测已生效：Mod【{mod_name}】配置与逻辑已实时注入运行中游戏，参数已即刻生效，无需重启游戏！"
+                message = f"Mod【{mod_name}】已写入；游戏运行中，新插件需重启后加载。"
             elif compiled_dll:
                 message = f"Mod【{mod_name}】已编译为生效插件（DLL），启动游戏即可生效。"
             else:
@@ -536,6 +634,9 @@ def _auto_deploy_mod(
                 "symbol_candidates": symbol_check["candidates"],
             }
 
+        if running:
+            pending_restart = True
+            message = f"Mod【{mod_name}】已写入，但游戏当前正在运行；新插件必须重启游戏后才能加载。"
 
         preview = install_preview.preview_install(
             game_dir,
@@ -557,27 +658,15 @@ def _auto_deploy_mod(
         try:
             rollback.install_files(game_dir, mod_id, pairs, check_running=False)
         except Exception as exc:
-            # If the game is running, Windows may lock an already-loaded DLL.
-            # In that case, ensure the live config files (cfg, json) are safely updated for hot reload!
-            if running and ("being used by another process" in str(exc).lower() or "permission denied" in str(exc).lower() or "winerror 32" in str(exc).lower()):
-                logger.info("Game is locking DLL during live play, syncing config and mod.json for hot reload")
-                for src, dst in pairs:
-                    if dst.endswith((".json", ".cfg", ".txt", ".ini")):
-                        try:
-                            os.makedirs(os.path.dirname(dst), exist_ok=True)
-                            shutil.copy2(src, dst)
-                        except Exception:
-                            pass
-            else:
-                return {
-                    "success": False,
-                    "error": f"installation failed: {exc}",
-                    "preview": preview,
-                    "compiled": compiled_dll,
-                    "compilation_error": compilation_error,
-                    "symbol_verified": symbol_check["verified"],
-                    "symbol_candidates": symbol_check["candidates"],
-                }
+            return {
+                "success": False,
+                "error": f"installation failed: {exc}",
+                "preview": preview,
+                "compiled": compiled_dll,
+                "compilation_error": compilation_error,
+                "symbol_verified": symbol_check["verified"],
+                "symbol_candidates": symbol_check["candidates"],
+            }
 
         verified = {}
         if engine_id not in {"unreal", "re-engine", "godot"} and compiled_dll:
@@ -588,6 +677,7 @@ def _auto_deploy_mod(
 
         return {
             "success": True,
+            "mod_id": mod_id,
             "installed_path": mods_root,
             "message": message,
             "pending_restart": pending_restart,
@@ -1460,6 +1550,8 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 hook_target=action.get("hook_target", ""),
                 params=params_map,
             )
+            if deploy_res.get("mod_id"):
+                action["mod_id"] = deploy_res["mod_id"]
             action["installed_path"] = deploy_res.get("installed_path", "")
             action["auto_deployed"] = deploy_res.get("success", False)
             action["pending_restart"] = deploy_res.get("pending_restart", False)
@@ -1472,9 +1564,16 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             action["symbol_candidates"] = deploy_res.get("symbol_candidates", [])
 
         running, _ = rollback.is_game_running(game_dir)
-        comp_err = deploy_res.get("compilation_error", "")
         deploy_error = deploy_res.get("error", "")
-        if not reply:
+        if deploy_error:
+            cleaned_reply = _clean_user_reply(reply) if reply else ""
+            failure_note = (
+                f"❌ **Mod 未部署**\n\n"
+                f"**原因**：{deploy_error}\n\n"
+                f"游戏目录未写入不完整的 Mod，请先解决该问题后重试。"
+            )
+            reply = f"{cleaned_reply}\n\n{failure_note}" if cleaned_reply else failure_note
+        elif not reply:
             prefix_note = ""
             if not has_llm:
                 prefix_note = "\n\n> 💡 **提示**：当前通过内置预设模板生效。若要让 AI 自由理解任意自然语言并定制编写 Mod，请点击右上角「⚙️ 模型配置」填入 API Key。"
@@ -1482,9 +1581,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             restart_hint = ""
             if deploy_res.get("pending_restart"):
                 restart_hint = "\n\n> 💡 **温馨提示**：检测到游戏当前已在运行，请点击顶部工具栏 **【🔄 一键重启】** 重新载入生效！"
-            elif running:
-                restart_hint = "\n\n> 🟢 **实时热调控已生效**：游戏正在运行中，已开启即时热生效通道！参数已实时同步，切回游戏即可直接边玩边测（无需重启）。"
-            action_hint = "已开启边玩边测模式，切回游戏窗口即可体验，在右侧面板拖动滑块实时调节！" if running else "启动游戏后即可直接体验，可在右侧或下方滑块调节数值！"
+            action_hint = "已写入新的插件文件，请重启游戏后再体验；当前运行中的旧插件仍可继续调节参数。" if running else "启动游戏后即可直接体验，可在右侧或下方滑块调节数值！"
             reply = (
                 f"✨ 已为你设计并全自动写入游戏 **【{action['mod_name']}】**！\n\n"
                 f"- 部署状态: {status_desc}\n"
@@ -1497,8 +1594,6 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 restart_hint = ""
                 if deploy_res.get("pending_restart"):
                     restart_hint = "\n\n> 💡 **温馨提示**：检测到游戏当前已在运行，请点击顶部工具栏 **【🔄 一键重启】** 重新载入生效！"
-                elif running:
-                    restart_hint = "\n\n> 🟢 **实时热调控已生效**：游戏正在运行中，已开启即时热生效通道！参数已实时同步，切回游戏即可直接边玩边测（无需重启）。"
                 reply = f"{reply}\n\n- 部署状态: {deploy_res['message']}{restart_hint}"
 
 
