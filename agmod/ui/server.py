@@ -1144,6 +1144,25 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 "- 钩子目标请遵循 Class.Method 命名规范（例如 `via.motion.MotionHelper.set_Speed`）。\n"
                 "- 必须通过 SDK 校验指针有效性，防止无效托管对象引用导致游戏闪退。\n"
             )
+        elif engine_id in {"dotnet-xna", "dotnet", "tmodloader"}:
+            is_stardew = any(k in f"{game_dir} {user_prompt}".lower() for k in ["stardew", "smapi", "星露谷"])
+            if is_stardew:
+                framework_name = "星露谷物语 SMAPI (.NET / MonoGame)"
+                engine_prompt_addon = (
+                    "- 游戏为《星露谷物语》（MonoGame / .NET CLR）：\n"
+                    "- 核心架构：依赖 SMAPI (Stardew Modding API) 框架；\n"
+                    "- 常用命名空间：StardewValley, StardewModdingAPI；\n"
+                    "- 严禁引入 UnityEngine 等 Unity 专有类；钩子目标例如 `StardewValley.Farmer:Update`、`StardewValley.Farmer:get_speed`。\n"
+                )
+            else:
+                framework_name = "泰拉瑞亚 (.NET / XNA / tModLoader / BepInEx)"
+                engine_prompt_addon = (
+                    "- 游戏为《泰拉瑞亚》（.NET Framework 4.0 / XNA 纯原生 CLR 程序集）：\n"
+                    "- 严禁引入 UnityEngine 或 Unity 专有类！\n"
+                    "- 真实类名与符号遵循 Terraria 命名空间：`Terraria.Player`、`Terraria.Item`、`Terraria.Main`；\n"
+                    "- 常见字段：`Terraria.Player:statLife` (生命)、`Terraria.Player:moveSpeed` (移速)、`Terraria.Player:immune` (无敌)；\n"
+                    "- 纯原生 C# 逻辑使用 Environment.TickCount 或游戏 Update 驱动。\n"
+                )
         else:
             framework_name = f"{engine_name} 运行时注入"
             engine_prompt_addon = ""

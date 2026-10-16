@@ -304,6 +304,33 @@ class TestInspector(unittest.TestCase):
             guards_text = " ".join(res["exception_guards"])
             self.assertIn("IL2CPP", guards_text)
 
+    def test_analyze_reverse_engineering_terraria_dotnet(self):
+        from agmod.inspector import analyze_reverse_engineering_context
+        with tempfile.TemporaryDirectory() as game_dir:
+            open(os.path.join(game_dir, "Terraria.exe"), "wb").close()
+
+            res = analyze_reverse_engineering_context(game_dir, "主角移动速度加倍")
+            self.assertEqual(res["category"], "movement_speed")
+            self.assertEqual(res["engine_id"], "dotnet-xna")
+            self.assertEqual(res["target_binary"], "Terraria.exe")
+            self.assertIn("Terraria.Player.moveSpeed", res["matched_symbols"])
+            guards_text = " ".join(res["exception_guards"])
+            self.assertIn("严禁引入 UnityEngine", guards_text)
+
+    def test_analyze_reverse_engineering_stardew_dotnet(self):
+        from agmod.inspector import analyze_reverse_engineering_context
+        with tempfile.TemporaryDirectory() as game_dir:
+            open(os.path.join(game_dir, "Stardew Valley.exe"), "wb").close()
+
+            res = analyze_reverse_engineering_context(game_dir, "主角速度翻倍跑得快")
+            self.assertEqual(res["category"], "movement_speed")
+            self.assertEqual(res["engine_id"], "dotnet-xna")
+            self.assertEqual(res["target_binary"], "Stardew Valley.exe")
+            self.assertIn("StardewValley.Farmer.speed", res["matched_symbols"])
+            guards_text = " ".join(res["exception_guards"])
+            self.assertIn("禁止使用 UnityEngine", guards_text)
+
+
 
 class TestProcessDiscovery(unittest.TestCase):
     def test_find_game_executables(self):

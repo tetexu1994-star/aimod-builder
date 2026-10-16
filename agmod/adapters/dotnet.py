@@ -20,6 +20,11 @@ _MARKERS = [
     "Microsoft.Xna.Framework.Content.Pipeline.dll",
     "Microsoft.Xna.Framework.Video.dll",
     "ReLogic.Native.dll",
+    "Terraria.exe",
+    "Stardew Valley.exe",
+    "StardewModdingAPI.exe",
+    "tModLoader.exe",
+    "Celeste.exe",
 ]
 
 
@@ -32,17 +37,24 @@ class XnaAdapter(BaseAdapter):
     capabilities = ("detect", "fingerprint", "prepare", "query", "source", "launch")
 
     def detect(self, game_dir: str) -> bool:
-        if not any(os.path.exists(os.path.join(game_dir, m)) for m in _MARKERS):
-            return False
+        if any(os.path.exists(os.path.join(game_dir, m)) for m in _MARKERS):
+            return True
         return self._managed_exe(game_dir) is not None
 
     def _managed_exe(self, game_dir: str) -> str | None:
+        if not os.path.isdir(game_dir):
+            return None
         exes = sorted(f for f in os.listdir(game_dir) if f.lower().endswith(".exe"))
+        known_exes = {"terraria.exe", "stardew valley.exe", "stardewmoddingapi.exe", "tmodloader.exe", "celeste.exe"}
+        for f in exes:
+            if f.lower() in known_exes:
+                return os.path.join(game_dir, f)
         for f in exes:
             p = os.path.join(game_dir, f)
             if is_managed_assembly(p):
                 return p
         return None
+
 
     def fingerprint(self, game_dir: str) -> str:
         paths = [os.path.join(game_dir, m) for m in _MARKERS if os.path.exists(os.path.join(game_dir, m))]

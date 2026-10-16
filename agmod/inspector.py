@@ -323,9 +323,55 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
             "economy": ["app.RewardManager.addReward", "app.ItemDropManager.get_DropRate"],
             "generic_enhancement": ["via.hid.GamePad.update", "app.GameManager.update"],
         }
+    elif engine_id in {"dotnet-xna", "dotnet", "tmodloader"}:
+        exes = sorted(f for f in os.listdir(game_dir) if f.lower().endswith(".exe")) if os.path.isdir(game_dir) else []
+        is_stardew = any("stardew" in f.lower() for f in exes) or "stardew" in game_dir.lower()
+        if is_stardew:
+            target_binary = "Stardew Valley.exe"
+            symbols_map = {
+                "movement_speed": ["StardewValley.Farmer.speed", "StardewValley.Farmer.addedSpeed"],
+                "jump_mobility": ["StardewValley.Farmer.movementDirections"],
+                "combat_defense": ["StardewValley.Farmer.health", "StardewValley.Farmer.stamina"],
+                "combat_offense": ["StardewValley.Tools.MeleeWeapon.doDamage"],
+                "economy": ["StardewValley.Farmer.money", "StardewValley.Farmer.totalMoneyEarned"],
+                "generic_enhancement": ["StardewValley.Game1.Update", "StardewValley.Farmer.Update"],
+            }
+            strategy = "通过 SMAPI Mod API 监听游戏生命周期并修改 Farmer 对象状态"
+            exception_guards.extend([
+                "MonoGame / .NET CLR 运行时安全：禁止使用 UnityEngine 命名空间",
+                "SMAPI 生命周期约束：在 GameLoop.UpdateTicked 或 DayStarted 事件中进行状态更新",
+            ])
+        else:
+            target_binary = "Terraria.exe"
+            symbols_map = {
+                "movement_speed": ["Terraria.Player.moveSpeed", "Terraria.Player.maxRunSpeed", "Terraria.Player.runAcceleration"],
+                "jump_mobility": ["Terraria.Player.jumpSpeedBoost", "Terraria.Player.doubleJumpCloud", "Terraria.Player.jumpHeight"],
+                "combat_defense": ["Terraria.Player.statLife", "Terraria.Player.immune", "Terraria.Player.statDefense"],
+                "combat_offense": ["Terraria.Player.GetTotalDamage", "Terraria.Item.damage", "Terraria.Player.meleeDamage"],
+                "economy": ["Terraria.Player.BuyItem", "Terraria.Item.value", "Terraria.Player.SellItem"],
+                "generic_enhancement": ["Terraria.Player.Update", "Terraria.Main.Update", "Terraria.Item.SetDefaults"],
+            }
+            strategy = "通过 BepInEx 门禁或 tModLoader 挂载 Terraria.Player / Terraria.Main，在托管 Update 循环中执行安全调优"
+            exception_guards.extend([
+                ".NET Framework 4.0 托管运行时安全：纯原生 CLR 程序集，严禁引入 UnityEngine",
+                "生命周期守卫：使用 Environment.TickCount 或游戏 Update 节流防死循环卡顿",
+            ])
+
+        # Attempt real REA managed member fast search if executable exists
+        exe_path = os.path.join(game_dir, target_binary)
+        if os.path.isfile(exe_path) and not matched_symbols:
+            try:
+                found_rea = rea.fast_search_members(exe_path, term, limit=5)
+                if found_rea:
+                    matched_symbols = found_rea
+                    evidence_source = "rea_managed_assembly_search"
+                    evidence_status = "observed"
+                    evidence_confidence = 0.88
+            except Exception:
+                pass
+
         if not matched_symbols:
             matched_symbols = symbols_map.get(category, symbols_map["generic_enhancement"])
-        strategy = f"通过 REFramework Lua API 挂载 {matched_symbols[0]}，利用 Capcom RE 运行时 SDK 完成注入"
 
     else:
         symbols_map = {
