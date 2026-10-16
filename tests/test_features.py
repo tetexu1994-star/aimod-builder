@@ -192,6 +192,30 @@ class TestUnrealAdapter(unittest.TestCase):
         rec = gameprofiles.get_recommendations("黑神话悟空", {"id": "unreal", "variant": "ue5"})
         self.assertIsNotNone(rec["game_note"])
 
+    def test_bepinex_verify_plugin(self):
+        from agmod import bepinex
+        with tempfile.TemporaryDirectory() as game_dir:
+            plugins = os.path.join(game_dir, "BepInEx", "plugins")
+            os.makedirs(plugins, exist_ok=True)
+            # 无 DLL → 未安装
+            res = bepinex.verify_plugin(game_dir, "mymod")
+            self.assertFalse(res["installed"])
+            self.assertFalse(res["effective"])
+
+            # 有 DLL 但无日志 → installed 但未加载
+            with open(os.path.join(plugins, "mymod.dll"), "w") as f:
+                f.write("dll")
+            res = bepinex.verify_plugin(game_dir, "mymod")
+            self.assertTrue(res["installed"])
+            self.assertFalse(res["log_loaded"])
+
+            # 加日志 → 已加载生效
+            with open(os.path.join(game_dir, "BepInEx", "LogOutput.log"), "w") as f:
+                f.write("[Info : BepInEx] Loading [mymod 1.0.0]")
+            res = bepinex.verify_plugin(game_dir, "mymod")
+            self.assertTrue(res["log_loaded"])
+            self.assertTrue(res["effective"])
+
 
 class TestScanSessionLogic(unittest.TestCase):
     def test_session_filtering(self):

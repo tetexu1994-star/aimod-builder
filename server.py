@@ -339,6 +339,12 @@ def install_bepinex(game_dir: str) -> str:
 
 
 @mcp.tool()
+def verify_bepinex_plugin(game_dir: str, mod_id: str) -> str:
+    """Verify a BepInEx plugin actually took effect: DLL installed + BepInEx log shows it loaded. Call after build/install and after restarting the game."""
+    return json.dumps(bepinex.verify_plugin(game_dir, mod_id), ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
 def scaffold_mod(project_dir: str, game_dir: str, mod_id: str, mod_name: str, mod_version: str = "1.0.0") -> str:
     """Write a BepInEx plugin project (Plugin.cs + .csproj) for a Unity game."""
     bepinex.scaffold_plugin(project_dir, game_dir, mod_id, mod_name, mod_version)

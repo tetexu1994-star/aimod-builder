@@ -339,3 +339,44 @@ def compile_unity_plugin(
 
     return {"success": False, "error": "No available C# compiler found (csc / dotnet)"}
 
+
+def verify_plugin(game_dir: str, mod_id: str) -> dict:
+    """Verify a BepInEx plugin actually took effect: DLL present + non-empty, and
+    BepInEx's log shows it was loaded. This is the 'did my mod really work' check."""
+    plugins_dir = os.path.join(game_dir, "BepInEx", "plugins")
+    dll_path = os.path.join(plugins_dir, f"{mod_id}.dll")
+    dll_exists = os.path.isfile(dll_path)
+    dll_size = os.path.getsize(dll_path) if dll_exists else 0
+
+    log_loaded = False
+    log_errors: list[str] = []
+    for log_path in (
+        os.path.join(game_dir, "BepInEx", "LogOutput.log"),
+        os.path.join(game_dir, "BepInEx", "log.txt"),
+    ):
+        if not os.path.isfile(log_path):
+            continue
+        try:
+            with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
+                text = f.read()
+        except OSError:
+            continue
+        if mod_id.lower() in text.lower():
+            log_loaded = True
+        for line in text.splitlines()[-300:]:
+            low = line.lower()
+            if ("error" in low or "exception" in low) and mod_id.lower() in low:
+                log_errors.append(line.strip()[:200])
+
+    installed = dll_exists and dll_size > 0
+    return {
+        "mod_id": mod_id,
+        "installed": installed,
+        "dll_path": dll_path if dll_exists else "",
+        "dll_size": dll_size,
+        "log_loaded": log_loaded,
+        "log_errors": log_errors,
+        "effective": installed and log_loaded,
+        "hint": "若 installed 但 log_loaded 为 false，说明游戏尚未重启加载插件；先重启游戏再验证",
+    }
+
