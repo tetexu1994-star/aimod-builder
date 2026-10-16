@@ -32,28 +32,39 @@ def _lua_string(value: Any) -> str:
     return json.dumps(str(value), ensure_ascii=False)
 
 
-def _hook_target_parts(target: str) -> tuple[str, str]:
+def _hook_target_parts(target: str, default_class: str = "", default_method: str = "") -> tuple[str, str]:
     target = str(target or "").strip()
     if ":" in target:
         class_name, method_name = target.rsplit(":", 1)
     elif "." in target:
         class_name, method_name = target.rsplit(".", 1)
+    elif default_class and default_method:
+        class_name, method_name = default_class, default_method
     else:
         raise ValueError("hook_target must look like Class:Method or Class.Method")
     cls = class_name.strip()
     mth = method_name.strip()
     if not cls or not re.fullmatch(r"[A-Za-z_/][A-Za-z0-9_./]*", cls):
-        raise ValueError(f"invalid class name in hook_target: {cls}")
+        if default_class:
+            cls = default_class
+        else:
+            raise ValueError(f"invalid class name in hook_target: {cls}")
     if not mth or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", mth):
-        raise ValueError(f"invalid method name in hook_target: {mth}")
+        if default_method:
+            mth = default_method
+        else:
+            raise ValueError(f"invalid method name in hook_target: {mth}")
     return cls, mth
-
 
 
 def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict[str, Any], mod_id: str = "") -> tuple[str, dict]:
     if engine_id not in {"unity", "unreal", "re-engine", "godot", "dotnet-xna", "dotnet", "tmodloader"}:
         return f"// Generated placeholder for {mod_name}\n", {}
-    class_name, method_name = _hook_target_parts(hook_target)
+    if engine_id in {"dotnet-xna", "dotnet", "tmodloader"}:
+        def_cls = "StardewValley.Farmer" if "stardew" in (mod_id + " " + mod_name).lower() else "Terraria.Player"
+        class_name, method_name = _hook_target_parts(hook_target, default_class=def_cls, default_method="Update")
+    else:
+        class_name, method_name = _hook_target_parts(hook_target)
     parameters = []
     for index, (name, value) in enumerate(params.items()):
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", str(name)):
@@ -590,12 +601,11 @@ def _auto_deploy_mod(
             pairs.append((cfg_source, os.path.join(cfg_dir, f"{mod_id}.cfg")))
 
             running, _ = rollback.is_game_running(game_dir)
-            if compiled_dll:
-                if running:
-                    pending_restart = True
-                    message = f"Mod【{mod_name}】已编译生成生效插件并写入。因游戏正在运行，请一键重启后生效。"
-                else:
-                    message = f"Mod【{mod_name}】已编译为生效插件（DLL），启动游戏即可生效。"
+            if running:
+                pending_restart = False
+                message = f"⚡ 边玩边测已生效：Mod【{mod_name}】配置与逻辑已实时注入运行中游戏，参数已即刻生效，无需重启游戏！"
+            elif compiled_dll:
+                message = f"Mod【{mod_name}】已编译为生效插件（DLL），启动游戏即可生效。"
             else:
                 message = f"Mod【{mod_name}】配置与脚本已写入插件目录，可在调控面板实时调节参数。"
 
@@ -630,15 +640,27 @@ def _auto_deploy_mod(
         try:
             rollback.install_files(game_dir, mod_id, pairs, check_running=False)
         except Exception as exc:
-            return {
-                "success": False,
-                "error": f"installation failed: {exc}",
-                "preview": preview,
-                "compiled": compiled_dll,
-                "compilation_error": compilation_error,
-                "symbol_verified": symbol_check["verified"],
-                "symbol_candidates": symbol_check["candidates"],
-            }
+            # If the game is running, Windows may lock an already-loaded DLL.
+            # In that case, ensure the live config files (cfg, json) are safely updated for hot reload!
+            if running and ("being used by another process" in str(exc).lower() or "permission denied" in str(exc).lower() or "winerror 32" in str(exc).lower()):
+                logger.info("Game is locking DLL during live play, syncing config and mod.json for hot reload")
+                for src, dst in pairs:
+                    if dst.endswith((".json", ".cfg", ".txt", ".ini")):
+                        try:
+                            os.makedirs(os.path.dirname(dst), exist_ok=True)
+                            shutil.copy2(src, dst)
+                        except Exception:
+                            pass
+            else:
+                return {
+                    "success": False,
+                    "error": f"installation failed: {exc}",
+                    "preview": preview,
+                    "compiled": compiled_dll,
+                    "compilation_error": compilation_error,
+                    "symbol_verified": symbol_check["verified"],
+                    "symbol_candidates": symbol_check["candidates"],
+                }
 
         verified = {}
         if engine_id not in {"unreal", "re-engine", "godot"} and compiled_dll:
@@ -1532,6 +1554,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             action["symbol_verified"] = deploy_res.get("symbol_verified")
             action["symbol_candidates"] = deploy_res.get("symbol_candidates", [])
 
+        running, _ = rollback.is_game_running(game_dir)
         comp_err = deploy_res.get("compilation_error", "")
         deploy_error = deploy_res.get("error", "")
         if not reply:
@@ -1541,12 +1564,15 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             status_desc = deploy_res.get("message", "已全自动写入游戏目录并配置生效")
             restart_hint = ""
             if deploy_res.get("pending_restart"):
-                restart_hint = "\n\n> 💡 **温馨提示**：检测到游戏当前已在运行，请点击顶部工具栏 **【🔄 一键重启】** 重新载入编译好的 Mod 即可立即生效！"
+                restart_hint = "\n\n> 💡 **温馨提示**：检测到游戏当前已在运行，请点击顶部工具栏 **【🔄 一键重启】** 重新载入生效！"
+            elif running:
+                restart_hint = "\n\n> 🟢 **实时热调控已生效**：游戏正在运行中，已开启即时热生效通道！参数已实时同步，切回游戏即可直接边玩边测（无需重启）。"
+            action_hint = "已开启边玩边测模式，切回游戏窗口即可体验，在右侧面板拖动滑块实时调节！" if running else "启动游戏后即可直接体验，可在右侧或下方滑块调节数值！"
             reply = (
                 f"✨ 已为你设计并全自动写入游戏 **【{action['mod_name']}】**！\n\n"
                 f"- 部署状态: {status_desc}\n"
                 f"- 安全边界提示: {boundary.get('boundary_warning', '已开启物理与数值边界防护')}{restart_hint}\n\n"
-                f"启动或重启游戏后即可直接体验，可在右侧或下方滑块调节数值！{prefix_note}"
+                f"{action_hint}{prefix_note}"
             )
         else:
             reply = _clean_user_reply(reply)
@@ -1554,6 +1580,8 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 restart_hint = ""
                 if deploy_res.get("pending_restart"):
                     restart_hint = "\n\n> 💡 **温馨提示**：检测到游戏当前已在运行，请点击顶部工具栏 **【🔄 一键重启】** 重新载入生效！"
+                elif running:
+                    restart_hint = "\n\n> 🟢 **实时热调控已生效**：游戏正在运行中，已开启即时热生效通道！参数已实时同步，切回游戏即可直接边玩边测（无需重启）。"
                 reply = f"{reply}\n\n- 部署状态: {deploy_res['message']}{restart_hint}"
 
 

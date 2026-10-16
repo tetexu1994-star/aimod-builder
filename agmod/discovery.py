@@ -302,7 +302,23 @@ def launch_game(game_dir: str, appid: str = "") -> Dict[str, Any]:
     except Exception:
         pass
 
-    # 2. Prioritize direct game executable launch (safer for modding and avoids Steam protocol crash)
+    # 2. Prioritize Steam URI protocol for Steam games to ensure Steam DRM and overlay initialize cleanly
+    if sys.platform == "win32" and appid and str(appid).isdigit():
+        try:
+            try:
+                os.startfile(f"steam://rungameid/{appid}")
+            except Exception:
+                subprocess.Popen(["cmd.exe", "/c", "start", "", f"steam://rungameid/{appid}"])
+            return {
+                "success": True,
+                "method": "steam_protocol",
+                "appid": str(appid),
+                "message": f"已通过 Steam 官方客户端安全唤起游戏 (AppID: {appid})",
+            }
+        except Exception as e:
+            logger.warning("Steam protocol launch failed: %s, attempting direct executable launch", e)
+
+    # 3. Direct executable launch (DRM-free games, standalone installs, or fallback)
     main_exe = process.find_primary_executable_path(game_dir)
     if main_exe and os.path.isfile(main_exe):
         exe_cwd = os.path.dirname(main_exe)
@@ -322,22 +338,7 @@ def launch_game(game_dir: str, appid: str = "") -> Dict[str, Any]:
                 "message": f"游戏主程序已安全启动: {exe_name}",
             }
         except Exception as e:
-            logger.warning("Direct launch failed, attempting fallback: %s", e)
-
-    # 3. Fallback to Steam URI protocol only if direct executable failed or not found
-    if sys.platform == "win32" and appid and appid.isdigit():
-        try:
-            try:
-                os.startfile(f"steam://run/{appid}")
-            except Exception:
-                subprocess.Popen(["cmd.exe", "/c", "start", "", f"steam://run/{appid}"])
-            return {
-                "success": True,
-                "method": "steam_protocol",
-                "appid": appid,
-                "message": f"Steam 启动指令已发送 (AppID: {appid})",
-            }
-        except Exception as e:
-            return {"success": False, "error": f"Failed to launch via Steam protocol: {e}"}
+            logger.warning("Direct launch failed: %s", e)
 
     return {"success": False, "error": "未在游戏目录中找到有效的主程序 (.exe)"}
+

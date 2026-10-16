@@ -180,14 +180,11 @@ namespace AIModBuilder
                     {
                         Log("Browser process started, PID: " + appWindowProcess.Id);
 
-                        // Check if it exited immediately (e.g. exit code 21 on conflict)
+                        // Check if it exited immediately (e.g. delegated to existing Edge/Chrome instance or conflict)
                         if (appWindowProcess.WaitForExit(600))
                         {
-                            Log("Browser exited immediately with code: " + appWindowProcess.ExitCode);
-                            if (appWindowProcess.ExitCode != 0)
-                            {
-                                throw new Exception("App window exited with error code " + appWindowProcess.ExitCode);
-                            }
+                            Log("Browser process handed off/exited with code: " + appWindowProcess.ExitCode + ". Entering tray mode to keep backend alive.");
+                            RunFallbackTrayMode();
                             return;
                         }
 

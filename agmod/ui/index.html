@@ -1633,7 +1633,7 @@
 
         if (isRunning) {
           if (dot) dot.className = 'status-dot running';
-          if (text) text.textContent = pid ? `运行中 (${pid})` : '运行中';
+          if (text) text.textContent = pid ? `⚡ 运行中 · 边玩边测 (${pid})` : '⚡ 运行中 · 边玩边测';
           if (lBtn) lBtn.style.display = 'none';
           if (rBtn) rBtn.style.display = 'inline-flex';
         } else {
@@ -2691,11 +2691,12 @@
           const gName = currentGame ? currentGame.name : '未选择游戏';
           const eng = currentGame ? (currentGame.engine_name || currentGame.engine_id || '原生') : '-';
           const fw = currentGame && currentGame.framework ? (currentGame.framework.framework_name || '原版') : '-';
+          const isRun = currentGame && currentGame.is_running;
           container.innerHTML = `
             <div style="padding:16px; border-radius:10px; background:var(--bg-card-inner); border:1px solid var(--border); display:flex; flex-direction:column; gap:10px;">
               <div style="display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-size:13px; font-weight:700; color:var(--text-main);">📡 运行环境遥测</span>
-                <span style="font-size:11px; padding:2px 7px; border-radius:8px; background:rgba(16,185,129,0.12); color:var(--emerald);">● 待命中</span>
+                <span style="font-size:11px; padding:2px 7px; border-radius:8px; background:rgba(16,185,129,0.14); color:var(--emerald); font-weight:600;">● 待命中</span>
               </div>
               <div style="display:flex; justify-content:space-between; font-size:12px; padding:5px 0; border-bottom:1px solid var(--border);">
                 <span style="color:var(--text-dim);">目标游戏</span>
@@ -2714,14 +2715,18 @@
                 <span style="color:var(--emerald); font-weight:600;">✓ 符号特征已锁定</span>
               </div>
               <div style="display:flex; justify-content:space-between; font-size:12px; padding:5px 0;">
-                <span style="color:var(--text-dim);">安全沙箱</span>
-                <span style="color:var(--emerald);">数值与越界防护已就绪</span>
+                <span style="color:var(--text-dim);">实时热通道</span>
+                <span style="color:var(--emerald); font-weight:600;">⚡ 边玩边测已就绪</span>
               </div>
             </div>
-            <div style="margin-top:14px; padding:20px; border-radius:10px; background:var(--bg-card-inner); border:1px dashed var(--border); text-align:center;">
-              <div style="font-size:26px; margin-bottom:8px;">⚡</div>
-              <div style="font-size:13px; font-weight:600; color:var(--text-main);">等待 Mod 创作生成</div>
-              <div style="font-size:12px; color:var(--text-muted); margin-top:6px; line-height:1.5;">在左侧向 AI 描述您的需求，生成的 Mod 将立即出现在此面板，支持实时数值微调与热开关！</div>
+            <div style="margin-top:14px; padding:16px; border-radius:10px; background:rgba(99,102,241,0.05); border:1px dashed rgba(99,102,241,0.3); text-align:left;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                <span style="font-size:16px;">🎮</span>
+                <span style="font-size:13px; font-weight:700; color:var(--text-main);">边运行边测试（无需重启）</span>
+              </div>
+              <div style="font-size:12px; color:var(--text-muted); line-height:1.6;">
+                游戏运行期间，可在左侧对话框对 AI 提出任意改动，或在此面板拖动滑块，参数与效果将<b>实时同步到游戏内</b>，无需每次重启游戏！
+              </div>
             </div>
           `;
           return;
