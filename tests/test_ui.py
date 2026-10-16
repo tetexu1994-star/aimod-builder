@@ -310,6 +310,16 @@ System.NullReferenceException: Object reference not set to an instance of an obj
                 self.assertEqual(code, 200)
                 self.assertTrue(restart_res["success"])
 
+            # 5. Test /api/mods/verify
+            code, verify_res = _http_post(f"{self.base_url}/api/mods/verify", {
+                "game_dir": tmp_game,
+                "mod_id": mod_id,
+            })
+            self.assertEqual(code, 200)
+            self.assertTrue(verify_res["success"])
+            self.assertIn("installed", verify_res["data"])
+
+
 
     def test_anticheat_api_blocking(self):
         with tempfile.TemporaryDirectory() as protected_game:

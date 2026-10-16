@@ -620,6 +620,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             "/api/mod/interact": self._handle_mod_interact,
             "/api/mod/pin": self._handle_mod_pin,
             "/api/mod/tune": self._handle_mod_tune,
+            "/api/mods/verify": self._handle_mod_verify,
             "/api/rea/overview": self._handle_rea_overview,
         }
 
@@ -857,6 +858,18 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         # Launch game again
         res = discovery.launch_game(game_dir, appid)
         return (HTTPStatus.OK if res.get("success") else HTTPStatus.INTERNAL_SERVER_ERROR), res
+
+    def _handle_mod_verify(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        from agmod import bepinex
+        game_dir = _safe_path(body.get("game_dir", ""))
+        mod_id = str(body.get("mod_id", "")).strip()
+        if not game_dir or not mod_id:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir and mod_id are required"}
+        try:
+            res = bepinex.verify_plugin(game_dir, mod_id)
+            return HTTPStatus.OK, {"success": True, "data": res}
+        except Exception as e:
+            return HTTPStatus.INTERNAL_SERVER_ERROR, {"success": False, "error": str(e)}
 
     def _handle_rea_overview(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
@@ -1232,6 +1245,9 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             action["auto_deployed"] = deploy_res.get("success", False)
             action["pending_restart"] = deploy_res.get("pending_restart", False)
             action["deploy_message"] = deploy_res.get("message", "")
+            action["compiled"] = deploy_res.get("compiled", False)
+            action["compilation_error"] = deploy_res.get("compilation_error", "")
+            action["verified"] = deploy_res.get("verified", {})
 
         if not reply:
             prefix_note = ""

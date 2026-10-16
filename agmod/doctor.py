@@ -18,8 +18,10 @@ from dataclasses import asdict, dataclass
 
 from .compiler import find_roslyn_csc as _find_roslyn_csc
 from .cue4parse import find_host as _find_cue4parse_host
+from .ilspy import find_ilspycmd as _find_ilspycmd
 from .sdk import find_dotnet as _find_dotnet
 from .uassetgui import find_uassetgui as _find_uassetgui
+
 from .config import CACHE_ROOT
 from .rea import _find_rea
 
@@ -143,6 +145,20 @@ def check_environment() -> dict:
             remedy="" if cue4parse_host else "Built automatically (via the portable .NET SDK) on the first Unreal asset listing",
         )
     )
+
+    # 2e. ilspycmd (.NET / Unity decompiler)
+    ilspy_exe = _find_ilspycmd()
+    checks.append(
+        ToolCheck(
+            name="ilspycmd (.NET decompiler)",
+            category="reverse_tools",
+            status="ok" if ilspy_exe else "optional_missing",
+            version="installed" if ilspy_exe else "",
+            path=ilspy_exe or "installed on first use",
+            remedy="" if ilspy_exe else "Installed automatically via dotnet tool on first .NET decompilation",
+        )
+    )
+
 
     # 3. REA CLI (morluto/rea)
     rea_bin = _find_rea()

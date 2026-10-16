@@ -139,12 +139,14 @@ def framework_references() -> list[str]:
 
 
 def find_compiler() -> dict:
-    """Best available C# compiler, in preference order: dotnet SDK, standalone
-    Roslyn csc.exe, then Windows built-in csc.exe (C# 5 only)."""
-    dotnet = shutil.which("dotnet")
+    """Best available C# compiler, in preference order: dotnet SDK (PATH or portable),
+    standalone Roslyn csc.exe, then Windows built-in csc.exe (C# 5 only)."""
+    from . import sdk
+    dotnet = sdk.find_dotnet()
     if dotnet:
         return {"type": "dotnet", "path": dotnet}
     roslyn = find_roslyn_csc()
+
     if roslyn:
         return {"type": "roslyn", "path": roslyn}
     for csc in (

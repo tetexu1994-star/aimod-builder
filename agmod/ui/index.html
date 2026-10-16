@@ -2103,16 +2103,31 @@
           }).join('');
         }
 
+        let statusBadge = '';
+        if (action.compiled === false && action.compilation_error) {
+          statusBadge = `<span style="font-size:11px; background:rgba(239, 68, 68, 0.2); color:#f87171; padding:2px 7px; border-radius:4px;">⚠️ 编译未完成</span>`;
+        } else if (action.verified && action.verified.effective) {
+          statusBadge = `<span style="font-size:11px; background:var(--emerald-bg); color:var(--emerald); padding:2px 7px; border-radius:4px;">🟢 插件已载入 · 实时生效中</span>`;
+        } else if (action.pending_restart) {
+          statusBadge = `<span style="font-size:11px; background:rgba(245, 158, 11, 0.2); color:#fbbf24; padding:2px 7px; border-radius:4px;">🔄 插件 DLL 已装载 · 需重启游戏生效</span>`;
+        } else {
+          statusBadge = `<span style="font-size:11px; background:var(--emerald-bg); color:var(--emerald); padding:2px 7px; border-radius:4px;">🟢 已全自动写入游戏</span>`;
+        }
+
+        let bodyNotice = '';
+        if (action.compiled === false && action.compilation_error) {
+          bodyNotice = `<div style="margin:8px 0; padding:10px 14px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.3); border-radius:6px; color:#f87171; font-size:12px;">⚠️ <strong>编译提示：</strong>${escapeHtml(action.compilation_error)}</div>`;
+        }
+
         actionHtml = `
           <div class="action-card">
             <div class="action-card-header">
               <span>✨ ${escapeHtml(action.mod_name)}</span>
-              <span style="font-size:11px; background:var(--emerald-bg); color:var(--emerald); padding:2px 7px; border-radius:4px;">
-                ${action.pending_restart ? '🔄 已部署 · 首次需重启游戏生效' : '🟢 已全自动写入游戏 · 实时生效中'}
-              </span>
+              ${statusBadge}
             </div>
             <div style="font-size:12px; color:var(--text-muted);">${escapeHtml(action.summary)}</div>
             ${action.installed_path ? `<div style="font-size:11px; color:var(--text-dim); margin-top:2px;">📁 自动部署路径: <code>${escapeHtml(action.installed_path)}</code></div>` : ''}
+            ${bodyNotice}
             ${action.pending_restart ? `
               <div style="margin: 10px 0; padding: 10px 14px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                 <span style="font-size: 12px; color: #fbbf24;">⚡ Mod 插件已成功编译生成 DLL。因游戏此前已在运行，需重启游戏载入：</span>

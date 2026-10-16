@@ -288,7 +288,9 @@ def compile_unity_plugin(
     last_method = ""
 
     # 1. Prefer dotnet SDK (supports modern C#; the plugin template uses C# 6+ syntax)
-    if shutil.which("dotnet"):
+    from . import sdk
+    dotnet_bin = sdk.find_dotnet()
+    if dotnet_bin:
         tmp_proj = tempfile.mkdtemp(prefix="aimod-bepin-compile-")
         try:
             proj_file = os.path.join(tmp_proj, f"{mod_id}.csproj")
@@ -313,7 +315,8 @@ def compile_unity_plugin(
                 f.write(csproj_content)
 
             out_dir = os.path.join(tmp_proj, "out")
-            res = subprocess.run(["dotnet", "build", "-c", "Release", "-o", out_dir], cwd=tmp_proj, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+            res = subprocess.run([dotnet_bin, "build", "-c", "Release", "-o", out_dir], cwd=tmp_proj, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+
             built_dll = os.path.join(out_dir, f"{mod_id}.dll")
             if res.returncode == 0 and os.path.isfile(built_dll):
                 shutil.copyfile(built_dll, out_dll_path)

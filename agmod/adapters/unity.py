@@ -88,18 +88,28 @@ class UnityAdapter(BaseAdapter):
         out = assembly + ".decomp-" + fingerprint[:12]
         if os.path.isdir(out) and os.listdir(out):
             return out
+        from .. import ilspy
+        ilspy_bin = ilspy.find_ilspycmd()
+        if not ilspy_bin:
+            try:
+                ilspy_bin = ilspy.ensure_ilspycmd()
+            except Exception:
+                ilspy_bin = "ilspycmd"
         try:
             subprocess.run(
-                ["ilspycmd", "-p", "-o", out, assembly],
+                [ilspy_bin, "-p", "-o", out, assembly],
                 check=True,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
             )
-        except FileNotFoundError:
+        except Exception as exc:
             raise RuntimeError(
-                "ilspycmd not found. Install it with: dotnet tool install -g ilspycmd"
-            ) from None
+                f"ilspycmd decompilation failed: {exc}. Install it with: dotnet tool install -g ilspycmd"
+            ) from exc
         return out
+
 
     def _prepare_il2cpp(self, game_dir: str, table: StructureTable) -> None:
         meta = glob.glob(os.path.join(game_dir, "*_Data", "il2cpp_data", "Metadata", "global-metadata.dat"))

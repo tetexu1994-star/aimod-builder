@@ -32,7 +32,20 @@ _IL2CPP_MARKERS = ("GameAssembly.dll", "global-metadata.dat")
 
 def is_il2cpp_unity(game_dir: str) -> bool:
     """True if the game directory looks like an IL2CPP Unity build (not Mono)."""
-    return any(os.path.isfile(os.path.join(game_dir, marker)) for marker in _IL2CPP_MARKERS)
+    if not game_dir or not os.path.isdir(game_dir):
+        return False
+    if any(os.path.isfile(os.path.join(game_dir, marker)) for marker in _IL2CPP_MARKERS):
+        return True
+    try:
+        for entry in os.listdir(game_dir):
+            if entry.lower().endswith(("_data", "_data/")):
+                meta = os.path.join(game_dir, entry, "il2cpp_data", "Metadata", "global-metadata.dat")
+                if os.path.isfile(meta):
+                    return True
+    except OSError:
+        pass
+    return False
+
 
 
 def _cs_string(value: str) -> str:
