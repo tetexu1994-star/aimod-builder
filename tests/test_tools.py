@@ -9,7 +9,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agmod import cue4parse, ilspy, melonloader, sdk, uassetgui
+from agmod import bepinex, cue4parse, ilspy, melonloader, sdk, uassetgui
 
 
 class TestNewIntegrations(unittest.TestCase):
@@ -59,6 +59,26 @@ class TestNewIntegrations(unittest.TestCase):
     def test_find_cue4parse_host_is_pure(self):
         p = cue4parse.find_host()
         self.assertTrue(p is None or isinstance(p, str))
+
+    def test_verify_plugin_detects_heartbeat_report(self):
+        import json as _json
+        with tempfile.TemporaryDirectory() as game:
+            plugins = os.path.join(game, "BepInEx", "plugins")
+            os.makedirs(plugins, exist_ok=True)
+            with open(os.path.join(plugins, "gold_mod.dll"), "wb") as f:
+                f.write(b"x" * 100)
+            with open(os.path.join(plugins, "gold_mod.verified.json"), "w", encoding="utf-8") as f:
+                _json.dump({"mod_id": "gold_mod", "loaded": True}, f)
+            result = bepinex.verify_plugin(game, "gold_mod")
+            self.assertTrue(result["installed"])
+            self.assertTrue(result["heartbeat"])
+            self.assertTrue(result["effective"])
+
+    def test_verify_plugin_not_effective_without_install(self):
+        with tempfile.TemporaryDirectory() as game:
+            result = bepinex.verify_plugin(game, "missing_mod")
+            self.assertFalse(result["installed"])
+            self.assertFalse(result["effective"])
 
 
 if __name__ == "__main__":

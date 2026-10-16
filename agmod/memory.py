@@ -126,6 +126,29 @@ def write_value(handle: int, address: int, value, kind: str = "int32") -> int:
     return write_bytes(handle, address, struct.pack(fmt, value))
 
 
+def verify_value(handle: int, address: int, expected, kind: str = "int32") -> dict:
+    """Read back the value at `address` and compare it to `expected`.
+
+    This is the read-back half of "did my change really take effect".
+    """
+    actual = read_value(handle, address, kind)
+    return {"matches": actual == expected, "expected": expected, "actual": actual}
+
+
+def write_and_verify(handle: int, address: int, value, kind: str = "int32") -> dict:
+    """Write `value`, then read it back and confirm it actually took effect."""
+    before = read_value(handle, address, kind)
+    write_value(handle, address, value, kind)
+    after = read_value(handle, address, kind)
+    return {
+        "kind": kind,
+        "before": before,
+        "written": value,
+        "after": after,
+        "changed": after == value,
+    }
+
+
 def _query(handle: int, addr: int):
     if not IS_WINDOWS:
         return None

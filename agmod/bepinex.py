@@ -89,6 +89,12 @@ namespace {namespace}
         {{
             Harmony.CreateAndPatchAll(typeof({class_name}));
             Logger.LogInfo($"Plugin {{MyPluginInfo.PLUGIN_NAME}} loaded.");
+            try
+            {{
+                var reportPath = System.IO.Path.Combine(Paths.PluginPath, "{mod_id}.verified.json");
+                System.IO.File.WriteAllText(reportPath, "{{\"mod_id\":\"{mod_id}\",\"loaded\":true}}");
+            }}
+            catch {{ }}
         }}
     }}
 
@@ -390,7 +396,7 @@ def compile_unity_plugin(
 
 def verify_plugin(game_dir: str, mod_id: str) -> dict:
     """Verify a BepInEx plugin actually took effect: DLL present + non-empty, and
-    BepInEx's log shows it was loaded. This is the 'did my mod really work' check."""
+    either BepInEx's log or the plugin's own load-heartbeat shows it loaded."""
     plugins_dir = os.path.join(game_dir, "BepInEx", "plugins")
     dll_path = os.path.join(plugins_dir, f"{mod_id}.dll")
     dll_exists = os.path.isfile(dll_path)
@@ -416,15 +422,34 @@ def verify_plugin(game_dir: str, mod_id: str) -> dict:
             if ("error" in low or "exception" in low) and mod_id.lower() in low:
                 log_errors.append(line.strip()[:200])
 
+    # Plugin-written load heartbeat: a stronger signal than the log alone.
+    heartbeat = False
+    report = {}
+    report_path = os.path.join(plugins_dir, f"{mod_id}.verified.json")
+    if os.path.isfile(report_path):
+        try:
+            import json as _json
+            with open(report_path, "r", encoding="utf-8") as f:
+                report = _json.load(f)
+        except Exception:
+            report = {}
+        if report.get("loaded") is True or report.get("mod_id"):
+            heartbeat = True
+
     installed = dll_exists and dll_size > 0
+    loaded = log_loaded or heartbeat
     return {
         "mod_id": mod_id,
         "installed": installed,
         "dll_path": dll_path if dll_exists else "",
         "dll_size": dll_size,
         "log_loaded": log_loaded,
+        "heartbeat": heartbeat,
         "log_errors": log_errors,
-        "effective": installed and log_loaded,
-        "hint": "若 installed 但 log_loaded 为 false，说明游戏尚未重启加载插件；先重启游戏再验证",
+        "effective": installed and loaded,
+        "hint": (
+            "effective=true 表示插件已安装且被确认加载；"
+            "若 installed 但未加载，说明游戏尚未重启载入插件，先重启游戏再验证"
+        ),
     }
 

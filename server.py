@@ -315,7 +315,7 @@ def read_memory(pid: int, address: int, kind: str = "int32") -> str:
 
 @mcp.tool()
 def write_memory(pid: int, address: int, value: float, kind: str = "int32", dry_run: bool = False) -> str:
-    """Write one value at `address`. Pass dry_run=True to preview without writing."""
+    """Write one value at `address`, then read it back to confirm it took effect. Pass dry_run=True to preview without writing."""
     ok, reason = safety.check_target(pid)
     if not ok:
         return json.dumps({"ok": False, "error": reason})
@@ -325,11 +325,29 @@ def write_memory(pid: int, address: int, value: float, kind: str = "int32", dry_
         return json.dumps({"dry_run": True, "address": hex(address), "kind": kind, "would_write": value})
     h = memory.open_process(pid)
     try:
-        memory.write_value(h, address, value, kind)
-        v = memory.read_value(h, address, kind)
+        result = memory.write_and_verify(h, address, value, kind)
     finally:
         memory.close_process(h)
-    return json.dumps({"address": hex(address), "kind": kind, "written": value, "read_back": v})
+    result["address"] = hex(address)
+    result["verified"] = result["changed"]
+    return json.dumps(result)
+
+
+@mcp.tool()
+def verify_memory(pid: int, address: int, expected_value: float, kind: str = "int32") -> str:
+    """Read back the value at `address` and confirm it equals `expected_value` (read-back verification, no write)."""
+    ok, reason = safety.check_target(pid)
+    if not ok:
+        return json.dumps({"ok": False, "error": reason})
+    if kind in _int_kinds():
+        expected_value = int(expected_value)
+    h = memory.open_process(pid)
+    try:
+        result = memory.verify_value(h, address, expected_value, kind)
+    finally:
+        memory.close_process(h)
+    result["address"] = hex(address)
+    return json.dumps(result)
 
 
 @mcp.tool()
