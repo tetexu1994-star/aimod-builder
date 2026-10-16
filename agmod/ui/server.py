@@ -134,30 +134,29 @@ namespace StardewMod_{safe_id}
 
         csharp_code = f'''using System;
 using System.IO;
+using BepInEx;
+using HarmonyLib;
 
 namespace AIModPlugin_{safe_id}
 {{
-    // Terraria / .NET AI Mod Runtime Plugin
-    public class TerrariaPlugin_{safe_id}
+    [BepInPlugin("com.aimod.{safe_id}", "{escaped_name}", "1.0.0")]
+    public class TerrariaPlugin_{safe_id} : BaseUnityPlugin
     {{
         public static bool GodModeEnabled = {str(is_god).lower()};
         public static float SpeedMultiplier = 2.0f;
-        public static bool DoubleJumpEnabled = true;
-        public static bool CompanionPetEnabled = {str(is_pet).lower()};
-        private static int lastCheckTick = 0;
         private static string configPath = "";
+        private static int lastCheckTick = 0;
 
-        public static void Initialize()
+        void Awake()
         {{
-            try
-            {{
-                configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BepInEx", "plugins", "{mod_id}", "mod.json");
-                ReadTuning();
-            }}
-            catch {{ }}
+            configPath = Path.Combine(Paths.PluginPath, "{mod_id}", "mod.json");
+            ReadTuning();
+            Harmony harmony = new Harmony("com.aimod.{safe_id}");
+            harmony.PatchAll();
+            Logger.LogInfo("=== [AIMod] {escaped_name} Loaded Successfully! ===");
         }}
 
-        public static void Update()
+        void Update()
         {{
             if (Environment.TickCount - lastCheckTick > 500)
             {{
@@ -198,7 +197,24 @@ namespace AIModPlugin_{safe_id}
         }}
     }}
 
-    // In-game AI Companion Summon & Dialogue Dispatcher
+    [HarmonyPatch(typeof(Terraria.Player), "Update")]
+    public static class PlayerUpdatePatch_{safe_id}
+    {{
+        static void Postfix(Terraria.Player __instance)
+        {{
+            if (TerrariaPlugin_{safe_id}.GodModeEnabled)
+            {{
+                __instance.statLife = __instance.statLifeMax;
+                __instance.immune = 1;
+            }}
+            if (TerrariaPlugin_{safe_id}.SpeedMultiplier > 1.0f)
+            {{
+                __instance.moveSpeed = __instance.maxRunSpeed * TerrariaPlugin_{safe_id}.SpeedMultiplier;
+            }}
+        }}
+    }}
+
+    // AI companion dialogue dispatcher (triggered from the companion UI)
     public static class AICompanionHelper
     {{
         public static void SummonDialogue()

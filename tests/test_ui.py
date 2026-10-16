@@ -11,7 +11,7 @@ import urllib.request
 from unittest.mock import patch
 from pathlib import Path
 
-from agmod.ui.server import INDEX_HTML_PATH, ModUIServer, launch_ui
+from agmod.ui.server import INDEX_HTML_PATH, ModUIServer, _pinned_source, launch_ui
 
 
 def _get_free_port() -> int:
@@ -60,6 +60,20 @@ class TestUIServer(unittest.TestCase):
         self.assertNotIn("onclick=\"pinMod('${", html)
         self.assertIn("function escapeHtml(value)", html)
         self.assertIn("function isAnticheatBlocked(game)", html)
+
+    def test_terraria_source_is_real_bepinex_plugin(self):
+        source, target = _pinned_source(
+            "dotnet-xna", "泰拉瑞亚加速", "Terraria.Player:Update",
+            {"god_mode": True, "speed_multiplier": 3.0}, "t_mod",
+        )
+        self.assertIn("[BepInPlugin", source)
+        self.assertIn("BaseUnityPlugin", source)
+        self.assertIn("HarmonyPatch", source)
+        self.assertIn("Terraria.Player", source)
+        self.assertIn("void Awake()", source)
+        self.assertIn("ReadTuning", source)
+        # must NOT be the old dead static-class entrypoint
+        self.assertNotIn("public static void Initialize()", source)
 
     @classmethod
     def setUpClass(cls):
