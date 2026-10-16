@@ -524,6 +524,28 @@ System.NullReferenceException: Object reference not set to an instance of an obj
                 self.assertIn("stepper", inv_types)
                 self.assertIn("switch", inv_types)
 
+    def test_terraria_dotnet_xna_mod_generation(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as game:
+            open(os.path.join(game, "Terraria.exe"), "w").close()
+            with patch("agmod.registry.detect_engine", return_value={"id": "dotnet-xna", "engine_id": "dotnet-xna", "name": "Terraria (.NET/XNA)"}):
+                code, res = _http_post(f"{self.base_url}/api/mod/interact", {
+                    "game_dir": game,
+                    "prompt": "召唤AI随从宠物并开启锁血无敌"
+                })
+                self.assertEqual(code, 200)
+                self.assertTrue(res["success"])
+                action = res["data"]["action"]
+                self.assertIsNotNone(action)
+                mod_id = action["mod_id"]
+                src_file = os.path.join(game, "BepInEx", "plugins", mod_id, f"{mod_id}.cs")
+                self.assertTrue(os.path.exists(src_file))
+                with open(src_file, "r", encoding="utf-8") as f:
+                    content = f.read()
+                self.assertIn("AICompanionHelper", content)
+                self.assertIn("TerrariaPlugin", content)
+                self.assertFalse(content.startswith("--"))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

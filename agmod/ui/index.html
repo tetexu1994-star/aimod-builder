@@ -106,23 +106,21 @@
       position: sticky;
       top: 0;
       z-index: 50;
-      height: 68px;
+      height: 60px;
       backdrop-filter: blur(16px);
       background: var(--bg-nav);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 28px;
+      padding: 0 20px;
+      gap: 16px;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
-      font-weight: 700;
-      font-size: 17px;
-      letter-spacing: -0.02em;
+      gap: 10px;
       cursor: pointer;
       user-select: none;
       border: 0;
@@ -133,87 +131,145 @@
     .brand-icon {
       width: 28px;
       height: 28px;
-      border-radius: 8px;
-      background: linear-gradient(135deg, #6366f1, #a855f7);
+      border-radius: 6px;
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
       display: flex;
       align-items: center;
       justify-content: center;
       color: #fff;
-      font-size: 15px;
-      box-shadow: 0 0 12px var(--primary-glow);
+      font-size: 14px;
+      font-weight: 800;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
     }
-    .brand-badge {
-      font-size: 10px;
+    .brand-title {
       font-weight: 700;
-      background: var(--emerald-bg);
-      color: var(--emerald);
-      border: 1px solid rgba(16, 185, 129, 0.25);
-      padding: 2px 7px;
-      border-radius: 6px;
-      letter-spacing: 0.05em;
+      font-size: 15px;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
     }
-
-    /* Guided Workflow Stepper in Header */
-    .workflow-stepper {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      padding: 5px 8px;
-      border-radius: 30px;
-      box-shadow: var(--shadow-sm);
-    }
-    .step-item {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      padding: 5px 12px;
-      border-radius: 20px;
-      border: 0;
-      background: transparent;
-      font-size: 12px;
+    .brand-ver {
+      font-size: 10px;
       font-weight: 600;
       color: var(--text-dim);
-      transition: all 0.2s ease;
-      cursor: pointer;
-      user-select: none;
-    }
-    .step-num {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.08);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-    }
-    .step-item.active {
-      background: var(--primary);
-      color: var(--primary-ink);
-      box-shadow: 0 0 12px var(--primary-glow);
-    }
-    .step-item.active .step-num {
-      background: rgba(255, 255, 255, 0.25);
-      color: #fff;
-    }
-    .step-item.completed {
-      color: var(--emerald);
-    }
-    .step-item.completed .step-num {
-      background: var(--emerald);
-      color: #fff;
-    }
-    .step-arrow {
-      color: var(--border-hover);
-      font-size: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 1px 5px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
     }
 
-    .nav-actions {
+    /* Active Game Context Pill in Header */
+    .header-game-context {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .hdr-game-name {
+      font-weight: 600;
+      color: var(--text-main);
+      max-width: 130px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .hdr-tag {
+      font-size: 10px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(99, 102, 241, 0.12);
+      color: #818cf8;
+      border: 1px solid rgba(99, 102, 241, 0.25);
+    }
+    .hdr-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #64748b;
+      display: inline-block;
+    }
+    .status-dot.running {
+      background: #10b981;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+      animation: pulse-dot 2s infinite ease-in-out;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.9); }
+    }
+
+    /* IDE-Style Studio Navigation Tabs */
+    .studio-nav-tabs {
       display: flex;
       align-items: center;
-      gap: 10px;
+      background: rgba(0, 0, 0, 0.28);
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      gap: 2px;
+    }
+    .step-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 0;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .step-item:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .step-item.active {
+      color: #ffffff;
+      background: var(--primary);
+      box-shadow: 0 1px 8px var(--primary-glow);
+    }
+    .step-item.completed {
+      color: var(--text-main);
+    }
+
+    /* Header Persistent Actions Toolbar */
+    .header-quick-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-launch-glow {
+      background: linear-gradient(135deg, #10b981, #059669) !important;
+      color: #ffffff !important;
+      border: 1px solid #059669 !important;
+      font-weight: 700 !important;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.35) !important;
+    }
+    .btn-restart-glow {
+      background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+      color: #18181b !important;
+      border: 1px solid #d97706 !important;
+      font-weight: 700 !important;
+      box-shadow: 0 0 14px rgba(245, 158, 11, 0.45) !important;
+      animation: glow-restart 2.5s infinite ease-in-out;
+    }
+    @keyframes glow-restart {
+      0%, 100% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.3); }
+      50% { box-shadow: 0 0 18px rgba(245, 158, 11, 0.6); }
     }
 
     button.btn {
@@ -1178,41 +1234,59 @@
 </head>
 <body>
 
-  <!-- Top Navigation -->
+  <!-- Professional Top Navigation -->
   <header class="top-nav">
-    <button class="brand" type="button" onclick="goToStage(1)" aria-label="返回游戏选择">
-      <div class="brand-icon">⚡</div>
-      <span>AI Mod Builder</span>
-      <span class="brand-badge">PRO</span>
-    </button>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <button class="brand" type="button" onclick="goToStage(1)" aria-label="返回游戏选择">
+        <div class="brand-icon">⚡</div>
+        <div style="display:flex; flex-direction:column; align-items:flex-start; line-height:1.2;">
+          <span class="brand-title">AI Mod Builder</span>
+          <span class="brand-ver">v1.0</span>
+        </div>
+      </button>
 
-    <!-- 4-Step Guided Workflow Stepper -->
-    <div class="workflow-stepper">
+      <!-- Active Game Context & Status -->
+      <div class="header-game-context" id="header-game-context" style="display:none;">
+        <span style="font-size:13px;">🎮</span>
+        <span class="hdr-game-name" id="hdr-game-name">泰拉瑞亚</span>
+        <span class="hdr-tag" id="hdr-engine-tag">.NET / XNA</span>
+        <span class="hdr-status" id="hdr-status-wrap">
+          <span class="status-dot" id="hdr-status-dot"></span>
+          <span id="hdr-status-text">未启动</span>
+        </span>
+        <button type="button" onclick="goToStage(1)" title="更换游戏" style="padding:2px 7px; font-size:11px; border-radius:4px; border:1px solid var(--border); background:rgba(255,255,255,0.06); color:var(--text-muted); cursor:pointer;">换游戏</button>
+      </div>
+    </div>
+
+    <!-- IDE Studio Workspace Tabs -->
+    <div class="studio-nav-tabs">
       <button class="step-item active" id="step-btn-1" type="button" onclick="goToStage(1)">
-        <span class="step-num">1</span>
-        <span>挑选游戏</span>
+        <span>🎮 游戏库</span>
       </button>
-      <span class="step-arrow">➔</span>
       <button class="step-item" id="step-btn-2" type="button" onclick="goToStage(2)">
-        <span class="step-num">2</span>
-        <span>启动与连接</span>
+        <span>⚡ 联机控制</span>
       </button>
-      <span class="step-arrow">➔</span>
       <button class="step-item" id="step-btn-3" type="button" onclick="goToStage(3)">
-        <span class="step-num">3</span>
-        <span>AI 创作与调优</span>
+        <span>💬 AI 创作台</span>
       </button>
-      <span class="step-arrow">➔</span>
       <button class="step-item" id="step-btn-4" type="button" onclick="goToStage(4)">
-        <span class="step-num">4</span>
-        <span>固化 Mod</span>
+        <span>📦 模组固化</span>
       </button>
     </div>
 
-    <div class="nav-actions">
-      <button class="btn btn-sm" onclick="scanGames()">🔍 扫描游戏</button>
-      <button class="btn btn-sm" id="btn-save-backup" onclick="createSaveBackup()">🛡️ 备份存档</button>
-      <button class="btn btn-sm" onclick="openLLMModal()">⚙️ 模型配置 (CC Switch)</button>
+    <!-- Persistent Global Actions Bar -->
+    <div class="header-quick-actions">
+      <!-- FIXED PROMINENT LAUNCH / RESTART BUTTONS -->
+      <button class="btn btn-sm btn-launch-glow" id="hdr-launch-btn" type="button" onclick="launchCurrentGame()" style="display:none;">
+        <span>▶</span> 启动游戏
+      </button>
+      <button class="btn btn-sm btn-restart-glow" id="hdr-restart-btn" type="button" onclick="restartGame()" style="display:none;">
+        <span>🔄</span> 一键重启
+      </button>
+
+      <button class="btn btn-sm" onclick="scanGames()" title="重新扫描本地与Steam游戏库">🔍 扫描</button>
+      <button class="btn btn-sm" id="btn-save-backup" onclick="createSaveBackup()" title="一键备份当前游戏存档">🛡️ 备份</button>
+      <button class="btn btn-sm" onclick="openLLMModal()" title="配置大模型 API Key">⚙️ 模型</button>
       <button class="btn btn-sm" onclick="toggleTheme()" title="切换亮/暗模式" id="theme-btn">🌙</button>
     </div>
   </header>
@@ -1307,12 +1381,13 @@
 
         <!-- Inspiration Pills -->
         <div class="chat-pills-bar" id="chat-pills-bar">
-          <span class="label">快捷灵感:</span>
+          <span class="label">快捷预设:</span>
+          <button class="pill-btn" onclick="sendPrompt('泰拉瑞亚五合一综合增强：无敌金身+免溺水+全图视野常亮+摔落免疫+二段跳')">✨ 泰拉瑞亚五合一增强</button>
+          <button class="pill-btn" onclick="sendPrompt('前置AI随从宠物：召唤伴侣宠物，快速唤起对话框')">🐾 召唤AI随从宠物</button>
           <button class="pill-btn" onclick="sendPrompt('角色移动速度提升 100%')">⚡ 移速翻倍</button>
-          <button class="pill-btn" onclick="sendPrompt('解锁空中二段跳')">🦘 空中二段跳</button>
+          <button class="pill-btn" onclick="sendPrompt('受到伤害减免 100% 锁血无敌金身')">🛡️ 无敌金身</button>
+          <button class="pill-btn" onclick="sendPrompt('解锁空中二段跳与腾空跃力')">🦘 空中二段跳</button>
           <button class="pill-btn" onclick="sendPrompt('金币掉落倍率提高 5 倍')">💰 5倍金币</button>
-          <button class="pill-btn" onclick="sendPrompt('受到伤害减免 100% 无敌护盾')">🛡️ 无敌金身</button>
-          <button class="pill-btn" onclick="sendPrompt('攻击距离与挥砍范围翻倍')">🗡️ 剑气范围扩大</button>
         </div>
 
         <!-- Anti-Cheat Warning Banner -->
@@ -1443,6 +1518,60 @@
       document.getElementById('theme-btn').textContent = target === 'dark' ? '🌙' : '☀️';
     }
 
+    // --- Header Game Context & Status Management ---
+    let gamePollTimer = null;
+
+    function updateHeaderGameContext(game) {
+      const ctx = document.getElementById('header-game-context');
+      if (!game) {
+        if (ctx) ctx.style.display = 'none';
+        const lBtn = document.getElementById('hdr-launch-btn');
+        const rBtn = document.getElementById('hdr-restart-btn');
+        if (lBtn) lBtn.style.display = 'none';
+        if (rBtn) rBtn.style.display = 'none';
+        if (gamePollTimer) { clearInterval(gamePollTimer); gamePollTimer = null; }
+        return;
+      }
+
+      if (ctx) ctx.style.display = 'inline-flex';
+      const nameEl = document.getElementById('hdr-game-name');
+      const engineEl = document.getElementById('hdr-engine-tag');
+      if (nameEl) nameEl.textContent = game.name || '未知游戏';
+      if (engineEl) engineEl.textContent = game.engine_name || game.engine_id || '已识别引擎';
+
+      pollHeaderGameStatus();
+      if (!gamePollTimer) {
+        gamePollTimer = setInterval(pollHeaderGameStatus, 3000);
+      }
+    }
+
+    async function pollHeaderGameStatus() {
+      if (!currentGame || !currentGame.game_dir) return;
+      try {
+        const resp = await fetch(`/api/games/running?game_dir=${encodeURIComponent(currentGame.game_dir)}`);
+        const json = await resp.json();
+        const isRunning = json.success && json.data && json.data.is_running;
+        const pid = (json.data && json.data.processes && json.data.processes[0] && json.data.processes[0].pid) || '';
+
+        const dot = document.getElementById('hdr-status-dot');
+        const text = document.getElementById('hdr-status-text');
+        const lBtn = document.getElementById('hdr-launch-btn');
+        const rBtn = document.getElementById('hdr-restart-btn');
+
+        if (isRunning) {
+          if (dot) dot.className = 'status-dot running';
+          if (text) text.textContent = pid ? `运行中 (${pid})` : '运行中';
+          if (lBtn) lBtn.style.display = 'none';
+          if (rBtn) rBtn.style.display = 'inline-flex';
+        } else {
+          if (dot) dot.className = 'status-dot';
+          if (text) text.textContent = '未启动';
+          if (lBtn) lBtn.style.display = 'inline-flex';
+          if (rBtn) rBtn.style.display = 'none';
+        }
+      } catch (e) { }
+    }
+
     // --- Guided Stage Management ---
     function goToStage(stage) {
       if (stage > 1 && !currentGame) {
@@ -1450,6 +1579,9 @@
         return;
       }
       currentStage = stage;
+      if (currentGame) {
+        updateHeaderGameContext(currentGame);
+      }
 
       // Update Top Stepper Pills
       for (let i = 1; i <= 4; i++) {
@@ -1585,6 +1717,7 @@
         if (container) container.innerHTML = '';
       }
       currentGame = game;
+      updateHeaderGameContext(game);
 
       // 1. 若游戏已经在运行中，直接进入工作台进行实时修改体验
       if (game.is_running) {

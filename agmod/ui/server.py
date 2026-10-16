@@ -52,8 +52,8 @@ def _hook_target_parts(target: str) -> tuple[str, str]:
 
 
 def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict[str, Any], mod_id: str = "") -> tuple[str, dict]:
-    if engine_id not in {"unity", "unreal", "re-engine", "godot"}:
-        return f"-- Generated placeholder for {mod_name}\n", {}
+    if engine_id not in {"unity", "unreal", "re-engine", "godot", "dotnet-xna", "dotnet", "tmodloader"}:
+        return f"// Generated placeholder for {mod_name}\n", {}
     class_name, method_name = _hook_target_parts(hook_target)
     parameters = []
     for index, (name, value) in enumerate(params.items()):
@@ -70,6 +70,96 @@ def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict
         else:
             type_name = "object"
         parameters.append({"name": str(name), "type": type_name, "value": value})
+
+    if engine_id in {"dotnet-xna", "dotnet", "tmodloader"}:
+        safe_id = re.sub(r"[^A-Za-z0-9_]", "_", mod_id or mod_name.lower()).strip("_") or "mod"
+        escaped_name = mod_name.replace('"', '\\"')
+        search_key = f"{hook_target} {mod_name} {mod_id}".lower()
+        is_pet = any(k in search_key for k in ["pet", "companion", "宠物", "随从", "助手", "召唤", "对话"])
+        is_speed = any(k in search_key for k in ["speed", "move", "run", "奔跑", "移速", "速度", "快"])
+        is_god = any(k in search_key for k in ["damage", "health", "god", "shield", "stat_health", "playerstats", "无敌", "锁血", "金身", "免伤", "护盾", "命", "五合一"])
+
+        csharp_code = f'''using System;
+using System.IO;
+
+namespace AIModPlugin_{safe_id}
+{{
+    // Terraria / .NET AI Mod Runtime Plugin
+    public class TerrariaPlugin_{safe_id}
+    {{
+        public static bool GodModeEnabled = {str(is_god).lower()};
+        public static float SpeedMultiplier = 2.0f;
+        public static bool DoubleJumpEnabled = true;
+        public static bool CompanionPetEnabled = {str(is_pet).lower()};
+        private static int lastCheckTick = 0;
+        private static string configPath = "";
+
+        public static void Initialize()
+        {{
+            try
+            {{
+                configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BepInEx", "plugins", "{mod_id}", "mod.json");
+                ReadTuning();
+            }}
+            catch {{ }}
+        }}
+
+        public static void Update()
+        {{
+            if (Environment.TickCount - lastCheckTick > 500)
+            {{
+                lastCheckTick = Environment.TickCount;
+                ReadTuning();
+            }}
+        }}
+
+        private static void ReadTuning()
+        {{
+            try
+            {{
+                if (!string.IsNullOrEmpty(configPath) && File.Exists(configPath))
+                {{
+                    string text = File.ReadAllText(configPath);
+                    if (text.Contains("\\"god_mode\\": false") || text.Contains("\\"god_mode\\":false")) GodModeEnabled = false;
+                    else if (text.Contains("\\"god_mode\\": true") || text.Contains("\\"god_mode\\":true")) GodModeEnabled = true;
+
+                    int idx = text.IndexOf("\\"speed_multiplier\\":");
+                    if (idx < 0) idx = text.IndexOf("\\"multiplier\\":");
+                    if (idx > 0)
+                    {{
+                        string sub = text.Substring(idx + 19);
+                        int end = sub.IndexOfAny(new char[] {{ ',', '}}', '\\r', '\\n' }});
+                        if (end > 0)
+                        {{
+                            string valStr = sub.Substring(0, end).Trim();
+                            float v;
+                            if (float.TryParse(valStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v))
+                            {{
+                                if (v > 0.1f && v < 20f) SpeedMultiplier = v;
+                            }}
+                        }}
+                    }}
+                }}
+            }}
+            catch {{ }}
+        }}
+    }}
+
+    // In-game AI Companion Summon & Dialogue Dispatcher
+    public static class AICompanionHelper
+    {{
+        public static void SummonDialogue()
+        {{
+            try
+            {{
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("http://127.0.0.1:8765") {{ UseShellExecute = true }});
+            }}
+            catch {{ }}
+        }}
+    }}
+}}
+'''
+        return csharp_code, {"class_name": "Terraria.Player", "method_name": "Update"}
 
     if engine_id == "unity":
         safe_id = re.sub(r"[^A-Za-z0-9_]", "_", mod_id or mod_name.lower()).strip("_") or "mod"
@@ -1249,14 +1339,23 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             action["compilation_error"] = deploy_res.get("compilation_error", "")
             action["verified"] = deploy_res.get("verified", {})
 
-        if not reply:
+        comp_err = deploy_res.get("compilation_error", "")
+        if comp_err and "未找到 C# 编译器" not in comp_err:
+            # Roslyn / csc explicitly failed during compilation
+            action["pending_restart"] = False
+            reply = (
+                f"❌ **Mod 编译未通过，当前未生成生效 DLL**\n\n"
+                f"**编译器诊断**：\n```text\n{comp_err}\n```\n\n"
+                f"⚠️ **请不要重启游戏**（当前并无新 Mod 生效）。代码存在语法或引用问题，已自动拦截保护游戏目录。你可以查看下方详细错误，或在输入框发送「自动修复代码」重新生成。"
+            )
+        elif not reply:
             prefix_note = ""
             if not has_llm:
                 prefix_note = "\n\n> 💡 **提示**：当前通过内置预设模板生效。若要让 AI 自由理解任意自然语言并定制编写 Mod，请点击右上角「⚙️ 模型配置」填入 API Key。"
             status_desc = deploy_res.get("message", "已全自动写入游戏目录")
             restart_hint = ""
             if deploy_res.get("pending_restart"):
-                restart_hint = "\n\n> ⚠️ **温馨提示**：检测到游戏当前已在运行，请点击下方 **【🔄 一键重启游戏】** 重新载入编译好的 Mod 即可生效！"
+                restart_hint = "\n\n> ⚠️ **温馨提示**：检测到游戏当前已在运行，请点击顶部或卡片中的 **【🔄 一键重启游戏】** 重新载入编译好的 Mod 即可生效！"
             reply = (
                 f"✨ 已为你设计并全自动写入游戏 **【{action['mod_name']}】**！\n\n"
                 f"- 部署状态: {status_desc}\n"
@@ -1268,7 +1367,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             if deploy_res.get("message"):
                 restart_hint = ""
                 if deploy_res.get("pending_restart"):
-                    restart_hint = "\n\n> ⚠️ **温馨提示**：检测到游戏当前已在运行，请点击下方 **【🔄 一键重启游戏】** 重新载入编译好的 Mod 即可生效！"
+                    restart_hint = "\n\n> ⚠️ **温馨提示**：检测到游戏当前已在运行，请点击顶部或卡片中的 **【🔄 一键重启游戏】** 重新载入编译好的 Mod 即可生效！"
                 reply += f"\n\n- 部署状态: {deploy_res['message']}{restart_hint}"
 
 

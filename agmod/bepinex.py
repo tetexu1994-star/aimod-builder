@@ -281,6 +281,17 @@ def compile_unity_plugin(
             rp = os.path.join(managed_dir, r)
             if os.path.isfile(rp):
                 refs.append(rp)
+    else:
+        # Non-Unity .NET game (e.g. Terraria / XNA / FNA): reference game executables & managed DLLs
+        from .pe import is_managed_assembly
+        try:
+            for f in os.listdir(game_dir):
+                if f.lower().endswith((".exe", ".dll")):
+                    fp = os.path.join(game_dir, f)
+                    if os.path.isfile(fp) and is_managed_assembly(fp):
+                        refs.append(fp)
+        except OSError:
+            pass
 
     os.makedirs(os.path.dirname(out_dll_path), exist_ok=True)
 
