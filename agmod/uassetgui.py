@@ -59,7 +59,7 @@ def ensure_uassetgui() -> str:
 
 def _run(args: list[str]) -> None:
     exe = ensure_uassetgui()
-    subprocess.run([exe, *args], check=True, capture_output=True, text=True)
+    subprocess.run([exe, *args], check=True, capture_output=True, text=True, encoding="utf-8", errors="replace")
 
 
 def to_json(source: str, dest: str, engine_version: str, mappings: str = "") -> str:

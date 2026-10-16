@@ -10,32 +10,37 @@ import os
 import shutil
 import subprocess
 
+from . import sdk
+
+
+def _ilspy_dir() -> str:
+    d = os.path.join(os.path.expanduser("~"), ".agmod", "tools", "ilspy")
+    os.makedirs(d, exist_ok=True)
+    return d
+
 
 def find_ilspycmd() -> str | None:
     p = shutil.which("ilspycmd")
-    return p if p else None
+    if p:
+        return p
+    local = os.path.join(_ilspy_dir(), "ilspycmd.exe")
+    return local if os.path.isfile(local) else None
 
 
 def ensure_ilspycmd() -> str:
     existing = find_ilspycmd()
     if existing:
         return existing
-    dotnet = shutil.which("dotnet")
-    if not dotnet:
-        raise RuntimeError(
-            "ilspycmd requires the .NET SDK. Install it: https://dotnet.microsoft.com/download"
-        )
+    dotnet = sdk.ensure_dotnet()
+    tool_dir = _ilspy_dir()
     subprocess.run(
-        [dotnet, "tool", "install", "--global", "ilspycmd"],
-        check=True, capture_output=True, text=True,
+        [dotnet, "tool", "install", "--tool-path", tool_dir, "ilspycmd"],
+        check=True, capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
-    installed = find_ilspycmd()
-    if not installed:
-        raise RuntimeError(
-            "ilspycmd install succeeded but was not found on PATH; "
-            "add the dotnet tools bin directory to PATH"
-        )
-    return installed
+    local = os.path.join(tool_dir, "ilspycmd.exe")
+    if not os.path.isfile(local):
+        raise RuntimeError("ilspycmd install failed")
+    return local
 
 
 def decompile_project(assembly: str, out_dir: str) -> str:
@@ -44,7 +49,7 @@ def decompile_project(assembly: str, out_dir: str) -> str:
     os.makedirs(out_dir, exist_ok=True)
     subprocess.run(
         [ilspy, "-p", "-o", out_dir, assembly],
-        check=True, capture_output=True, text=True,
+        check=True, capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     return out_dir
 
@@ -54,7 +59,7 @@ def decompile_type(assembly: str, type_name: str) -> str:
     ilspy = ensure_ilspycmd()
     r = subprocess.run(
         [ilspy, "-t", type_name, assembly],
-        capture_output=True, text=True, check=False,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
     )
     if r.returncode != 0:
         raise RuntimeError((r.stderr or r.stdout or "").strip()[:1000])

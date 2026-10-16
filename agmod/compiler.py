@@ -171,4 +171,4 @@ def compile_with_csc(csc: str, out_dll_path: str, refs: list[str], cs_source_pat
     cmd += ["/target:library", f"/out:{out_dll_path}", f"/langversion:{langversion}"]
     cmd += [f"/reference:{r}" for r in all_refs]
     cmd += [cs_source_path]
-    return subprocess.run(cmd, capture_output=True, text=True, check=False)
+    return subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)

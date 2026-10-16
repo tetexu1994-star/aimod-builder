@@ -165,7 +165,7 @@ def build_plugin_with_diagnostics(project_dir: str, game_dir: str, auto_repair: 
 
     for attempt in range(2 if auto_repair else 1):
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, cwd=project_dir, check=False)
+            res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=project_dir, check=False)
         except FileNotFoundError:
             raise RuntimeError("dotnet not found. Install the .NET SDK (dotnet).") from None
 
@@ -313,7 +313,7 @@ def compile_unity_plugin(
                 f.write(csproj_content)
 
             out_dir = os.path.join(tmp_proj, "out")
-            res = subprocess.run(["dotnet", "build", "-c", "Release", "-o", out_dir], cwd=tmp_proj, capture_output=True, text=True, check=False)
+            res = subprocess.run(["dotnet", "build", "-c", "Release", "-o", out_dir], cwd=tmp_proj, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
             built_dll = os.path.join(out_dir, f"{mod_id}.dll")
             if res.returncode == 0 and os.path.isfile(built_dll):
                 shutil.copyfile(built_dll, out_dll_path)

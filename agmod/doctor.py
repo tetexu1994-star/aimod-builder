@@ -17,6 +17,8 @@ import sys
 from dataclasses import asdict, dataclass
 
 from .compiler import find_roslyn_csc as _find_roslyn_csc
+from .cue4parse import find_host as _find_cue4parse_host
+from .sdk import find_dotnet as _find_dotnet
 from .uassetgui import find_uassetgui as _find_uassetgui
 from .config import CACHE_ROOT
 from .rea import _find_rea
@@ -65,11 +67,11 @@ def check_environment() -> dict:
     )
 
     # 2. .NET SDK
-    dotnet = shutil.which("dotnet")
+    dotnet = _find_dotnet()
     dotnet_ver = ""
     if dotnet:
         try:
-            r = subprocess.run([dotnet, "--version"], capture_output=True, text=True, timeout=5, check=False)
+            r = subprocess.run([dotnet, "--version"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5, check=False)
             dotnet_ver = (r.stdout or "").strip()
         except Exception:
             pass
@@ -92,10 +94,10 @@ def check_environment() -> dict:
                 status="missing",
                 version="",
                 path="NOT FOUND",
-                remedy="Install .NET SDK (https://dotnet.microsoft.com/download) to build Unity C# and tModLoader mods",
+                remedy="Auto-installed on first MelonLoader/CUE4Parse/ilspycmd build (portable .NET SDK); or install from https://dotnet.microsoft.com/download",
             )
         )
-        actions_needed.append("Install .NET 6/8 SDK: https://dotnet.microsoft.com/download")
+        actions_needed.append("A portable .NET SDK will be auto-installed on the first build that needs it")
 
     # 2b. Standalone Roslyn csc.exe (auto-downloaded fallback for modern C#)
     roslyn_csc = _find_roslyn_csc()
@@ -126,6 +128,19 @@ def check_environment() -> dict:
             version="auto-downloaded" if uassetgui_exe else "",
             path=uassetgui_exe or "auto-download on first use",
             remedy="" if uassetgui_exe else "Downloaded automatically from GitHub on the first Unreal asset edit",
+        )
+    )
+
+    # 2d. CUE4Parse host (Unreal .pak/.utoc/.ucas reading)
+    cue4parse_host = _find_cue4parse_host()
+    checks.append(
+        ToolCheck(
+            name="CUE4Parse host (Unreal asset read)",
+            category="asset_tools",
+            status="ok" if cue4parse_host else "optional_missing",
+            version="built" if cue4parse_host else "",
+            path=cue4parse_host or "scaffolded + built on first use",
+            remedy="" if cue4parse_host else "Built automatically (via the portable .NET SDK) on the first Unreal asset listing",
         )
     )
 

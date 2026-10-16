@@ -9,7 +9,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agmod import ilspy, melonloader, uassetgui
+from agmod import cue4parse, ilspy, melonloader, sdk, uassetgui
 
 
 class TestNewIntegrations(unittest.TestCase):
@@ -39,7 +39,7 @@ class TestNewIntegrations(unittest.TestCase):
 
     def test_build_melon_mod_without_dotnet_returns_clear_error(self):
         with tempfile.TemporaryDirectory() as game, tempfile.TemporaryDirectory() as proj:
-            with mock.patch.object(melonloader.shutil, "which", return_value=None):
+            with mock.patch.object(melonloader.sdk, "ensure_dotnet", side_effect=RuntimeError("offline")):
                 result = melonloader.build_melon_mod(proj, game)
             self.assertFalse(result["success"])
             self.assertIn(".NET SDK", result["error"])
@@ -50,6 +50,14 @@ class TestNewIntegrations(unittest.TestCase):
 
     def test_find_ilspycmd_is_pure(self):
         p = ilspy.find_ilspycmd()
+        self.assertTrue(p is None or isinstance(p, str))
+
+    def test_find_dotnet_is_pure(self):
+        p = sdk.find_dotnet()
+        self.assertTrue(p is None or isinstance(p, str))
+
+    def test_find_cue4parse_host_is_pure(self):
+        p = cue4parse.find_host()
         self.assertTrue(p is None or isinstance(p, str))
 
 

@@ -33,7 +33,7 @@ except ImportError:  # pragma: no cover
         def run(self):
             print(f"FastMCP '{self.name}' stub: mcp not installed. Install with `pip install mcp`")
 
-from agmod import bepinex, codegen, config, doctor, gameprofiles, ilspy, inspector, install_preview, knowledge, log_repair, logs, melonloader, memory, pack, pattern, planning, process, rea, repair, rollback, safety, saves, tmodloader, uassetgui, updater
+from agmod import bepinex, codegen, config, cue4parse, doctor, gameprofiles, ilspy, inspector, install_preview, knowledge, log_repair, logs, melonloader, memory, pack, pattern, planning, process, rea, repair, rollback, safety, saves, sdk, tmodloader, uassetgui, updater
 from agmod.adapters.godot import GodotAdapter
 from agmod.adapters.reengine import ReEngineAdapter
 from agmod.adapters.unreal import UnrealAdapter
@@ -409,6 +409,16 @@ def uasset_to_json(source: str, dest: str, engine_version: str, mappings: str = 
 def uasset_from_json(source: str, dest: str, mappings: str = "") -> str:
     """Import UAssetAPI JSON back into an Unreal .uasset/.umap (via UAssetGUI)."""
     return uassetgui.from_json(source, dest, mappings)
+
+
+@mcp.tool()
+def unreal_list_assets(game_dir: str, aes_key: str = "") -> str:
+    """List all asset paths inside an Unreal game's .pak/.utoc/.ucas archives (via CUE4Parse)."""
+    try:
+        assets = cue4parse.list_assets(game_dir, aes_key)
+    except Exception as e:
+        return json.dumps({"error": str(e)}, ensure_ascii=False)
+    return json.dumps({"game_dir": game_dir, "count": len(assets), "assets": assets}, ensure_ascii=False)
 
 
 @mcp.tool()

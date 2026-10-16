@@ -17,7 +17,7 @@ import tempfile
 import urllib.request
 import zipfile
 
-from . import rollback
+from . import rollback, sdk
 from .manifest import ModManifest
 from .paths import safe_component, safe_extract_zip
 
@@ -138,19 +138,21 @@ def scaffold_melon_mod(project_dir: str, game_dir: str, mod_id: str, mod_name: s
 
 def build_melon_mod(project_dir: str, game_dir: str) -> dict:
     """Build the MelonMod with dotnet and install its DLL into `game_dir/Mods/`."""
-    dotnet = shutil.which("dotnet")
-    if not dotnet:
+    dotnet = None
+    try:
+        dotnet = sdk.ensure_dotnet()
+    except Exception as e:
         return {
             "success": False,
             "error": (
-                "MelonLoader IL2CPP mods target .NET 6 and require the .NET SDK. "
-                "Install it: https://dotnet.microsoft.com/download"
+                "MelonLoader IL2CPP mods target .NET 6 and require the .NET SDK; "
+                f"auto-install failed: {e}"
             ),
         }
     out_dir = os.path.join(project_dir, "out")
     r = subprocess.run(
         [dotnet, "build", "-c", "Release", "-o", out_dir],
-        cwd=project_dir, capture_output=True, text=True, check=False,
+        cwd=project_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
     )
     if r.returncode != 0:
         return {"success": False, "error": (r.stderr or r.stdout or "").strip()[-1500:]}
