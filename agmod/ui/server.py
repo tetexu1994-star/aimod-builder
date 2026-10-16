@@ -39,16 +39,16 @@ def _hook_target_parts(target: str) -> tuple[str, str]:
     elif "." in target:
         class_name, method_name = target.rsplit(".", 1)
     else:
-        raise ValueError("hook_target must look like Class:Method or Class.Method")
+        class_name = re.sub(r"[^A-Za-z0-9_]", "_", target).strip("_") or "GameLogic"
+        method_name = "Update"
     cls = class_name.strip()
     mth = method_name.strip()
-    if not cls or not mth:
-        raise ValueError("hook_target must include both class and method")
-    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]*", cls):
-        raise ValueError(f"invalid class name in hook_target: {cls}")
-    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", mth):
-        raise ValueError(f"invalid method name in hook_target: {mth}")
+    if not cls or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]*", cls):
+        cls = "GameLogic"
+    if not mth or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", mth):
+        mth = "Update"
     return cls, mth
+
 
 
 def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict[str, Any], mod_id: str = "") -> tuple[str, dict]:
@@ -76,7 +76,7 @@ def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict
         escaped_name = mod_name.replace('"', '\\"')
         search_key = f"{hook_target} {mod_name} {mod_id}".lower()
         is_speed = any(k in search_key for k in ["speed", "move", "personcontroller", "奔跑", "移速", "速度", "快"])
-        is_god = any(k in search_key for k in ["damage", "health", "god", "shield", "stat_health", "playerstats", "无敌", "锁血", "金身", "免伤"])
+        is_god = any(k in search_key for k in ["damage", "health", "god", "shield", "stat_health", "playerstats", "无敌", "锁血", "金身", "免伤", "护盾", "命"])
 
         csharp_code = f'''using System;
 using System.IO;
