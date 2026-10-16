@@ -57,6 +57,139 @@ def _hook_target_parts(target: str, default_class: str = "", default_method: str
     return cls, mth
 
 
+def _bepinex_plugin_source(class_name: str, method_name: str, mod_id: str, mod_name: str, safe_id: str, plugin_class: str = "Plugin") -> tuple[str, dict]:
+    """Generate a generic BepInEx plugin for any BepInEx-loaded game (Unity, Terraria, ...).
+
+    The Harmony patch targets `class_name.method_name` (grounded via find_symbol),
+    and applies tunable fields generically through Harmony's Traverse (by name), so
+    no game-specific symbols are hardcoded.
+    """
+    escaped_name = mod_name.replace('"', '\\"')
+    csharp = r'''using System;
+using System.IO;
+using System.Collections.Generic;
+using BepInEx;
+using HarmonyLib;
+
+namespace AIModPlugin_@SAFEID@
+{
+    [BepInPlugin("com.aimod.@SAFEID@", "@NAME@", "1.0.0")]
+    public class @PLUGINCLASS@_@SAFEID@ : BaseUnityPlugin
+    {
+        public static Dictionary<string, object> Tunables = new Dictionary<string, object>();
+        private static string configPath = "";
+        private static int lastCheckTick = 0;
+
+        void Awake()
+        {
+            configPath = Path.Combine(Paths.PluginPath, "@MODID@", "mod.json");
+            ReadTuning();
+            Harmony harmony = new Harmony("com.aimod.@SAFEID@");
+            harmony.PatchAll();
+            Logger.LogInfo("=== [AIMod] @NAME@ Loaded Successfully! ===");
+            try
+            {
+                File.WriteAllText(Path.Combine(Paths.PluginPath, "@MODID@.verified.json"), "{\"mod_id\":\"@MODID@\",\"loaded\":true}");
+            }
+            catch { }
+        }
+
+        void Update()
+        {
+            if (Environment.TickCount - lastCheckTick > 500)
+            {
+                lastCheckTick = Environment.TickCount;
+                ReadTuning();
+            }
+        }
+
+        static void ReadTuning()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(configPath) || !File.Exists(configPath)) return;
+                Tunables = ParseParams(File.ReadAllText(configPath));
+            }
+            catch { }
+        }
+
+        static Dictionary<string, object> ParseParams(string json)
+        {
+            var map = new Dictionary<string, object>();
+            int idx = json.IndexOf("\"params\"");
+            if (idx < 0) return map;
+            int brace = json.IndexOf('{', idx);
+            if (brace < 0) return map;
+            int end = json.IndexOf('}', brace);
+            if (end < 0) return map;
+            string body = json.Substring(brace + 1, end - brace - 1);
+            foreach (var part in body.Split(','))
+            {
+                int colon = part.IndexOf(':');
+                if (colon < 0) continue;
+                string key = part.Substring(0, colon).Trim().Trim('"');
+                string val = part.Substring(colon + 1).Trim().Trim('"').Trim();
+                if (val == "true") map[key] = true;
+                else if (val == "false") map[key] = false;
+                else
+                {
+                    double d;
+                    if (double.TryParse(val, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out d)) map[key] = d;
+                }
+            }
+            return map;
+        }
+    }
+
+    [HarmonyPatch(typeof(@CLASS@), "@METHOD@")]
+    public static class Patch_@SAFEID@
+    {
+        static void Postfix(@CLASS@ __instance)
+        {
+            if (__instance == null) return;
+            var t = Traverse.Create(__instance);
+            foreach (var kv in @PLUGINCLASS@_@SAFEID@.Tunables)
+            {
+                try
+                {
+                    var f = t.Field(kv.Key);
+                    if (f.FieldExists())
+                    {
+                        if (kv.Value is bool b) f.SetValue(b);
+                        else f.SetValue(Convert.ToDouble(kv.Value));
+                    }
+                }
+                catch { }
+            }
+        }
+    }
+
+    // AI companion dialogue dispatcher (triggered from the companion UI)
+    public static class AICompanionHelper
+    {
+        public static void SummonDialogue()
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("http://127.0.0.1:8765") { UseShellExecute = true });
+            }
+            catch { }
+        }
+    }
+}
+'''
+    csharp = (
+        csharp
+        .replace("@SAFEID@", safe_id)
+        .replace("@NAME@", escaped_name)
+        .replace("@PLUGINCLASS@", plugin_class)
+        .replace("@MODID@", mod_id)
+        .replace("@CLASS@", class_name)
+        .replace("@METHOD@", method_name)
+    )
+    return csharp, {"class_name": class_name, "method_name": method_name}
+
+
 def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict[str, Any], mod_id: str = "") -> tuple[str, dict]:
     if engine_id not in {"unity", "unreal", "re-engine", "godot", "dotnet-xna", "dotnet", "tmodloader"}:
         return f"// Generated placeholder for {mod_name}\n", {}
@@ -142,243 +275,11 @@ namespace StardewMod_{safe_id}
 '''
             return csharp_code, {"class_name": "StardewValley.Farmer", "method_name": "Update"}
 
-        csharp_code = f'''using System;
-using System.IO;
-using BepInEx;
-using HarmonyLib;
-
-namespace AIModPlugin_{safe_id}
-{{
-    [BepInPlugin("com.aimod.{safe_id}", "{escaped_name}", "1.0.0")]
-    public class TerrariaPlugin_{safe_id} : BaseUnityPlugin
-    {{
-        public static bool GodModeEnabled = {str(is_god).lower()};
-        public static float SpeedMultiplier = 2.0f;
-        private static string configPath = "";
-        private static int lastCheckTick = 0;
-
-        void Awake()
-        {{
-            configPath = Path.Combine(Paths.PluginPath, "{mod_id}", "mod.json");
-            ReadTuning();
-            Harmony harmony = new Harmony("com.aimod.{safe_id}");
-            harmony.PatchAll();
-            Logger.LogInfo("=== [AIMod] {escaped_name} Loaded Successfully! ===");
-        }}
-
-        void Update()
-        {{
-            if (Environment.TickCount - lastCheckTick > 500)
-            {{
-                lastCheckTick = Environment.TickCount;
-                ReadTuning();
-            }}
-        }}
-
-        private static void ReadTuning()
-        {{
-            try
-            {{
-                if (!string.IsNullOrEmpty(configPath) && File.Exists(configPath))
-                {{
-                    string text = File.ReadAllText(configPath);
-                    if (text.Contains("\\"god_mode\\": false") || text.Contains("\\"god_mode\\":false")) GodModeEnabled = false;
-                    else if (text.Contains("\\"god_mode\\": true") || text.Contains("\\"god_mode\\":true")) GodModeEnabled = true;
-
-                    int idx = text.IndexOf("\\"speed_multiplier\\":");
-                    if (idx < 0) idx = text.IndexOf("\\"multiplier\\":");
-                    if (idx > 0)
-                    {{
-                        string sub = text.Substring(idx + 19);
-                        int end = sub.IndexOfAny(new char[] {{ ',', '}}', '\\r', '\\n' }});
-                        if (end > 0)
-                        {{
-                            string valStr = sub.Substring(0, end).Trim();
-                            float v;
-                            if (float.TryParse(valStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v))
-                            {{
-                                if (v > 0.1f && v < 20f) SpeedMultiplier = v;
-                            }}
-                        }}
-                    }}
-                }}
-            }}
-            catch {{ }}
-        }}
-    }}
-
-    [HarmonyPatch(typeof(Terraria.Player), "Update")]
-    public static class PlayerUpdatePatch_{safe_id}
-    {{
-        static void Postfix(Terraria.Player __instance)
-        {{
-            if (TerrariaPlugin_{safe_id}.GodModeEnabled)
-            {{
-                __instance.statLife = __instance.statLifeMax;
-                __instance.immune = 1;
-            }}
-            if (TerrariaPlugin_{safe_id}.SpeedMultiplier > 1.0f)
-            {{
-                __instance.moveSpeed = __instance.maxRunSpeed * TerrariaPlugin_{safe_id}.SpeedMultiplier;
-            }}
-        }}
-    }}
-
-    // AI companion dialogue dispatcher (triggered from the companion UI)
-    public static class AICompanionHelper
-    {{
-        public static void SummonDialogue()
-        {{
-            try
-            {{
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("http://127.0.0.1:8765") {{ UseShellExecute = true }});
-            }}
-            catch {{ }}
-        }}
-    }}
-}}
-'''
-        return csharp_code, {"class_name": "Terraria.Player", "method_name": "Update"}
+        return _bepinex_plugin_source("Terraria.Player", "Update", mod_id, mod_name, safe_id, plugin_class="TerrariaPlugin")
 
     if engine_id == "unity":
         safe_id = re.sub(r"[^A-Za-z0-9_]", "_", mod_id or mod_name.lower()).strip("_") or "mod"
-        escaped_name = mod_name.replace('"', '\\"')
-        search_key = f"{hook_target} {mod_name} {mod_id}".lower()
-        is_speed = any(k in search_key for k in ["speed", "move", "personcontroller", "奔跑", "移速", "速度", "快"])
-        is_god = any(k in search_key for k in ["damage", "health", "god", "shield", "stat_health", "playerstats", "无敌", "锁血", "金身", "免伤", "护盾", "命"])
-
-        csharp_code = f'''using System;
-using System.IO;
-using BepInEx;
-using HarmonyLib;
-using UnityEngine;
-
-namespace AIModPlugin_{safe_id}
-{{
-    [BepInPlugin("com.aimod.{safe_id}", "{escaped_name}", "1.0.0")]
-    public class Plugin_{safe_id} : BaseUnityPlugin
-    {{
-        public static float SpeedMultiplier = 2.0f;
-        public static bool GodModeEnabled = true;
-        public static float DamageReduction = 100f;
-        private string configPath;
-        private float lastCheckTime = 0f;
-
-        void Awake()
-        {{
-            configPath = Path.Combine(Paths.PluginPath, "{mod_id}", "mod.json");
-            ReadTuning();
-            Harmony harmony = new Harmony("com.aimod.{safe_id}");
-            harmony.PatchAll();
-            Logger.LogInfo("=== [AIMod] {escaped_name} Loaded Successfully! ===");
-        }}
-
-        void Update()
-        {{
-            if (Time.unscaledTime - lastCheckTime > 0.5f)
-            {{
-                lastCheckTime = Time.unscaledTime;
-                ReadTuning();
-            }}
-        }}
-
-        void ReadTuning()
-        {{
-            try
-            {{
-                if (File.Exists(configPath))
-                {{
-                    string text = File.ReadAllText(configPath);
-                    if (text.Contains("\\"god_mode\\": false") || text.Contains("\\"god_mode\\":false")) GodModeEnabled = false;
-                    else if (text.Contains("\\"god_mode\\": true") || text.Contains("\\"god_mode\\":true")) GodModeEnabled = true;
-
-                    int idx = text.IndexOf("\\"speed_multiplier\\":");
-                    if (idx < 0) idx = text.IndexOf("\\"multiplier\\":");
-                    if (idx > 0)
-                    {{
-                        string sub = text.Substring(idx + 19);
-                        int end = sub.IndexOfAny(new char[] {{ ',', '}}', '\\r', '\\n' }});
-                        if (end > 0)
-                        {{
-                            string valStr = sub.Substring(0, end).Trim();
-                            float v;
-                            if (float.TryParse(valStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v))
-                            {{
-                                if (v > 0.1f && v < 20f) SpeedMultiplier = v;
-                            }}
-                        }}
-                    }}
-                }}
-            }}
-            catch {{ }}
-        }}
-    }}
-'''
-        if is_speed:
-            csharp_code += f'''
-    [HarmonyPatch(typeof(PersonController), "Update")]
-    public static class Patch_PersonController_Update
-    {{
-        static float origNormal = -1f;
-        static float origSprint = -1f;
-
-        static void Postfix(PersonController __instance)
-        {{
-            if (__instance == null) return;
-            if (origNormal < 0f)
-            {{
-                origNormal = __instance.normalSpeed;
-                origSprint = __instance.sprintSpeed;
-            }}
-            __instance.normalSpeed = origNormal * Plugin_{safe_id}.SpeedMultiplier;
-            __instance.sprintSpeed = origSprint * Plugin_{safe_id}.SpeedMultiplier;
-        }}
-    }}
-}}
-'''
-        elif is_god:
-            csharp_code += f'''
-    [HarmonyPatch(typeof(PlayerStats), "Damage")]
-    public static class Patch_PlayerStats_Damage
-    {{
-        static bool Prefix(ref float damage)
-        {{
-            if (Plugin_{safe_id}.GodModeEnabled)
-            {{
-                damage = 0f;
-                return false;
-            }}
-            return true;
-        }}
-    }}
-
-    [HarmonyPatch(typeof(Stat_Health), "ChangeValue")]
-    public static class Patch_Stat_Health_ChangeValue
-    {{
-        static bool Prefix(float diff, float newValue)
-        {{
-            if (Plugin_{safe_id}.GodModeEnabled && diff < 0f)
-            {{
-                return false;
-            }}
-            return true;
-        }}
-    }}
-}}
-'''
-        else:
-            csharp_code += f'''
-    [HarmonyPatch(typeof({class_name}), "{method_name}")]
-    public static class Patch_{class_name}_{method_name}
-    {{
-        static void Postfix({class_name} __instance)
-        {{
-            // Target method patched successfully
-        }}
-    }}
-}}
-'''
-        return csharp_code, {"class_name": class_name, "method_name": method_name}
+        return _bepinex_plugin_source(class_name, method_name, mod_id, mod_name, safe_id, plugin_class="Plugin")
 
     result = codegen.generate_hook_from_evidence({
         "engine": engine_id,
