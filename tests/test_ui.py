@@ -8,10 +8,11 @@ import tempfile
 import unittest
 import urllib.error
 import urllib.request
+from unittest import mock
 from unittest.mock import patch
 from pathlib import Path
 
-from agmod.ui.server import INDEX_HTML_PATH, ModUIServer, _pinned_source, launch_ui
+from agmod.ui.server import INDEX_HTML_PATH, ModUIServer, _auto_deploy_mod, _pinned_source, launch_ui
 
 
 def _get_free_port() -> int:
@@ -23,13 +24,14 @@ def _get_free_port() -> int:
 _no_proxy_opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def _http_get(url: str):
+def _http_get(url: str, timeout: int = 15):
     req = urllib.request.Request(url)
     try:
-        with _no_proxy_opener.open(req, timeout=5) as response:
+        with _no_proxy_opener.open(req, timeout=timeout) as response:
             return response.getcode(), response.read().decode("utf-8")
     except urllib.error.HTTPError as exc:
         return exc.code, exc.read().decode("utf-8")
+
 
 
 def _http_post(url: str, data: dict):
@@ -217,7 +219,7 @@ System.NullReferenceException: Object reference not set to an instance of an obj
             core = Path(tmp_game, "BepInEx", "core")
             core.mkdir(parents=True)
             (core / "BepInEx.dll").write_bytes(b"")
-            Path(tmp_game, "BepInEx", "version.txt").write_text("5.4.23.0", encoding="utf-8")
+            Path(tmp_game, "BepInEx", "version.txt").write_text("5.4.23.5", encoding="utf-8")
             source = Path(tmp_source, "Demo.dll")
             source.write_bytes(b"demo")
             code, res = _http_post(f"{self.base_url}/api/install/preview", {
@@ -280,7 +282,7 @@ System.NullReferenceException: Object reference not set to an instance of an obj
 
     def test_games_and_mod_copilot(self):
         # 1. Test /api/games/scan
-        code, body = _http_get(f"{self.base_url}/api/games/scan")
+        code, body = _http_get(f"{self.base_url}/api/games/scan?fast=1", timeout=20)
         self.assertEqual(code, 200)
         res = json.loads(body)
         self.assertTrue(res["success"])
@@ -288,14 +290,20 @@ System.NullReferenceException: Object reference not set to an instance of an obj
 
         # 2. Test /api/mod/interact
         with tempfile.TemporaryDirectory() as tmp_game:
-            # create mock game exe
-            with open(os.path.join(tmp_game, "game.exe"), "w") as f:
-                f.write("mock")
+            Path(tmp_game, "UnityPlayer.dll").write_text("mock", encoding="utf-8")
+            core = Path(tmp_game, "BepInEx", "core")
+            core.mkdir(parents=True)
+            (core / "BepInEx.dll").write_bytes(b"")
 
-            code, mod_res = _http_post(f"{self.base_url}/api/mod/interact", {
-                "game_dir": tmp_game,
-                "prompt": "角色移动速度增加 100%"
-            })
+            def compile_success(game_dir, mod_id, source_path, output_path):
+                Path(output_path).write_bytes(b"dll")
+                return {"success": True, "method": "test", "dll_path": output_path}
+
+            with mock.patch("agmod.bepinex.compile_unity_plugin", side_effect=compile_success):
+                code, mod_res = _http_post(f"{self.base_url}/api/mod/interact", {
+                    "game_dir": tmp_game,
+                    "prompt": "角色移动速度增加 100%"
+                })
             self.assertEqual(code, 200)
             self.assertTrue(mod_res["success"])
             self.assertIn("reply", mod_res["data"])
@@ -304,13 +312,15 @@ System.NullReferenceException: Object reference not set to an instance of an obj
             self.assertTrue(len(mod_id) > 0)
 
             # 3. Test /api/mod/pin
-            code, pin_res = _http_post(f"{self.base_url}/api/mod/pin", {
-                "game_dir": tmp_game,
-                "mod_id": mod_id,
-                "mod_name": "急速奔跑",
-                "summary": "角色移动速度提升 100%",
-                "params": {"multiplier": 2.0}
-            })
+            with mock.patch("agmod.bepinex.compile_unity_plugin", side_effect=compile_success):
+                code, pin_res = _http_post(f"{self.base_url}/api/mod/pin", {
+                    "game_dir": tmp_game,
+                    "mod_id": mod_id,
+                    "mod_name": "急速奔跑",
+                    "summary": "角色移动速度提升 100%",
+                    "hook_target": mod_res["data"]["action"].get("hook_target", "PlayerController:Movement"),
+                    "params": {"multiplier": 2.0}
+                })
             self.assertEqual(code, 200)
             self.assertTrue(pin_res["success"])
             self.assertTrue(os.path.exists(pin_res["data"]["path"]))
@@ -380,6 +390,53 @@ System.NullReferenceException: Object reference not set to an instance of an obj
             self.assertEqual(code, 409)
             self.assertFalse(pin_res["success"])
 
+    def test_auto_deploy_fails_closed_on_codegen_error(self):
+        with tempfile.TemporaryDirectory() as game:
+            Path(game, "UnityPlayer.dll").write_text("dummy", encoding="utf-8")
+            core = Path(game, "BepInEx", "core")
+            core.mkdir(parents=True)
+            (core / "BepInEx.dll").write_bytes(b"")
+            with mock.patch("agmod.ui.server._pinned_source", side_effect=ValueError("bad target")):
+                result = _auto_deploy_mod(game, "demo", "Demo", "test", "Player:Update", {})
+            self.assertFalse(result["success"])
+            self.assertIn("code generation failed", result["error"])
+            self.assertFalse(Path(game, "BepInEx", "plugins", "demo").exists())
+
+            result = _auto_deploy_mod(game, "demo", "Demo", "test", "not-a-hook", {})
+            self.assertFalse(result["success"])
+            self.assertIn("code generation failed", result["error"])
+
+    def test_auto_deploy_does_not_install_when_compilation_fails(self):
+        with tempfile.TemporaryDirectory() as game:
+            Path(game, "UnityPlayer.dll").write_text("dummy", encoding="utf-8")
+            core = Path(game, "BepInEx", "core")
+            core.mkdir(parents=True)
+            (core / "BepInEx.dll").write_bytes(b"")
+            with mock.patch("agmod.bepinex.compile_unity_plugin", return_value={"success": False, "error": "compile failed"}):
+                result = _auto_deploy_mod(game, "demo", "Demo", "test", "Player:Update", {})
+            self.assertFalse(result["success"])
+            self.assertEqual(result["compilation_error"], "compile failed")
+            self.assertFalse(Path(game, "BepInEx", "plugins", "demo").exists())
+
+    def test_mod_pin_does_not_install_when_compilation_fails(self):
+        with tempfile.TemporaryDirectory() as game:
+            Path(game, "UnityPlayer.dll").write_text("dummy", encoding="utf-8")
+            core = Path(game, "BepInEx", "core")
+            core.mkdir(parents=True)
+            (core / "BepInEx.dll").write_bytes(b"")
+            with mock.patch("agmod.bepinex.compile_unity_plugin", return_value={"success": False, "error": "compile failed"}):
+                code, result = _http_post(f"{self.base_url}/api/mod/pin", {
+                    "game_dir": game,
+                    "mod_id": "demo",
+                    "mod_name": "Demo",
+                    "summary": "test",
+                    "params": {},
+                    "hook_target": "Player:Update",
+                })
+            self.assertEqual(code, 422)
+            self.assertFalse(result["success"])
+            self.assertFalse(Path(game, "BepInEx", "plugins", "demo").exists())
+
     def test_rea_overview_and_require_api_key(self):
         with tempfile.TemporaryDirectory() as game:
             # Create dummy Unity game structure
@@ -416,12 +473,20 @@ System.NullReferenceException: Object reference not set to an instance of an obj
             os.makedirs(managed, exist_ok=True)
             open(os.path.join(managed, "Assembly-CSharp.dll"), "w").close()
             open(os.path.join(game, "Raft.exe"), "w").close()
+            core = Path(game, "BepInEx", "core")
+            core.mkdir(parents=True)
+            (core / "BepInEx.dll").write_bytes(b"")
+
+            def compile_success(game_dir, mod_id, source_path, output_path):
+                Path(output_path).write_bytes(b"dll")
+                return {"success": True, "method": "test", "dll_path": output_path}
 
             # 1. Mod interact auto deploys files to game dir
-            code, res = _http_post(f"{self.base_url}/api/mod/interact", {
-                "game_dir": game,
-                "prompt": "角色移动速度增加 100%"
-            })
+            with mock.patch("agmod.bepinex.compile_unity_plugin", side_effect=compile_success):
+                code, res = _http_post(f"{self.base_url}/api/mod/interact", {
+                    "game_dir": game,
+                    "prompt": "角色移动速度增加 100%"
+                })
             self.assertEqual(code, 200)
             self.assertTrue(res["success"])
             action = res["data"]["action"]
@@ -538,7 +603,7 @@ System.NullReferenceException: Object reference not set to an instance of an obj
                 self.assertIn("stepper", inv_types)
                 self.assertIn("switch", inv_types)
 
-    def test_terraria_dotnet_xna_mod_generation(self):
+    def test_terraria_requires_tmodloader_package_workflow(self):
         from unittest.mock import patch
         with tempfile.TemporaryDirectory() as game:
             open(os.path.join(game, "Terraria.exe"), "w").close()
@@ -551,14 +616,9 @@ System.NullReferenceException: Object reference not set to an instance of an obj
                 self.assertTrue(res["success"])
                 action = res["data"]["action"]
                 self.assertIsNotNone(action)
-                mod_id = action["mod_id"]
-                src_file = os.path.join(game, "BepInEx", "plugins", mod_id, f"{mod_id}.cs")
-                self.assertTrue(os.path.exists(src_file))
-                with open(src_file, "r", encoding="utf-8") as f:
-                    content = f.read()
-                self.assertIn("AICompanionHelper", content)
-                self.assertIn("TerrariaPlugin", content)
-                self.assertFalse(content.startswith("--"))
+                self.assertFalse(action.get("auto_deployed"))
+                self.assertIn("tModLoader", action.get("deploy_error", ""))
+                self.assertFalse(os.path.exists(os.path.join(game, "BepInEx")))
 
 
 if __name__ == "__main__":

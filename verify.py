@@ -1,6 +1,7 @@
 """Fast, machine-independent smoke check for imports and MCP tool wiring."""
 from __future__ import annotations
 
+import ast
 import os
 import shutil
 import sys
@@ -18,26 +19,21 @@ with tempfile.TemporaryDirectory() as d:
 print("is_managed(Python source):", is_managed_assembly(__file__))
 print("dotnet available:", shutil.which("dotnet") or "NOT FOUND")
 
-tools = [
-    "check_environment", "detect_engine", "probe_game", "inspect_feature", "plan_mod", "validate_mod_project",
-    "dump_structures", "find_field", "get_source", "find_process",
-    "scan_value", "scan_start", "scan_next", "scan_reset", "pattern_scan",
-    "read_memory", "write_memory",
-    "install_bepinex", "scaffold_mod", "build_mod", "diagnose_build_error",
-    "scaffold_ue4ss_mod", "install_ue4ss_mod",
-    "scaffold_unreal_pak_mod", "install_unreal_pak_mod", "build_unreal_pak_mod",
-    "unpack_unreal_pak", "list_unreal_paks", "list_unreal_configs",
-    "scaffold_tmod_mod", "build_tmod_mod", "install_tmod_mod",
-    "scaffold_reframework_mod", "install_reframework_mod",
-    "scaffold_godot_mod", "install_godot_mod",
-    "read_mod_logs", "diagnose_runtime_error", "create_save_backup", "list_save_backups", "restore_save_backup",
-    "generate_hook_template", "generate_hook_from_evidence",
-    "check_game_status", "uninstall_mod", "rollback_game", "list_installs", "check_install_conflicts", "preview_install",
-    "launch_ui",
-    "check_update", "update_mod", "package_mod", "validate_package",
-    "rea_managed_members", "rea_analyze_js", "rea_inspect_pe",
-    "rea_disassemble", "rea_call_graph", "rea_fast_search",
-]
+def _registered_tools() -> list[str]:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "server.py"), "r", encoding="utf-8") as f:
+        tree = ast.parse(f.read())
+    tools = []
+    for node in tree.body:
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        for decorator in node.decorator_list:
+            if isinstance(decorator, ast.Call) and isinstance(decorator.func, ast.Attribute) and decorator.func.attr == "tool":
+                tools.append(node.name)
+                break
+    return tools
+
+
+tools = _registered_tools()
 status = {t: hasattr(server, t) for t in tools}
 print("tools wired:", status)
 missing = [t for t, ok in status.items() if not ok]

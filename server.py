@@ -329,7 +329,6 @@ def write_memory(pid: int, address: int, value: float, kind: str = "int32", dry_
     finally:
         memory.close_process(h)
     result["address"] = hex(address)
-    result["verified"] = result["changed"]
     return json.dumps(result)
 
 

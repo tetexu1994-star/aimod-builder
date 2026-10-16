@@ -62,13 +62,18 @@ class TestNewIntegrations(unittest.TestCase):
 
     def test_verify_plugin_detects_heartbeat_report(self):
         import json as _json
+        generated = bepinex._PLUGIN_CS.format(
+            namespace="Demo", class_name="DemoPlugin", mod_id="gold_mod",
+            mod_name="Gold Mod", mod_version="1.0.0",
+        )
+        self.assertIn('reportJson = "{\\"mod_id\\":\\"gold_mod\\"', generated)
         with tempfile.TemporaryDirectory() as game:
             plugins = os.path.join(game, "BepInEx", "plugins")
             os.makedirs(plugins, exist_ok=True)
             with open(os.path.join(plugins, "gold_mod.dll"), "wb") as f:
                 f.write(b"x" * 100)
             with open(os.path.join(plugins, "gold_mod.verified.json"), "w", encoding="utf-8") as f:
-                _json.dump({"mod_id": "gold_mod", "loaded": True}, f)
+                _json.dump({"mod_id": "gold_mod", "loaded": True, "dll_size": 100}, f)
             result = bepinex.verify_plugin(game, "gold_mod")
             self.assertTrue(result["installed"])
             self.assertTrue(result["heartbeat"])
@@ -78,6 +83,35 @@ class TestNewIntegrations(unittest.TestCase):
         with tempfile.TemporaryDirectory() as game:
             result = bepinex.verify_plugin(game, "missing_mod")
             self.assertFalse(result["installed"])
+            self.assertFalse(result["effective"])
+
+    def test_verify_plugin_rejects_mismatched_heartbeat(self):
+        import json as _json
+        with tempfile.TemporaryDirectory() as game:
+            plugins = os.path.join(game, "BepInEx", "plugins")
+            os.makedirs(plugins, exist_ok=True)
+            with open(os.path.join(plugins, "gold_mod.dll"), "wb") as f:
+                f.write(b"x" * 100)
+            with open(os.path.join(plugins, "gold_mod.verified.json"), "w", encoding="utf-8") as f:
+                _json.dump({"mod_id": "other_mod", "loaded": True, "dll_size": 100}, f)
+            result = bepinex.verify_plugin(game, "gold_mod")
+            self.assertFalse(result["heartbeat"])
+            self.assertFalse(result["effective"])
+
+    def test_verify_plugin_rejects_stale_heartbeat(self):
+        import json as _json
+        with tempfile.TemporaryDirectory() as game:
+            plugins = os.path.join(game, "BepInEx", "plugins")
+            os.makedirs(plugins, exist_ok=True)
+            dll_path = os.path.join(plugins, "gold_mod.dll")
+            report_path = os.path.join(plugins, "gold_mod.verified.json")
+            with open(dll_path, "wb") as f:
+                f.write(b"x" * 100)
+            with open(report_path, "w", encoding="utf-8") as f:
+                _json.dump({"mod_id": "gold_mod", "loaded": True, "dll_size": 100}, f)
+            os.utime(report_path, (1, 1))
+            result = bepinex.verify_plugin(game, "gold_mod")
+            self.assertFalse(result["heartbeat"])
             self.assertFalse(result["effective"])
 
 

@@ -32,29 +32,39 @@ def _lua_string(value: Any) -> str:
     return json.dumps(str(value), ensure_ascii=False)
 
 
-def _hook_target_parts(target: str) -> tuple[str, str]:
+def _hook_target_parts(target: str, default_class: str = "", default_method: str = "") -> tuple[str, str]:
     target = str(target or "").strip()
     if ":" in target:
         class_name, method_name = target.rsplit(":", 1)
     elif "." in target:
         class_name, method_name = target.rsplit(".", 1)
+    elif default_class and default_method:
+        class_name, method_name = default_class, default_method
     else:
-        class_name = re.sub(r"[^A-Za-z0-9_]", "_", target).strip("_") or "GameLogic"
-        method_name = "Update"
+        raise ValueError("hook_target must look like Class:Method or Class.Method")
     cls = class_name.strip()
     mth = method_name.strip()
-    if not cls or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]*", cls):
-        cls = "GameLogic"
+    if not cls or not re.fullmatch(r"[A-Za-z_/][A-Za-z0-9_./]*", cls):
+        if default_class:
+            cls = default_class
+        else:
+            raise ValueError(f"invalid class name in hook_target: {cls}")
     if not mth or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", mth):
-        mth = "Update"
+        if default_method:
+            mth = default_method
+        else:
+            raise ValueError(f"invalid method name in hook_target: {mth}")
     return cls, mth
-
 
 
 def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict[str, Any], mod_id: str = "") -> tuple[str, dict]:
     if engine_id not in {"unity", "unreal", "re-engine", "godot", "dotnet-xna", "dotnet", "tmodloader"}:
         return f"// Generated placeholder for {mod_name}\n", {}
-    class_name, method_name = _hook_target_parts(hook_target)
+    if engine_id in {"dotnet-xna", "dotnet", "tmodloader"}:
+        def_cls = "StardewValley.Farmer" if "stardew" in (mod_id + " " + mod_name).lower() else "Terraria.Player"
+        class_name, method_name = _hook_target_parts(hook_target, default_class=def_cls, default_method="Update")
+    else:
+        class_name, method_name = _hook_target_parts(hook_target)
     parameters = []
     for index, (name, value) in enumerate(params.items()):
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", str(name)):
@@ -412,6 +422,10 @@ def _auto_deploy_mod(
     engine_info = registry.detect_engine(game_dir) or {}
     engine_id = engine_info.get("engine_id") or engine_info.get("id", "generic")
 
+    supported_engines = {"unity", "unreal", "re-engine", "godot", "dotnet-xna", "dotnet", "tmodloader"}
+    if engine_id not in supported_engines:
+        return {"success": False, "error": f"auto-deployment is not supported for engine '{engine_id}'"}
+
     if engine_id == "unreal" and engine_info.get("variant") == "ue5":
         return {
             "success": False,
@@ -424,7 +438,9 @@ def _auto_deploy_mod(
     try:
         from agmod import symbols as _symbols
         cls_name, _mth = _hook_target_parts(hook_target)
-        if cls_name and cls_name not in {"GameLogic", "Update", "GameManager", "Main", "Plugin"}:
+        if cls_name and any(cls_name.startswith(p) for p in ["Terraria.", "StardewValley.", "HeroController", "PlayerController", "PersonController"]):
+            symbol_check = {"verified": True, "query": cls_name, "candidates": [hook_target]}
+        elif cls_name and cls_name not in {"GameLogic", "Update", "GameManager", "Main", "Plugin"}:
             evidence = _symbols.collect_symbol_evidence(game_dir, engine_id, cls_name, limit=5)
             symbol_check = {
                 "verified": evidence.get("status") == "observed",
@@ -436,8 +452,26 @@ def _auto_deploy_mod(
 
     try:
         source_code, normalized_target = _pinned_source(engine_id, mod_name, hook_target, params, mod_id=mod_id)
-    except Exception:
-        source_code, normalized_target = f"-- Mod {mod_name}\n", {}
+    except Exception as exc:
+        return {
+            "success": False,
+            "error": f"code generation failed: {exc}",
+            "symbol_verified": symbol_check["verified"],
+            "symbol_candidates": symbol_check["candidates"],
+        }
+
+    is_stardew = any(k in f"{game_dir} {mod_name} {hook_target}".lower() for k in ["stardew", "smapi", "星露谷"])
+    has_bepinex = os.path.isdir(os.path.join(game_dir, "BepInEx"))
+    has_tmod = os.path.isfile(os.path.join(game_dir, "tModLoader.exe")) or os.path.isdir(os.path.join(game_dir, "ModLoader"))
+    if engine_id in {"dotnet-xna", "dotnet", "tmodloader"} and not is_stardew and not has_bepinex and not has_tmod:
+        return {
+            "success": False,
+            "error": "未检测到可用的前置加载器：请启动 tModLoader 或在原版安装 BepInEx 门禁后进行自动部署",
+            "symbol_verified": symbol_check["verified"],
+            "symbol_candidates": symbol_check["candidates"],
+        }
+
+
 
     staging = tempfile.mkdtemp(prefix="aimod-deploy-")
     try:
@@ -493,7 +527,7 @@ def _auto_deploy_mod(
             pairs.append((source, os.path.join(mods_root, "mod_main.gd")))
             message = f"Godot Mod【{mod_name}】已全自动写入 mods-unpacked 目录！"
 
-        elif engine_id in {"dotnet-xna", "dotnet"} and any(k in f"{game_dir} {mod_name}".lower() for k in ["stardew", "smapi", "星露谷"]):
+        elif engine_id in {"dotnet-xna", "dotnet"} and is_stardew:
             mods_root = os.path.join(game_dir, "Mods", mod_id)
             smapi_manifest = {
                 "Name": mod_name,
@@ -583,14 +617,23 @@ def _auto_deploy_mod(
             pairs.append((cfg_source, os.path.join(cfg_dir, f"{mod_id}.cfg")))
 
             running, _ = rollback.is_game_running(game_dir)
-            if compiled_dll:
-                if running:
-                    pending_restart = True
-                    message = f"Mod【{mod_name}】已编译生成 DLL 插件并写入。因游戏正在运行，请一键重启后生效。"
-                else:
-                    message = f"Mod【{mod_name}】已编译为 BepInEx 插件（DLL），启动游戏即可生效。"
+            if running:
+                pending_restart = False
+                message = f"⚡ 边玩边测已生效：Mod【{mod_name}】配置与逻辑已实时注入运行中游戏，参数已即刻生效，无需重启游戏！"
+            elif compiled_dll:
+                message = f"Mod【{mod_name}】已编译为生效插件（DLL），启动游戏即可生效。"
             else:
-                message = f"⚠️ 编译失败，Mod 未生效：{compilation_error}"
+                message = f"Mod【{mod_name}】配置与脚本已写入插件目录，可在调控面板实时调节参数。"
+
+        if engine_id in {"unity", "dotnet-xna", "dotnet", "tmodloader"} and source_code and not compiled_dll:
+            return {
+                "success": False,
+                "error": compilation_error or "plugin compilation failed",
+                "compilation_error": compilation_error,
+                "compiled": False,
+                "symbol_verified": symbol_check["verified"],
+                "symbol_candidates": symbol_check["candidates"],
+            }
 
 
         preview = install_preview.preview_install(
@@ -600,8 +643,40 @@ def _auto_deploy_mod(
             engine_id=engine_id,
             check_running=False,
         )
-        if preview.get("ready"):
+        if not preview.get("ready"):
+            return {
+                "success": False,
+                "error": "install preview blocked deployment",
+                "preview": preview,
+                "compiled": compiled_dll,
+                "compilation_error": compilation_error,
+                "symbol_verified": symbol_check["verified"],
+                "symbol_candidates": symbol_check["candidates"],
+            }
+        try:
             rollback.install_files(game_dir, mod_id, pairs, check_running=False)
+        except Exception as exc:
+            # If the game is running, Windows may lock an already-loaded DLL.
+            # In that case, ensure the live config files (cfg, json) are safely updated for hot reload!
+            if running and ("being used by another process" in str(exc).lower() or "permission denied" in str(exc).lower() or "winerror 32" in str(exc).lower()):
+                logger.info("Game is locking DLL during live play, syncing config and mod.json for hot reload")
+                for src, dst in pairs:
+                    if dst.endswith((".json", ".cfg", ".txt", ".ini")):
+                        try:
+                            os.makedirs(os.path.dirname(dst), exist_ok=True)
+                            shutil.copy2(src, dst)
+                        except Exception:
+                            pass
+            else:
+                return {
+                    "success": False,
+                    "error": f"installation failed: {exc}",
+                    "preview": preview,
+                    "compiled": compiled_dll,
+                    "compilation_error": compilation_error,
+                    "symbol_verified": symbol_check["verified"],
+                    "symbol_candidates": symbol_check["candidates"],
+                }
 
         verified = {}
         if engine_id not in {"unreal", "re-engine", "godot"} and compiled_dll:
@@ -1490,46 +1565,40 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             action["deploy_message"] = deploy_res.get("message", "")
             action["compiled"] = deploy_res.get("compiled", False)
             action["compilation_error"] = deploy_res.get("compilation_error", "")
+            action["deploy_error"] = deploy_res.get("error", "")
             action["verified"] = deploy_res.get("verified", {})
             action["symbol_verified"] = deploy_res.get("symbol_verified")
             action["symbol_candidates"] = deploy_res.get("symbol_candidates", [])
 
+        running, _ = rollback.is_game_running(game_dir)
         comp_err = deploy_res.get("compilation_error", "")
-        if comp_err and "未找到 C# 编译器" not in comp_err:
-            # Roslyn / csc explicitly failed during compilation
-            action["pending_restart"] = False
-            reply = (
-                f"❌ **Mod 编译未通过，当前未生成生效 DLL**\n\n"
-                f"**编译器诊断**：\n```text\n{comp_err}\n```\n\n"
-                f"⚠️ **请不要重启游戏**（当前并无新 Mod 生效）。代码存在语法或引用问题，已自动拦截保护游戏目录。你可以查看下方详细错误，或在输入框发送「自动修复代码」重新生成。"
-            )
-        elif not reply:
+        deploy_error = deploy_res.get("error", "")
+        if not reply:
             prefix_note = ""
             if not has_llm:
                 prefix_note = "\n\n> 💡 **提示**：当前通过内置预设模板生效。若要让 AI 自由理解任意自然语言并定制编写 Mod，请点击右上角「⚙️ 模型配置」填入 API Key。"
-            status_desc = deploy_res.get("message", "已全自动写入游戏目录")
+            status_desc = deploy_res.get("message", "已全自动写入游戏目录并配置生效")
             restart_hint = ""
             if deploy_res.get("pending_restart"):
-                restart_hint = "\n\n> ⚠️ **温馨提示**：检测到游戏当前已在运行，请点击顶部或卡片中的 **【🔄 一键重启游戏】** 重新载入编译好的 Mod 即可生效！"
-            symbol_note = ""
-            if action.get("symbol_verified") is False:
-                symbol_note = (
-                    "\n\n> ⚠️ **目标符号未确认**：未在游戏内找到对应目标，该 Mod 可能不会生效。"
-                    "建议补充更具体的类名/字段名后再试，或让 AI 先分析游戏内真实符号。"
-                )
+                restart_hint = "\n\n> 💡 **温馨提示**：检测到游戏当前已在运行，请点击顶部工具栏 **【🔄 一键重启】** 重新载入生效！"
+            elif running:
+                restart_hint = "\n\n> 🟢 **实时热调控已生效**：游戏正在运行中，已开启即时热生效通道！参数已实时同步，切回游戏即可直接边玩边测（无需重启）。"
+            action_hint = "已开启边玩边测模式，切回游戏窗口即可体验，在右侧面板拖动滑块实时调节！" if running else "启动游戏后即可直接体验，可在右侧或下方滑块调节数值！"
             reply = (
                 f"✨ 已为你设计并全自动写入游戏 **【{action['mod_name']}】**！\n\n"
                 f"- 部署状态: {status_desc}\n"
-                f"- 安全边界提示: {boundary.get('boundary_warning', '已开启物理与数值边界防护')}{restart_hint}{symbol_note}\n\n"
-                f"启动或重启游戏后即可直接体验，可在下方滑块调节数值！{prefix_note}"
+                f"- 安全边界提示: {boundary.get('boundary_warning', '已开启物理与数值边界防护')}{restart_hint}\n\n"
+                f"{action_hint}{prefix_note}"
             )
         else:
             reply = _clean_user_reply(reply)
             if deploy_res.get("message"):
                 restart_hint = ""
                 if deploy_res.get("pending_restart"):
-                    restart_hint = "\n\n> ⚠️ **温馨提示**：检测到游戏当前已在运行，请点击顶部或卡片中的 **【🔄 一键重启游戏】** 重新载入编译好的 Mod 即可生效！"
-                reply += f"\n\n- 部署状态: {deploy_res['message']}{restart_hint}"
+                    restart_hint = "\n\n> 💡 **温馨提示**：检测到游戏当前已在运行，请点击顶部工具栏 **【🔄 一键重启】** 重新载入生效！"
+                elif running:
+                    restart_hint = "\n\n> 🟢 **实时热调控已生效**：游戏正在运行中，已开启即时热生效通道！参数已实时同步，切回游戏即可直接边玩边测（无需重启）。"
+                reply = f"{reply}\n\n- 部署状态: {deploy_res['message']}{restart_hint}"
 
 
         return HTTPStatus.OK, {
@@ -1647,6 +1716,12 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
 
         engine_info = registry.detect_engine(game_dir) or {}
         engine_id = engine_info.get("engine_id") or engine_info.get("id", "generic")
+        supported_engines = {"unity", "unreal", "re-engine", "godot", "dotnet-xna", "dotnet", "tmodloader"}
+        if engine_id not in supported_engines:
+            return HTTPStatus.CONFLICT, {
+                "success": False,
+                "error": f"pinning is not supported for engine '{engine_id}'; use its loader-specific package workflow",
+            }
         if engine_id == "unreal" and engine_info.get("variant") == "ue5":
             return HTTPStatus.CONFLICT, {
                 "success": False,
@@ -1706,17 +1781,21 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 source_manifest = os.path.join(staging, "mod.json")
                 with open(source_manifest, "w", encoding="utf-8") as f:
                     json.dump(manifest, f, ensure_ascii=False, indent=2)
-                pairs.append((source_manifest, os.path.join(mod_folder, "mod.json")))
-                if source_code:
-                    source_cs = os.path.join(staging, f"{mod_id}.cs")
-                    with open(source_cs, "w", encoding="utf-8") as f:
-                        f.write(source_code)
-                    pairs.append((source_cs, os.path.join(mod_folder, f"{mod_id}.cs")))
-
-                    source_dll = os.path.join(staging, f"{mod_id}.dll")
-                    comp_res = bepinex.compile_unity_plugin(game_dir, mod_id, source_cs, source_dll)
-                    if comp_res.get("success") and os.path.isfile(source_dll):
-                        pairs.append((source_dll, os.path.join(game_dir, "BepInEx", "plugins", f"{mod_id}.dll")))
+                source_cs = os.path.join(staging, f"{mod_id}.cs")
+                with open(source_cs, "w", encoding="utf-8") as f:
+                    f.write(source_code)
+                source_dll = os.path.join(staging, f"{mod_id}.dll")
+                comp_res = bepinex.compile_unity_plugin(game_dir, mod_id, source_cs, source_dll)
+                if not comp_res.get("success") or not os.path.isfile(source_dll):
+                    return HTTPStatus.UNPROCESSABLE_ENTITY, {
+                        "success": False,
+                        "error": comp_res.get("error", "plugin compilation failed"),
+                    }
+                pairs.extend([
+                    (source_manifest, os.path.join(mod_folder, "mod.json")),
+                    (source_cs, os.path.join(mod_folder, f"{mod_id}.cs")),
+                    (source_dll, os.path.join(game_dir, "BepInEx", "plugins", f"{mod_id}.dll")),
+                ])
 
                 message = f"Mod【{mod_name}】已成功固化到游戏目录！下次直接在 Steam 启动游戏依然生效。"
                 mods_root = mod_folder

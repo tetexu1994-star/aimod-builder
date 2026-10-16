@@ -20,7 +20,7 @@ class TestInstallPreview(unittest.TestCase):
             core = Path(game, "BepInEx", "core")
             core.mkdir(parents=True)
             (core / "BepInEx.dll").write_bytes(b"")
-            (Path(game, "BepInEx") / "version.txt").write_text("5.4.23.0", encoding="utf-8")
+            (Path(game, "BepInEx") / "version.txt").write_text("5.4.23.5", encoding="utf-8")
             src = Path(source, "GoldPlus.dll")
             src.write_bytes(b"mod")
             result = install_preview.preview_install(
@@ -38,7 +38,7 @@ class TestInstallPreview(unittest.TestCase):
             core = Path(game, "BepInEx", "core")
             core.mkdir(parents=True)
             (core / "BepInEx.dll").write_bytes(b"")
-            (Path(game, "BepInEx") / "version.txt").write_text("5.4.23.0", encoding="utf-8")
+            (Path(game, "BepInEx") / "version.txt").write_text("5.4.23.5", encoding="utf-8")
             existing = Path(game, "BepInEx", "plugins", "GoldPlus.dll")
             existing.parent.mkdir(parents=True)
             existing.write_bytes(b"old")
