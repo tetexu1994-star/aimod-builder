@@ -13,7 +13,7 @@ import subprocess
 import sys
 from typing import Any, Dict, List, Optional, Set
 
-from agmod import process, registry, safety, saves
+from agmod import frameworks, process, registry, safety, saves
 
 logger = logging.getLogger("agmod.discovery")
 
@@ -185,6 +185,7 @@ def scan_installed_games(extra_dirs: Optional[List[str]] = None) -> List[Dict[st
                     "engine": engine_info.get("id") or engine_info.get("engine_id", "generic"),
                     "engine_name": engine_info.get("name") or engine_info.get("engine_name", "通用引擎"),
                     "adapter_ready": engine_info.get("adapter_ready", False) or bool(engine_info.get("id")),
+                    "framework": frameworks.detect_game_framework(game_dir),
                     "is_running": is_running,
                     "running_pid": procs[0]["pid"] if procs else None,
                     "executables": exes,
@@ -234,6 +235,7 @@ def scan_installed_games(extra_dirs: Optional[List[str]] = None) -> List[Dict[st
                     "engine": engine_info.get("id") or engine_info.get("engine_id", "generic"),
                     "engine_name": engine_info.get("name") or engine_info.get("engine_name", "通用引擎"),
                     "adapter_ready": engine_info.get("adapter_ready", False) or bool(engine_info.get("id")),
+                    "framework": frameworks.detect_game_framework(sub_dir),
                     "is_running": is_running,
                     "running_pid": procs[0]["pid"] if procs else None,
                     "executables": exes,
@@ -270,6 +272,7 @@ def scan_installed_games(extra_dirs: Optional[List[str]] = None) -> List[Dict[st
                 "engine": engine_info.get("id") or engine_info.get("engine_id", "generic"),
                 "engine_name": engine_info.get("name") or engine_info.get("engine_name", "通用引擎"),
                 "adapter_ready": engine_info.get("adapter_ready", False) or bool(engine_info.get("id")),
+                "framework": frameworks.detect_game_framework(ed),
                 "is_running": is_running,
                 "running_pid": procs[0]["pid"] if procs else None,
                 "executables": exes,

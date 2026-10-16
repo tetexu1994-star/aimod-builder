@@ -75,9 +75,62 @@ def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict
         safe_id = re.sub(r"[^A-Za-z0-9_]", "_", mod_id or mod_name.lower()).strip("_") or "mod"
         escaped_name = mod_name.replace('"', '\\"')
         search_key = f"{hook_target} {mod_name} {mod_id}".lower()
+        is_stardew = any(k in search_key for k in ["stardew", "smapi", "星露谷"])
         is_pet = any(k in search_key for k in ["pet", "companion", "宠物", "随从", "助手", "召唤", "对话"])
         is_speed = any(k in search_key for k in ["speed", "move", "run", "奔跑", "移速", "速度", "快"])
-        is_god = any(k in search_key for k in ["damage", "health", "god", "shield", "stat_health", "playerstats", "无敌", "锁血", "金身", "免伤", "护盾", "命", "五合一"])
+        is_god = any(k in search_key for k in ["damage", "health", "god", "shield", "stat_health", "playerstats", "无敌", "锁血", "金身", "免伤", "护盾", "命", "五合一", "体力", "stamina"])
+
+        if is_stardew:
+            csharp_code = f'''using System;
+using System.IO;
+
+namespace StardewMod_{safe_id}
+{{
+    // Stardew Valley SMAPI Mod Entry
+    public class ModEntry_{safe_id}
+    {{
+        public static bool InfiniteStamina = {str(is_god).lower()};
+        public static float SpeedMultiplier = 2.0f;
+        public static int MoneyBonusMultiplier = 3;
+        private static int lastCheckTick = 0;
+        private static string configPath = "";
+
+        public static void Initialize()
+        {{
+            try
+            {{
+                configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Mods", "{mod_id}", "mod.json");
+                ReadTuning();
+            }}
+            catch {{ }}
+        }}
+
+        public static void Update()
+        {{
+            if (Environment.TickCount - lastCheckTick > 500)
+            {{
+                lastCheckTick = Environment.TickCount;
+                ReadTuning();
+            }}
+        }}
+
+        private static void ReadTuning()
+        {{
+            try
+            {{
+                if (!string.IsNullOrEmpty(configPath) && File.Exists(configPath))
+                {{
+                    string text = File.ReadAllText(configPath);
+                    if (text.Contains("\\"infinite_stamina\\": false")) InfiniteStamina = false;
+                    else if (text.Contains("\\"infinite_stamina\\": true")) InfiniteStamina = true;
+                }}
+            }}
+            catch {{ }}
+        }}
+    }}
+}}
+'''
+            return csharp_code, {"class_name": "StardewValley.Farmer", "method_name": "Update"}
 
         csharp_code = f'''using System;
 using System.IO;
@@ -408,6 +461,49 @@ def _auto_deploy_mod(
             pairs.append((source, os.path.join(mods_root, "mod_main.gd")))
             message = f"Godot Mod【{mod_name}】已全自动写入 mods-unpacked 目录！"
 
+        elif engine_id in {"dotnet-xna", "dotnet"} and any(k in f"{game_dir} {mod_name}".lower() for k in ["stardew", "smapi", "星露谷"]):
+            mods_root = os.path.join(game_dir, "Mods", mod_id)
+            smapi_manifest = {
+                "Name": mod_name,
+                "Author": "AIModBuilder",
+                "Version": "1.0.0",
+                "Description": summary,
+                "UniqueID": f"AIMod.{mod_id}",
+                "EntryDll": f"{mod_id}.dll",
+                "MinimumApiVersion": "3.0.0",
+            }
+            manifest_src = os.path.join(staging, "manifest.json")
+            with open(manifest_src, "w", encoding="utf-8") as f:
+                json.dump(smapi_manifest, f, ensure_ascii=False, indent=2)
+            pairs.append((manifest_src, os.path.join(mods_root, "manifest.json")))
+
+            source_manifest = os.path.join(staging, "mod.json")
+            with open(source_manifest, "w", encoding="utf-8") as f:
+                json.dump(manifest, f, ensure_ascii=False, indent=2)
+            pairs.append((source_manifest, os.path.join(mods_root, "mod.json")))
+
+            compiled_dll = False
+            compilation_error = ""
+            if source_code:
+                source_cs = os.path.join(staging, f"{mod_id}.cs")
+                with open(source_cs, "w", encoding="utf-8") as f:
+                    f.write(source_code)
+                pairs.append((source_cs, os.path.join(mods_root, f"{mod_id}.cs")))
+
+                source_dll = os.path.join(staging, f"{mod_id}.dll")
+                comp_res = bepinex.compile_unity_plugin(game_dir, mod_id, source_cs, source_dll)
+                if comp_res.get("success") and os.path.isfile(source_dll):
+                    pairs.append((source_dll, os.path.join(mods_root, f"{mod_id}.dll")))
+                    compiled_dll = True
+                else:
+                    compilation_error = comp_res.get("error", "未知编译错误")
+
+            has_smapi = os.path.isfile(os.path.join(game_dir, "StardewModdingAPI.exe"))
+            if has_smapi:
+                message = f"星露谷 SMAPI 模组【{mod_name}】已部署至 Mods/ 目录，启动 StardewModdingAPI.exe 即可体验！"
+            else:
+                message = f"星露谷模组【{mod_name}】已写入 Mods/ 目录。⚠️ 检测到当前尚未安装 SMAPI 前置，请访问 https://smapi.io 安装后从 StardewModdingAPI.exe 启动游戏！"
+
         else:
             # Unity or generic
             bepin_core = os.path.join(game_dir, "BepInEx", "core")
@@ -734,8 +830,10 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         game_dir = _safe_path(body.get("game_dir", ""))
         if not game_dir:
             return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
-        info = registry.detect_engine(game_dir)
-        return HTTPStatus.OK, {"success": True, "data": info}
+        info = registry.detect_engine(game_dir) or {}
+        from agmod import frameworks
+        fw_info = frameworks.detect_game_framework(game_dir)
+        return HTTPStatus.OK, {"success": True, "data": {**info, "framework": fw_info}}
 
     def _handle_process(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
         game_dir = _safe_path(body.get("game_dir", ""))
@@ -743,6 +841,8 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         if not game_dir:
             return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required"}
         status = process.check_game_status(game_dir, force_refresh=force_refresh)
+        from agmod import frameworks
+        status["framework"] = frameworks.detect_game_framework(game_dir)
         return HTTPStatus.OK, {"success": True, "data": status}
 
     def _handle_plan(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:

@@ -1335,6 +1335,19 @@
             </div>
           </div>
 
+          <!-- Framework Prerequisite Diagnostic Card -->
+          <div id="gatekeeper-fw-card" style="margin-bottom:20px; padding:14px 18px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--border); text-align:left;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:16px;">🧩</span>
+                <span style="font-size:13px; font-weight:700; color:var(--text);">前置 Mod 生态与运行环境检测</span>
+              </div>
+              <span id="gatekeeper-fw-badge" style="font-size:12px; font-weight:700; padding:2px 10px; border-radius:4px; background:rgba(16,185,129,0.15); color:var(--emerald); border:1px solid rgba(16,185,129,0.3);">自检中...</span>
+            </div>
+            <div id="gatekeeper-fw-desc" style="font-size:12px; color:var(--text-muted); line-height:1.6;">正在自检游戏是否包含专门的前置加载器（如 tModLoader、SMAPI、BepInEx 等）...</div>
+            <div id="gatekeeper-fw-action" style="margin-top:10px; display:none;"></div>
+          </div>
+
           <div class="gatekeeper-actions">
             <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
               <button class="btn btn-launch" style="padding: 12px 26px; font-size: 14px;" onclick="launchAndAdvance()">
@@ -1537,7 +1550,11 @@
       const nameEl = document.getElementById('hdr-game-name');
       const engineEl = document.getElementById('hdr-engine-tag');
       if (nameEl) nameEl.textContent = game.name || '未知游戏';
-      if (engineEl) engineEl.textContent = game.engine_name || game.engine_id || '已识别引擎';
+      if (engineEl) {
+        const fw = game.framework || {};
+        const fwTxt = (fw.installed && fw.framework_name && fw.framework_name !== '原生执行') ? ` · 🧩 ${fw.framework_name}` : '';
+        engineEl.textContent = (game.engine_name || game.engine_id || '已识别引擎') + fwTxt;
+      }
 
       pollHeaderGameStatus();
       if (!gamePollTimer) {
@@ -1672,6 +1689,16 @@
           ? `<div style="position:absolute; top:8px; left:8px; background:rgba(220,38,38,0.9); color:#fff; font-size:11px; font-weight:700; padding:2px 7px; border-radius:4px; z-index:2; backdrop-filter:blur(4px); display:flex; align-items:center; gap:4px;"><span>🛡️</span><span>${escapeHtml(g.anticheat_system || '反作弊保护')}</span></div>`
           : '';
 
+        const fw = g.framework || {};
+        let fwBadge = '';
+        if (fw.framework_name && fw.framework_name !== '未知' && fw.framework_name !== '原生执行') {
+          if (fw.installed) {
+            fwBadge = `<div style="margin-top:4px;"><span style="display:inline-flex; align-items:center; gap:3px; padding:2px 7px; font-size:11px; font-weight:600; border-radius:4px; background:rgba(16,185,129,0.15); color:var(--emerald); border:1px solid rgba(16,185,129,0.3);">✅ ${escapeHtml(fw.framework_name)}</span></div>`;
+          } else {
+            fwBadge = `<div style="margin-top:4px;"><span style="display:inline-flex; align-items:center; gap:3px; padding:2px 7px; font-size:11px; font-weight:600; border-radius:4px; background:rgba(245,158,11,0.15); color:var(--amber); border:1px solid rgba(245,158,11,0.3);">⚠️ 需前置: ${escapeHtml(fw.framework_name)}</span></div>`;
+          }
+        }
+
         card.innerHTML = `
           <div class="game-card-cover" style="position:relative;">
             ${anticheatHtml}
@@ -1681,6 +1708,7 @@
           <div class="game-card-body">
             <div class="game-card-title">${escapeHtml(g.name)}</div>
             <div class="game-card-engine">${escapeHtml(g.engine_name || '通用引擎')}</div>
+            ${fwBadge}
             <div class="game-card-actions">
               <span style="font-size:12px; color:var(--text-muted);">${escapeHtml(g.source === 'steam' ? 'Steam 游戏' : '本地目录')}</span>
               <button type="button" class="btn btn-sm btn-primary" data-select-game="1">选择并下一步 →</button>
@@ -1752,6 +1780,46 @@
       const pulseDot = document.getElementById('gatekeeper-pulse');
       if (pulseDot) {
         pulseDot.style.background = 'var(--text-dim)';
+      }
+
+      // Update framework diagnosis card
+      const fw = game.framework || {};
+      const fwBadge = document.getElementById('gatekeeper-fw-badge');
+      const fwDesc = document.getElementById('gatekeeper-fw-desc');
+      const fwAction = document.getElementById('gatekeeper-fw-action');
+
+      if (fwBadge && fwDesc && fwAction) {
+        if (fw.installed) {
+          fwBadge.textContent = `✅ ${fw.framework_name || '前置已就绪'}`;
+          fwBadge.style.background = 'rgba(16,185,129,0.15)';
+          fwBadge.style.color = 'var(--emerald)';
+          fwBadge.style.border = '1px solid rgba(16,185,129,0.3)';
+          fwDesc.innerHTML = `<b style="color:var(--text);">${escapeHtml(fw.summary || '')}</b><br><span style="color:var(--text-muted);">${escapeHtml(fw.guidance || '')}</span>`;
+          fwAction.style.display = 'none';
+        } else if (fw.status === 'missing') {
+          fwBadge.textContent = `⚠️ 缺失核心前置: ${fw.framework_name || '需前置'}`;
+          fwBadge.style.background = 'rgba(245,158,11,0.15)';
+          fwBadge.style.color = 'var(--amber)';
+          fwBadge.style.border = '1px solid rgba(245,158,11,0.3)';
+          fwDesc.innerHTML = `<b style="color:#fbbf24;">${escapeHtml(fw.summary || '')}</b><br><span style="color:var(--text);">${escapeHtml(fw.guidance || '')}</span>`;
+          
+          if (fw.download_url) {
+            fwAction.innerHTML = `<a href="${escapeHtml(fw.download_url)}" target="_blank" class="btn btn-sm" style="display:inline-flex; align-items:center; gap:6px; background:rgba(245,158,11,0.2); border:1px solid #f59e0b; color:#fbbf24; text-decoration:none;">📥 打开官网下载安装前置 (${escapeHtml(fw.framework_name)}) ➔</a>`;
+            fwAction.style.display = 'block';
+          } else if (fw.steam_url) {
+            fwAction.innerHTML = `<a href="${escapeHtml(fw.steam_url)}" class="btn btn-sm" style="display:inline-flex; align-items:center; gap:6px; background:rgba(59,130,246,0.2); border:1px solid #3b82f6; color:#60a5fa; text-decoration:none;">🎮 在 Steam 免费安装「${escapeHtml(fw.framework_name)}」➔</a>`;
+            fwAction.style.display = 'block';
+          } else {
+            fwAction.style.display = 'none';
+          }
+        } else {
+          fwBadge.textContent = `● 原生引擎环境`;
+          fwBadge.style.background = 'rgba(255,255,255,0.06)';
+          fwBadge.style.color = 'var(--text-muted)';
+          fwBadge.style.border = '1px solid var(--border)';
+          fwDesc.textContent = fw.summary || '标准游戏运行目录，支持安全代码注入。';
+          fwAction.style.display = 'none';
+        }
       }
 
       startProcessPolling(game);
