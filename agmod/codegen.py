@@ -123,6 +123,61 @@ func hook_{cls_clean.lower()}_{mth_clean.lower()}(target_node: Node) -> void:
 '''
         return _result(target, "gdscript", "GodotModLoader", code, "Call this helper from the GodotModLoader mod_main.gd lifecycle.")
 
+    if target.engine in {"dotnet-xna", "dotnet", "tmodloader", "smapi"}:
+        code = f'''using System;
+
+namespace AIModPlugin
+{{
+    // Hook target: {target.full_class_name}.{mth_clean}
+    public static class Patch_{cls_clean}_{mth_clean}
+    {{
+        public static void Postfix()
+        {{
+            // Execute custom game logic hook
+        }}
+    }}
+}}
+'''
+        return _result(target, "csharp", "tModLoader/SMAPI", code, "Compile this C# hook class into your plugin assembly.")
+
+    if target.engine in {"redengine", "cyberpunk"}:
+        code = f'''-- Cyber Engine Tweaks (CET) Hook for {target.full_class_name}.{mth_clean}
+Override("{_lua_string(target.full_class_name)}", "{_lua_string(mth_clean)}", function(this, wrappedMethod)
+    -- Pre-hook execution
+    wrappedMethod()
+    -- Post-hook execution
+end)
+'''
+        return _result(target, "lua", "CET", code, "Place this Lua hook in your CET init.lua mod script.")
+
+    if target.engine == "taleworlds":
+        code = f'''using HarmonyLib;
+using TaleWorlds.Core;
+
+namespace BannerlordMod
+{{
+    [HarmonyPatch(typeof({target.full_class_name}), "{mth_clean}")]
+    public static class Patch_{cls_clean}_{mth_clean}
+    {{
+        public static void Postfix()
+        {{
+            // Mod behavior logic
+        }}
+    }}
+}}
+'''
+        return _result(target, "csharp", "Bannerlord Harmony", code, "Include this Harmony patch in your Bannerlord SubModule.")
+
+    if target.engine == "bethesda":
+        code = f'''; Papyrus Script Hook for {target.full_class_name}.{mth_clean}
+ScriptName {cls_clean}_{mth_clean}_Hook Extends Quest
+
+Event OnInit()
+    ; Register for custom game events or hook functions
+EndEvent
+'''
+        return _result(target, "papyrus", "Papyrus/SKSE", code, "Attach this Papyrus script to an ESP quest or compile with Creation Kit.")
+
     raise ValueError(f"unsupported engine '{target.engine}'")
 
 

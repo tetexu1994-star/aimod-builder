@@ -145,6 +145,42 @@ ENGINE_CATALOG = [
         "structure": "unrpa / rpatool 解 .rpa",
         "examples": "",
     },
+    {
+        "id": "divinity",
+        "name": "Larian Divinity Engine (博德之门3 / 神界：原罪2)",
+        "family": "divinity",
+        "markers": ["bg3.exe", "bg3_dx11.exe", "Gustav.pak", "Shared.pak", "EoCApp.exe"],
+        "mod_framework": "BG3 Mod Manager / 官方 Patch 7 工具 + Norbyte Script Extender (DWrite.dll)",
+        "structure": "Divine Tool (lslib) 解包 .pak 归档；LSX/LSF XML 解析游戏数据",
+        "examples": "博德之门3=BG3SE(DWrite)+Pak Mod；神界原罪2=Larian Toolkit",
+    },
+    {
+        "id": "taleworlds",
+        "name": "TaleWorlds Engine (骑马与砍杀2：霸主)",
+        "family": "taleworlds",
+        "markers": ["Bannerlord.exe", "TaleWorlds.MountAndBlade.Launcher.exe", "Modules/Native"],
+        "mod_framework": "Harmony + ButterLib + UIExtenderEx + MCM (Mod Configuration Menu)",
+        "structure": "SubModule.xml 模块定义 + dnSpy/ilspycmd 反编译 C# 程序集",
+        "examples": "骑马与砍杀2=Modules/<ModId>/SubModule.xml + C# Harmony Patch",
+    },
+    {
+        "id": "cryengine",
+        "name": "CryEngine (天国：拯救等)",
+        "family": "cryengine",
+        "markers": ["KingdomCome.exe", "*.cryproject", "Data/data0.pak"],
+        "mod_framework": "Mods/<ModId>/mod.manifest + .pak 覆盖",
+        "structure": "7-Zip / QuickBMS 解 CryEngine .pak 归档；修改 table XML/RPG 表格",
+        "examples": "天国拯救=Mods/<ModId>/Data/*.pak + mod.manifest",
+    },
+    {
+        "id": "maxis-sims",
+        "name": "Maxis Proprietary (模拟人生4)",
+        "family": "maxis",
+        "markers": ["TS4_x64.exe", "Game/Bin/TS4_x64.exe"],
+        "mod_framework": "Mods/ 目录 (.package 资产 / .ts4script Python 脚本)",
+        "structure": "Sims 4 Studio / S4PE 解 .package；uncompyle6 反编译 Python 脚本",
+        "examples": "模拟人生4=Mods/*.package + *.ts4script (Python 3.7)",
+    },
 ]
 
 # Generic native / custom engines (no reliable file marker): the fallback path

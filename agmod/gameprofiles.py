@@ -98,10 +98,41 @@ ENGINE_PROFILES = {
 
 # Game-specific notes: verified engine facts only, accumulate over time.
 GAME_NOTES = {
-    "黑神话悟空": {"engine": "unreal", "variant": "ue5", "note": "UE5 IoStore，改配置优先 .ini，改资源走 pak 覆盖"},
-    "空洞骑士": {"engine": "unity", "variant": "mono", "note": "Unity Mono，Assembly-CSharp.dll 可直接反编译找字段"},
-    "幻兽帕鲁": {"engine": "unreal", "variant": "ue5", "note": "UE5，pak 覆盖 + .ini 配置"},
-    "生化危机4": {"engine": "re-engine", "note": "RE Engine，REFramework + Fluffy 装 pak mod"},
+    "黑神话悟空": {"engine": "unreal", "variant": "ue5", "note": "UE5 IoStore，改配置优先 .ini，改资源走 Content/Paks/~mods 覆盖"},
+    "wukong": {"engine": "unreal", "variant": "ue5", "note": "UE5 IoStore，改配置优先 .ini，改资源走 Content/Paks/~mods 覆盖"},
+    "空洞骑士": {"engine": "unity", "variant": "mono", "note": "Unity Mono，Assembly-CSharp.dll 可直接反编译找字段，支持 BepInEx / Scarab"},
+    "hollow knight": {"engine": "unity", "variant": "mono", "note": "Unity Mono，Assembly-CSharp.dll 可直接反编译找字段"},
+    "幻兽帕鲁": {"engine": "unreal", "variant": "ue5", "note": "UE5，Content/Paks/~mods 覆盖 + UE4SS Lua 钩子"},
+    "palworld": {"engine": "unreal", "variant": "ue5", "note": "UE5，Content/Paks/~mods 覆盖 + UE4SS Lua 钩子"},
+    "生化危机": {"engine": "re-engine", "note": "RE Engine，REFramework (Lua 插件) + Fluffy Mod Manager 装 PAK mod"},
+    "resident evil": {"engine": "re-engine", "note": "RE Engine，REFramework (Lua 插件) + Fluffy Mod Manager 装 PAK mod"},
+    "怪物猎人": {"engine": "re-engine", "note": "怪猎崛起/荒野用 REFramework；世界用 Stracker's Loader + nativePC"},
+    "monster hunter": {"engine": "re-engine", "note": "Rise/Wilds use REFramework; World uses Stracker's Loader + nativePC"},
+    "泰拉瑞亚": {"engine": "dotnet-xna", "note": ".NET/XNA，官方支持 tModLoader；原版客户端支持 BepInEx 注入直接生效"},
+    "terraria": {"engine": "dotnet-xna", "note": ".NET/XNA，官方支持 tModLoader；原版客户端支持 BepInEx 注入直接生效"},
+    "星露谷物语": {"engine": "dotnet-xna", "note": ".NET/MonoGame，Mod 必须依赖 SMAPI 前置，输出至 Mods/ 目录"},
+    "stardew valley": {"engine": "dotnet-xna", "note": ".NET/MonoGame，Mod 必须依赖 SMAPI 前置，输出至 Mods/ 目录"},
+    "赛博朋克": {"engine": "redengine", "note": "REDengine 4，Cyber Engine Tweaks (CET Lua) + RED4ext + REDmod"},
+    "cyberpunk": {"engine": "redengine", "note": "REDengine 4，Cyber Engine Tweaks (CET Lua) + RED4ext + REDmod"},
+    "巫师3": {"engine": "redengine", "note": "REDengine 3，Mods/ 目录放入 mod* 文件夹；脚本冲突用 Script Merger 解决"},
+    "witcher": {"engine": "redengine", "note": "REDengine 3，Mods/ 目录放入 mod* 文件夹；脚本冲突用 Script Merger 解决"},
+    "博德之门3": {"engine": "divinity", "note": "Divinity 4.0，Norbyte Script Extender (DWrite.dll) + Mods/*.pak 模组架构"},
+    "baldur": {"engine": "divinity", "note": "Divinity 4.0，Norbyte Script Extender (DWrite.dll) + Mods/*.pak 模组架构"},
+    "天际": {"engine": "bethesda", "note": "Creation Engine，SKSE64 + Data/ 目录 + Papyrus 脚本/ESP 记录"},
+    "skyrim": {"engine": "bethesda", "note": "Creation Engine，SKSE64 + Data/ 目录 + Papyrus 脚本/ESP 记录"},
+    "辐射4": {"engine": "bethesda", "note": "Creation Engine，F4SE + Data/ 目录 + BA2 归档"},
+    "fallout": {"engine": "bethesda", "note": "Creation Engine，F4SE / NVSE + Data/ 目录"},
+    "星空": {"engine": "bethesda", "note": "Creation Engine 2，SFSE + Data/ 目录"},
+    "starfield": {"engine": "bethesda", "note": "Creation Engine 2，SFSE + Data/ 目录"},
+    "艾尔登法环": {"engine": "fromsoftware", "note": "FromSoft，Mod Engine 2 文件无损劫持，Mod 写入 mod/ 目录"},
+    "elden ring": {"engine": "fromsoftware", "note": "FromSoft，Mod Engine 2 文件无损劫持，Mod 写入 mod/ 目录"},
+    "只狼": {"engine": "fromsoftware", "note": "FromSoft，Mod Engine + dinput8.dll 挂载 mods/ 目录"},
+    "sekiro": {"engine": "fromsoftware", "note": "FromSoft，Mod Engine + dinput8.dll 挂载 mods/ 目录"},
+    "骑马与砍杀": {"engine": "taleworlds", "note": "TaleWorlds，Modules/ 目录独立模块 + Harmony/ButterLib 运行时补丁"},
+    "bannerlord": {"engine": "taleworlds", "note": "TaleWorlds，Modules/ 目录独立模块 + Harmony/ButterLib 运行时补丁"},
+    "荒野大镖客": {"engine": "rage", "note": "RAGE Engine，Script Hook RDR2 + Lenny's Mod Loader (LML)"},
+    "rdr2": {"engine": "rage", "note": "RAGE Engine，Script Hook RDR2 + Lenny's Mod Loader (LML)"},
+    "gta": {"engine": "rage", "note": "RAGE Engine，Script Hook V + dinput8 + scripts/ 目录"},
     "土豆兄弟": {"engine": "godot", "note": "Godot，GDScript / pck 覆盖"},
 }
 
@@ -122,10 +153,10 @@ def get_recommendations(game_dir: str, engine_info: dict | None) -> dict:
     key = _profile_key(engine_id, variant)
     profile = ENGINE_PROFILES.get(key, ENGINE_PROFILES["default"])
 
-    game_name = os.path.basename(os.path.normpath(game_dir))
+    game_name = os.path.basename(os.path.normpath(game_dir)).lower()
     note = None
     for name, data in GAME_NOTES.items():
-        if name in game_name:
+        if name.lower() in game_name:
             note = data
             break
 

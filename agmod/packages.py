@@ -38,6 +38,26 @@ _PROFILES = {
         "loader": ("tModLoader/tModLoader", "tModLoader", "1.4.4.9", "1.4.4.9"),
         "apis": (),
     },
+    "bethesda": {
+        "loader": ("SKSE/SKSE64", "SKSE64", "2.2.6", "2.2.6"),
+        "apis": (),
+    },
+    "divinity": {
+        "loader": ("Norbyte/bg3se", "BG3 Script Extender", "1.0.0", "1.0.0"),
+        "apis": (),
+    },
+    "fromsoftware": {
+        "loader": ("soulsmods/ModEngine2", "Mod Engine 2", "2.1.0", "2.1.0"),
+        "apis": (),
+    },
+    "redengine": {
+        "loader": ("yamashi/CyberEngineTweaks", "Cyber Engine Tweaks", "1.32.0", "1.32.0"),
+        "apis": (),
+    },
+    "taleworlds": {
+        "loader": ("BUTR/Bannerlord.Harmony", "Bannerlord Harmony", "2.2.2", "2.2.2"),
+        "apis": (),
+    },
 }
 
 
@@ -90,7 +110,12 @@ def _installed_loader(game_dir: str, engine_id: str) -> tuple[str, str]:
         ),
         "re-engine": ([os.path.join(game_dir, "reframework")], "reframework/", (os.path.join(os.pardir, "dinput8.dll"), "reframework.dll")),
         "godot": ([os.path.join(game_dir, "mods-unpacked")], "mods-unpacked/", ()),
-        "dotnet-xna": ([os.path.join(game_dir, "ModLoader")], "ModLoader/", ()),
+        "dotnet-xna": ([os.path.join(game_dir, "ModLoader"), os.path.join(game_dir, "Mods"), os.path.join(game_dir, "BepInEx", "plugins")], "ModLoader/Mods", ()),
+        "bethesda": ([os.path.join(game_dir, "Data", "SKSE"), os.path.join(game_dir, "Data", "F4SE"), os.path.join(game_dir, "Data")], "Data/SKSE", ()),
+        "divinity": ([os.path.join(game_dir, "bin")], "bin/DWrite.dll", ("DWrite.dll", "dwrite.dll")),
+        "fromsoftware": ([os.path.join(game_dir, "modengine2"), os.path.join(game_dir, "mod")], "modengine2/", ()),
+        "redengine": ([os.path.join(game_dir, "bin", "x64", "plugins"), os.path.join(game_dir, "Mods")], "bin/x64/plugins", ()),
+        "taleworlds": ([os.path.join(game_dir, "Modules", "Bannerlord.Harmony")], "Modules/Bannerlord.Harmony", ()),
     }
     paths, label, markers = checks.get(engine_id, ([], "", ()))
     for path in paths:
