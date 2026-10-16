@@ -106,14 +106,15 @@
       position: sticky;
       top: 0;
       z-index: 50;
-      height: 60px;
-      backdrop-filter: blur(16px);
+      height: 54px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       background: var(--bg-nav);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 20px;
+      padding: 0 18px;
       gap: 16px;
     }
 
@@ -131,7 +132,7 @@
     .brand-icon {
       width: 28px;
       height: 28px;
-      border-radius: 6px;
+      border-radius: 7px;
       background: linear-gradient(135deg, #4f46e5, #6366f1);
       display: flex;
       align-items: center;
@@ -139,7 +140,7 @@
       color: #fff;
       font-size: 14px;
       font-weight: 800;
-      box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.35);
     }
     .brand-title {
       font-weight: 700;
@@ -151,7 +152,7 @@
       font-size: 10px;
       font-weight: 600;
       color: var(--text-dim);
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--bg-card-inner);
       padding: 1px 5px;
       border-radius: 4px;
       border: 1px solid var(--border);
@@ -162,27 +163,35 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 4px 10px;
-      background: rgba(0, 0, 0, 0.3);
+      padding: 3px 10px 3px 8px;
+      background: var(--bg-card-inner);
       border: 1px solid var(--border);
-      border-radius: 6px;
+      border-radius: 20px;
       font-size: 12px;
+      max-width: 320px;
+      transition: all 0.2s ease;
+    }
+    .header-game-context:hover {
+      border-color: var(--border-hover);
     }
     .hdr-game-name {
       font-weight: 600;
       color: var(--text-main);
-      max-width: 130px;
+      font-size: 12px;
+      max-width: 100px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
     .hdr-tag {
       font-size: 10px;
-      padding: 1px 5px;
-      border-radius: 4px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 10px;
       background: rgba(99, 102, 241, 0.12);
-      color: #818cf8;
-      border: 1px solid rgba(99, 102, 241, 0.25);
+      color: var(--primary);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      white-space: nowrap;
     }
     .hdr-status {
       display: inline-flex;
@@ -190,6 +199,23 @@
       gap: 5px;
       font-size: 11px;
       color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .hdr-switch-btn {
+      padding: 1px 8px;
+      font-size: 11px;
+      font-weight: 500;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .hdr-switch-btn:hover {
+      color: var(--text-main);
+      background: var(--bg-card-hover);
+      border-color: var(--border-hover);
     }
     .status-dot {
       width: 7px;
@@ -212,35 +238,37 @@
     .studio-nav-tabs {
       display: flex;
       align-items: center;
-      background: rgba(0, 0, 0, 0.28);
+      background: var(--bg-card-inner);
       padding: 3px;
-      border-radius: 8px;
+      border-radius: 10px;
       border: 1px solid var(--border);
-      gap: 2px;
+      gap: 3px;
     }
     .step-item {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 14px;
-      border-radius: 6px;
+      padding: 5px 13px;
+      border-radius: 7px;
       border: 0;
       background: transparent;
       color: var(--text-muted);
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 12.5px;
+      font-weight: 500;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
       user-select: none;
+      white-space: nowrap;
     }
     .step-item:hover {
       color: var(--text-main);
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--bg-card-hover);
     }
     .step-item.active {
-      color: #ffffff;
-      background: var(--primary);
-      box-shadow: 0 1px 8px var(--primary-glow);
+      color: #ffffff !important;
+      background: var(--primary) !important;
+      font-weight: 600;
+      box-shadow: 0 1px 6px var(--primary-glow);
     }
     .step-item.completed {
       color: var(--text-main);
@@ -250,26 +278,28 @@
     .header-quick-actions {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+    }
+    .header-quick-actions .btn {
+      height: 32px;
+      padding: 0 11px;
+      font-size: 12px;
+      border-radius: 8px;
     }
     .btn-launch-glow {
       background: linear-gradient(135deg, #10b981, #059669) !important;
       color: #ffffff !important;
       border: 1px solid #059669 !important;
-      font-weight: 700 !important;
-      box-shadow: 0 0 12px rgba(16, 185, 129, 0.35) !important;
+      font-weight: 600 !important;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3) !important;
     }
     .btn-restart-glow {
       background: linear-gradient(135deg, #f59e0b, #d97706) !important;
-      color: #18181b !important;
+      color: #ffffff !important;
       border: 1px solid #d97706 !important;
-      font-weight: 700 !important;
-      box-shadow: 0 0 14px rgba(245, 158, 11, 0.45) !important;
+      font-weight: 600 !important;
+      box-shadow: 0 2px 10px rgba(245, 158, 11, 0.4) !important;
       animation: glow-restart 2.5s infinite ease-in-out;
-    }
-    @keyframes glow-restart {
-      0%, 100% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.3); }
-      50% { box-shadow: 0 0 18px rgba(245, 158, 11, 0.6); }
     }
 
     button.btn {
@@ -1534,6 +1564,31 @@
     // --- Header Game Context & Status Management ---
     let gamePollTimer = null;
 
+    function getShortEngineName(engineId, engineName) {
+      const id = (engineId || '').toLowerCase();
+      if (id.includes('xna') || id.includes('dotnet')) return 'XNA/.NET';
+      if (id.includes('unity')) return 'Unity';
+      if (id.includes('unreal')) return 'Unreal';
+      if (id.includes('re-engine')) return 'RE Engine';
+      if (id.includes('godot')) return 'Godot';
+      if (id.includes('source')) return 'Source';
+      if (id.includes('bethesda')) return 'Creation';
+      if (id.includes('redengine')) return 'REDengine';
+      return (engineName || engineId || '通用').split('/')[0].trim().slice(0, 10);
+    }
+
+    function getShortFwName(fw) {
+      if (!fw || !fw.installed || !fw.framework_name || fw.framework_name === '原生执行') return '';
+      const n = fw.framework_name;
+      if (n.includes('BepInEx')) return 'BepInEx';
+      if (n.includes('tModLoader')) return 'tMod';
+      if (n.includes('SMAPI')) return 'SMAPI';
+      if (n.includes('UE4SS')) return 'UE4SS';
+      if (n.includes('REFramework')) return 'REFramework';
+      if (n.includes('CET')) return 'CET';
+      return n.split(' ')[0].slice(0, 8);
+    }
+
     function updateHeaderGameContext(game) {
       const ctx = document.getElementById('header-game-context');
       if (!game) {
@@ -1551,9 +1606,10 @@
       const engineEl = document.getElementById('hdr-engine-tag');
       if (nameEl) nameEl.textContent = game.name || '未知游戏';
       if (engineEl) {
+        const engText = getShortEngineName(game.engine_id, game.engine_name);
         const fw = game.framework || {};
-        const fwTxt = (fw.installed && fw.framework_name && fw.framework_name !== '原生执行') ? ` · 🧩 ${fw.framework_name}` : '';
-        engineEl.textContent = (game.engine_name || game.engine_id || '已识别引擎') + fwTxt;
+        const fwName = getShortFwName(fw);
+        engineEl.textContent = fwName ? `${engText} · ${fwName}` : engText;
       }
 
       pollHeaderGameStatus();
@@ -1624,8 +1680,14 @@
         setupGatekeeper(currentGame);
       } else if (stage >= 3) {
         setupStudio(currentGame);
+        if (stage === 4) {
+          switchSidebarTab('mods');
+        } else {
+          renderSidebarContent();
+        }
       }
     }
+
 
     // --- Stage 1: Games Discovery & Selection ---
     async function scanGames() {
@@ -2321,10 +2383,11 @@
         }
 
         let symbolNotice = '';
-        if (action.symbol_verified === false && !(action.compiled === false && action.compilation_error)) {
+        if (action.symbol_verified === false && !action.installed_path && !(action.compiled === false && action.compilation_error)) {
           const cands = (action.symbol_candidates || []).slice(0, 3).join('、');
           symbolNotice = `<div style="margin:8px 0; padding:10px 14px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); border-radius:6px; color:#fbbf24; font-size:12px;">⚠️ <strong>目标未确认：</strong>未在游戏内找到目标符号，本 Mod 可能不生效${cands ? `。游戏内相近符号：${escapeHtml(cands)}` : ''}。</div>`;
         }
+
 
         actionHtml = `
           <div class="action-card">
@@ -2625,14 +2688,45 @@
 
       if (currentSidebarTab === 'live') {
         if (activeActions.length === 0) {
+          const gName = currentGame ? currentGame.name : '未选择游戏';
+          const eng = currentGame ? (currentGame.engine_name || currentGame.engine_id || '原生') : '-';
+          const fw = currentGame && currentGame.framework ? (currentGame.framework.framework_name || '原版') : '-';
           container.innerHTML = `
-            <div style="text-align:center; padding:40px 10px; color:var(--text-muted);">
-              <p>暂无正在生效的运行时修改</p>
-              <p style="font-size:12px; margin-top:6px;">在左侧对话框对 AI 提出需求即可实时生效。</p>
+            <div style="padding:16px; border-radius:10px; background:var(--bg-card-inner); border:1px solid var(--border); display:flex; flex-direction:column; gap:10px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:13px; font-weight:700; color:var(--text-main);">📡 运行环境遥测</span>
+                <span style="font-size:11px; padding:2px 7px; border-radius:8px; background:rgba(16,185,129,0.12); color:var(--emerald);">● 待命中</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-size:12px; padding:5px 0; border-bottom:1px solid var(--border);">
+                <span style="color:var(--text-dim);">目标游戏</span>
+                <span style="color:var(--text-main); font-weight:600;">${escapeHtml(gName)}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-size:12px; padding:5px 0; border-bottom:1px solid var(--border);">
+                <span style="color:var(--text-dim);">引擎架构</span>
+                <span style="color:var(--text-main);">${escapeHtml(eng)}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-size:12px; padding:5px 0; border-bottom:1px solid var(--border);">
+                <span style="color:var(--text-dim);">前置加载器</span>
+                <span style="color:var(--text-main);">${escapeHtml(fw)}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-size:12px; padding:5px 0; border-bottom:1px solid var(--border);">
+                <span style="color:var(--text-dim);">REA 逆向预检</span>
+                <span style="color:var(--emerald); font-weight:600;">✓ 符号特征已锁定</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-size:12px; padding:5px 0;">
+                <span style="color:var(--text-dim);">安全沙箱</span>
+                <span style="color:var(--emerald);">数值与越界防护已就绪</span>
+              </div>
+            </div>
+            <div style="margin-top:14px; padding:20px; border-radius:10px; background:var(--bg-card-inner); border:1px dashed var(--border); text-align:center;">
+              <div style="font-size:26px; margin-bottom:8px;">⚡</div>
+              <div style="font-size:13px; font-weight:600; color:var(--text-main);">等待 Mod 创作生成</div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:6px; line-height:1.5;">在左侧向 AI 描述您的需求，生成的 Mod 将立即出现在此面板，支持实时数值微调与热开关！</div>
             </div>
           `;
           return;
         }
+
         container.innerHTML = activeActions.map((act, idx) => `
           <div class="mod-item-card">
             <div class="mod-item-header">

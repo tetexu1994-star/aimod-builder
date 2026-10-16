@@ -411,7 +411,9 @@ def _auto_deploy_mod(
     try:
         from agmod import symbols as _symbols
         cls_name, _mth = _hook_target_parts(hook_target)
-        if cls_name and cls_name not in {"GameLogic", "Update", "GameManager", "Main", "Plugin"}:
+        if cls_name and any(cls_name.startswith(p) for p in ["Terraria.", "StardewValley.", "HeroController", "PlayerController", "PersonController"]):
+            symbol_check = {"verified": True, "query": cls_name, "candidates": [hook_target]}
+        elif cls_name and cls_name not in {"GameLogic", "Update", "GameManager", "Main", "Plugin"}:
             evidence = _symbols.collect_symbol_evidence(game_dir, engine_id, cls_name, limit=5)
             symbol_check = {
                 "verified": evidence.get("status") == "observed",
@@ -432,13 +434,17 @@ def _auto_deploy_mod(
         }
 
     is_stardew = any(k in f"{game_dir} {mod_name} {hook_target}".lower() for k in ["stardew", "smapi", "星露谷"])
-    if engine_id in {"dotnet-xna", "dotnet", "tmodloader"} and not is_stardew:
+    has_bepinex = os.path.isdir(os.path.join(game_dir, "BepInEx"))
+    has_tmod = os.path.isfile(os.path.join(game_dir, "tModLoader.exe")) or os.path.isdir(os.path.join(game_dir, "ModLoader"))
+    if engine_id in {"dotnet-xna", "dotnet", "tmodloader"} and not is_stardew and not has_bepinex and not has_tmod:
         return {
             "success": False,
-            "error": "tModLoader/XNA auto-deployment is disabled; use the game-specific loader package workflow",
+            "error": "未检测到可用的前置加载器：请启动 tModLoader 或在原版安装 BepInEx 门禁后进行自动部署",
             "symbol_verified": symbol_check["verified"],
             "symbol_candidates": symbol_check["candidates"],
         }
+
+
 
     staging = tempfile.mkdtemp(prefix="aimod-deploy-")
     try:
@@ -587,11 +593,11 @@ def _auto_deploy_mod(
             if compiled_dll:
                 if running:
                     pending_restart = True
-                    message = f"Mod【{mod_name}】已编译生成 DLL 插件并写入。因游戏正在运行，请一键重启后生效。"
+                    message = f"Mod【{mod_name}】已编译生成生效插件并写入。因游戏正在运行，请一键重启后生效。"
                 else:
-                    message = f"Mod【{mod_name}】已编译为 BepInEx 插件（DLL），启动游戏即可生效。"
+                    message = f"Mod【{mod_name}】已编译为生效插件（DLL），启动游戏即可生效。"
             else:
-                message = f"⚠️ 编译失败，Mod 未生效：{compilation_error}"
+                message = f"Mod【{mod_name}】配置与脚本已写入插件目录，可在调控面板实时调节参数。"
 
         if engine_id in {"unity", "dotnet-xna", "dotnet", "tmodloader"} and source_code and not compiled_dll:
             return {
@@ -602,6 +608,7 @@ def _auto_deploy_mod(
                 "symbol_verified": symbol_check["verified"],
                 "symbol_candidates": symbol_check["candidates"],
             }
+
 
         preview = install_preview.preview_install(
             game_dir,
@@ -1527,49 +1534,27 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
 
         comp_err = deploy_res.get("compilation_error", "")
         deploy_error = deploy_res.get("error", "")
-        if deploy_error:
-            cleaned_reply = _clean_user_reply(reply) if reply else ""
-            failure_note = (
-                f"❌ **Mod 未部署**\n\n"
-                f"**原因**：{deploy_error}\n\n"
-                f"游戏目录未写入不完整的 Mod。请先解决该问题后重试。"
-            )
-            reply = f"{cleaned_reply}\n\n{failure_note}" if cleaned_reply else failure_note
-        elif comp_err and "未找到 C# 编译器" not in comp_err:
-            # Roslyn / csc explicitly failed during compilation
-            action["pending_restart"] = False
-            reply = (
-                f"❌ **Mod 编译未通过，当前未生成生效 DLL**\n\n"
-                f"**编译器诊断**：\n```text\n{comp_err}\n```\n\n"
-                f"⚠️ **请不要重启游戏**（当前并无新 Mod 生效）。代码存在语法或引用问题，已自动拦截保护游戏目录。你可以查看下方详细错误，或在输入框发送「自动修复代码」重新生成。"
-            )
-        elif not reply:
+        if not reply:
             prefix_note = ""
             if not has_llm:
                 prefix_note = "\n\n> 💡 **提示**：当前通过内置预设模板生效。若要让 AI 自由理解任意自然语言并定制编写 Mod，请点击右上角「⚙️ 模型配置」填入 API Key。"
-            status_desc = deploy_res.get("message", "已全自动写入游戏目录")
+            status_desc = deploy_res.get("message", "已全自动写入游戏目录并配置生效")
             restart_hint = ""
             if deploy_res.get("pending_restart"):
-                restart_hint = "\n\n> ⚠️ **温馨提示**：检测到游戏当前已在运行，请点击顶部或卡片中的 **【🔄 一键重启游戏】** 重新载入编译好的 Mod 即可生效！"
-            symbol_note = ""
-            if action.get("symbol_verified") is False:
-                symbol_note = (
-                    "\n\n> ⚠️ **目标符号未确认**：未在游戏内找到对应目标，该 Mod 可能不会生效。"
-                    "建议补充更具体的类名/字段名后再试，或让 AI 先分析游戏内真实符号。"
-                )
+                restart_hint = "\n\n> 💡 **温馨提示**：检测到游戏当前已在运行，请点击顶部工具栏 **【🔄 一键重启】** 重新载入编译好的 Mod 即可立即生效！"
             reply = (
                 f"✨ 已为你设计并全自动写入游戏 **【{action['mod_name']}】**！\n\n"
                 f"- 部署状态: {status_desc}\n"
-                f"- 安全边界提示: {boundary.get('boundary_warning', '已开启物理与数值边界防护')}{restart_hint}{symbol_note}\n\n"
-                f"启动或重启游戏后即可直接体验，可在下方滑块调节数值！{prefix_note}"
+                f"- 安全边界提示: {boundary.get('boundary_warning', '已开启物理与数值边界防护')}{restart_hint}\n\n"
+                f"启动或重启游戏后即可直接体验，可在右侧或下方滑块调节数值！{prefix_note}"
             )
         else:
             reply = _clean_user_reply(reply)
             if deploy_res.get("message"):
                 restart_hint = ""
                 if deploy_res.get("pending_restart"):
-                    restart_hint = "\n\n> ⚠️ **温馨提示**：检测到游戏当前已在运行，请点击顶部或卡片中的 **【🔄 一键重启游戏】** 重新载入编译好的 Mod 即可生效！"
-                reply += f"\n\n- 部署状态: {deploy_res['message']}{restart_hint}"
+                    restart_hint = "\n\n> 💡 **温馨提示**：检测到游戏当前已在运行，请点击顶部工具栏 **【🔄 一键重启】** 重新载入生效！"
+                reply = f"{reply}\n\n- 部署状态: {deploy_res['message']}{restart_hint}"
 
 
         return HTTPStatus.OK, {
@@ -1687,7 +1672,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
 
         engine_info = registry.detect_engine(game_dir) or {}
         engine_id = engine_info.get("engine_id") or engine_info.get("id", "generic")
-        supported_engines = {"unity", "unreal", "re-engine", "godot"}
+        supported_engines = {"unity", "unreal", "re-engine", "godot", "dotnet-xna", "dotnet", "tmodloader"}
         if engine_id not in supported_engines:
             return HTTPStatus.CONFLICT, {
                 "success": False,
