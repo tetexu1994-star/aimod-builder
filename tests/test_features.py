@@ -214,7 +214,15 @@ class TestUnrealAdapter(unittest.TestCase):
                 f.write("[Info : BepInEx] Loading [mymod 1.0.0]")
             res = bepinex.verify_plugin(game_dir, "mymod")
             self.assertTrue(res["log_loaded"])
+            self.assertTrue(res["log_current"])
             self.assertTrue(res["effective"])
+
+            # Historical log lines from an older install must not prove the current DLL loaded.
+            os.utime(os.path.join(game_dir, "BepInEx", "LogOutput.log"), (1, 1))
+            res = bepinex.verify_plugin(game_dir, "mymod")
+            self.assertTrue(res["log_loaded"])
+            self.assertFalse(res["log_current"])
+            self.assertFalse(res["effective"])
 
 
 class TestScanSessionLogic(unittest.TestCase):

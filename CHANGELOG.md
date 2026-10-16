@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-16
+
+### Deployment and Verification Audit
+
+- Auto-deploy and pin now fail closed on invalid hook targets, code-generation errors, compilation failures, blocked install previews and transactional install errors; incomplete source/config files are no longer written into the game as a supposedly active mod.
+- Generic and tModLoader/XNA targets no longer fall through to a BepInEx auto-deploy path; they require their loader-specific package workflow.
+- Memory write verification now compares the actual encoded value, handles float precision correctly, and distinguishes `verified` from `changed` when rewriting the same value.
+- BepInEx load verification rejects mismatched or stale heartbeat reports, validates DLL size and report freshness, and treats historical log lines as informational unless the log is newer than the installed DLL.
+- Generated plugin heartbeat JSON is valid C# output and binds to the exact plugin ID and DLL size.
+- Aligned the BepInEx runtime profile with release `5.4.23.5`.
+- `verify.py` now introspects every `@mcp.tool()` registration instead of maintaining a partial hard-coded list.
+
 ## 2026-10-15
 
 ### Whole-repository hardening review

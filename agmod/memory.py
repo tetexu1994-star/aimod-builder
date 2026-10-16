@@ -123,7 +123,8 @@ def read_value(handle: int, address: int, kind: str = "int32"):
 
 def write_value(handle: int, address: int, value, kind: str = "int32") -> int:
     fmt, _ = _SIZES[kind]
-    return write_bytes(handle, address, struct.pack(fmt, value))
+    packed = struct.pack(fmt, value)
+    return write_bytes(handle, address, packed)
 
 
 def verify_value(handle: int, address: int, expected, kind: str = "int32") -> dict:
@@ -131,21 +132,26 @@ def verify_value(handle: int, address: int, expected, kind: str = "int32") -> di
 
     This is the read-back half of "did my change really take effect".
     """
+    fmt, _ = _SIZES[kind]
+    normalized = struct.unpack(fmt, struct.pack(fmt, expected))[0]
     actual = read_value(handle, address, kind)
-    return {"matches": actual == expected, "expected": expected, "actual": actual}
+    return {"matches": actual == normalized, "expected": normalized, "actual": actual}
 
 
 def write_and_verify(handle: int, address: int, value, kind: str = "int32") -> dict:
     """Write `value`, then read it back and confirm it actually took effect."""
+    fmt, _ = _SIZES[kind]
+    normalized = struct.unpack(fmt, struct.pack(fmt, value))[0]
     before = read_value(handle, address, kind)
-    write_value(handle, address, value, kind)
+    write_value(handle, address, normalized, kind)
     after = read_value(handle, address, kind)
     return {
         "kind": kind,
         "before": before,
-        "written": value,
+        "written": normalized,
         "after": after,
-        "changed": after == value,
+        "changed": before != after,
+        "verified": after == normalized,
     }
 
 

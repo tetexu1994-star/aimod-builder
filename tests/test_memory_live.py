@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -21,6 +22,19 @@ _HELPER = (
 
 
 class TestMemoryLive(unittest.TestCase):
+    def test_verification_normalizes_values_and_distinguishes_unchanged_writes(self):
+        with mock.patch.object(memory, "read_value", side_effect=[100, 100]), mock.patch.object(memory, "write_value") as write:
+            result = memory.write_and_verify(1, 2, 100, "int32")
+        write.assert_called_once_with(1, 2, 100, "int32")
+        self.assertTrue(result["verified"])
+        self.assertFalse(result["changed"])
+
+        normalized = memory.struct.unpack("<f", memory.struct.pack("<f", 2.1))[0]
+        with mock.patch.object(memory, "read_value", return_value=normalized):
+            result = memory.verify_value(1, 2, 2.1, "float32")
+        self.assertTrue(result["matches"])
+        self.assertEqual(result["expected"], normalized)
+
     @unittest.skipUnless(memory.IS_WINDOWS, "memory engine is Windows-only")
     def test_write_and_verify_against_real_process(self):
         with tempfile.TemporaryDirectory() as d:
@@ -43,6 +57,7 @@ class TestMemoryLive(unittest.TestCase):
 
                     res = memory.write_and_verify(h, addr, 99999, "int32")
                     self.assertTrue(res["changed"])
+                    self.assertTrue(res["verified"])
                     self.assertEqual(res["before"], 100)
                     self.assertEqual(res["after"], 99999)
 

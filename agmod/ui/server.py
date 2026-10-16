@@ -39,14 +39,13 @@ def _hook_target_parts(target: str) -> tuple[str, str]:
     elif "." in target:
         class_name, method_name = target.rsplit(".", 1)
     else:
-        class_name = re.sub(r"[^A-Za-z0-9_]", "_", target).strip("_") or "GameLogic"
-        method_name = "Update"
+        raise ValueError("hook_target must look like Class:Method or Class.Method")
     cls = class_name.strip()
     mth = method_name.strip()
-    if not cls or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]*", cls):
-        cls = "GameLogic"
+    if not cls or not re.fullmatch(r"[A-Za-z_/][A-Za-z0-9_./]*", cls):
+        raise ValueError(f"invalid class name in hook_target: {cls}")
     if not mth or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", mth):
-        mth = "Update"
+        raise ValueError(f"invalid method name in hook_target: {mth}")
     return cls, mth
 
 
@@ -396,6 +395,10 @@ def _auto_deploy_mod(
     engine_info = registry.detect_engine(game_dir) or {}
     engine_id = engine_info.get("engine_id") or engine_info.get("id", "generic")
 
+    supported_engines = {"unity", "unreal", "re-engine", "godot", "dotnet-xna", "dotnet", "tmodloader"}
+    if engine_id not in supported_engines:
+        return {"success": False, "error": f"auto-deployment is not supported for engine '{engine_id}'"}
+
     if engine_id == "unreal" and engine_info.get("variant") == "ue5":
         return {
             "success": False,
@@ -420,8 +423,22 @@ def _auto_deploy_mod(
 
     try:
         source_code, normalized_target = _pinned_source(engine_id, mod_name, hook_target, params, mod_id=mod_id)
-    except Exception:
-        source_code, normalized_target = f"-- Mod {mod_name}\n", {}
+    except Exception as exc:
+        return {
+            "success": False,
+            "error": f"code generation failed: {exc}",
+            "symbol_verified": symbol_check["verified"],
+            "symbol_candidates": symbol_check["candidates"],
+        }
+
+    is_stardew = any(k in f"{game_dir} {mod_name} {hook_target}".lower() for k in ["stardew", "smapi", "星露谷"])
+    if engine_id in {"dotnet-xna", "dotnet", "tmodloader"} and not is_stardew:
+        return {
+            "success": False,
+            "error": "tModLoader/XNA auto-deployment is disabled; use the game-specific loader package workflow",
+            "symbol_verified": symbol_check["verified"],
+            "symbol_candidates": symbol_check["candidates"],
+        }
 
     staging = tempfile.mkdtemp(prefix="aimod-deploy-")
     try:
@@ -477,7 +494,7 @@ def _auto_deploy_mod(
             pairs.append((source, os.path.join(mods_root, "mod_main.gd")))
             message = f"Godot Mod【{mod_name}】已全自动写入 mods-unpacked 目录！"
 
-        elif engine_id in {"dotnet-xna", "dotnet"} and any(k in f"{game_dir} {mod_name}".lower() for k in ["stardew", "smapi", "星露谷"]):
+        elif engine_id in {"dotnet-xna", "dotnet"} and is_stardew:
             mods_root = os.path.join(game_dir, "Mods", mod_id)
             smapi_manifest = {
                 "Name": mod_name,
@@ -576,6 +593,15 @@ def _auto_deploy_mod(
             else:
                 message = f"⚠️ 编译失败，Mod 未生效：{compilation_error}"
 
+        if engine_id in {"unity", "dotnet-xna", "dotnet", "tmodloader"} and source_code and not compiled_dll:
+            return {
+                "success": False,
+                "error": compilation_error or "plugin compilation failed",
+                "compilation_error": compilation_error,
+                "compiled": False,
+                "symbol_verified": symbol_check["verified"],
+                "symbol_candidates": symbol_check["candidates"],
+            }
 
         preview = install_preview.preview_install(
             game_dir,
@@ -584,8 +610,28 @@ def _auto_deploy_mod(
             engine_id=engine_id,
             check_running=False,
         )
-        if preview.get("ready"):
+        if not preview.get("ready"):
+            return {
+                "success": False,
+                "error": "install preview blocked deployment",
+                "preview": preview,
+                "compiled": compiled_dll,
+                "compilation_error": compilation_error,
+                "symbol_verified": symbol_check["verified"],
+                "symbol_candidates": symbol_check["candidates"],
+            }
+        try:
             rollback.install_files(game_dir, mod_id, pairs, check_running=False)
+        except Exception as exc:
+            return {
+                "success": False,
+                "error": f"installation failed: {exc}",
+                "preview": preview,
+                "compiled": compiled_dll,
+                "compilation_error": compilation_error,
+                "symbol_verified": symbol_check["verified"],
+                "symbol_candidates": symbol_check["candidates"],
+            }
 
         verified = {}
         if engine_id not in {"unreal", "re-engine", "godot"} and compiled_dll:
@@ -1474,12 +1520,22 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             action["deploy_message"] = deploy_res.get("message", "")
             action["compiled"] = deploy_res.get("compiled", False)
             action["compilation_error"] = deploy_res.get("compilation_error", "")
+            action["deploy_error"] = deploy_res.get("error", "")
             action["verified"] = deploy_res.get("verified", {})
             action["symbol_verified"] = deploy_res.get("symbol_verified")
             action["symbol_candidates"] = deploy_res.get("symbol_candidates", [])
 
         comp_err = deploy_res.get("compilation_error", "")
-        if comp_err and "未找到 C# 编译器" not in comp_err:
+        deploy_error = deploy_res.get("error", "")
+        if deploy_error:
+            cleaned_reply = _clean_user_reply(reply) if reply else ""
+            failure_note = (
+                f"❌ **Mod 未部署**\n\n"
+                f"**原因**：{deploy_error}\n\n"
+                f"游戏目录未写入不完整的 Mod。请先解决该问题后重试。"
+            )
+            reply = f"{cleaned_reply}\n\n{failure_note}" if cleaned_reply else failure_note
+        elif comp_err and "未找到 C# 编译器" not in comp_err:
             # Roslyn / csc explicitly failed during compilation
             action["pending_restart"] = False
             reply = (
@@ -1631,6 +1687,12 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
 
         engine_info = registry.detect_engine(game_dir) or {}
         engine_id = engine_info.get("engine_id") or engine_info.get("id", "generic")
+        supported_engines = {"unity", "unreal", "re-engine", "godot"}
+        if engine_id not in supported_engines:
+            return HTTPStatus.CONFLICT, {
+                "success": False,
+                "error": f"pinning is not supported for engine '{engine_id}'; use its loader-specific package workflow",
+            }
         if engine_id == "unreal" and engine_info.get("variant") == "ue5":
             return HTTPStatus.CONFLICT, {
                 "success": False,
@@ -1690,17 +1752,21 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 source_manifest = os.path.join(staging, "mod.json")
                 with open(source_manifest, "w", encoding="utf-8") as f:
                     json.dump(manifest, f, ensure_ascii=False, indent=2)
-                pairs.append((source_manifest, os.path.join(mod_folder, "mod.json")))
-                if source_code:
-                    source_cs = os.path.join(staging, f"{mod_id}.cs")
-                    with open(source_cs, "w", encoding="utf-8") as f:
-                        f.write(source_code)
-                    pairs.append((source_cs, os.path.join(mod_folder, f"{mod_id}.cs")))
-
-                    source_dll = os.path.join(staging, f"{mod_id}.dll")
-                    comp_res = bepinex.compile_unity_plugin(game_dir, mod_id, source_cs, source_dll)
-                    if comp_res.get("success") and os.path.isfile(source_dll):
-                        pairs.append((source_dll, os.path.join(game_dir, "BepInEx", "plugins", f"{mod_id}.dll")))
+                source_cs = os.path.join(staging, f"{mod_id}.cs")
+                with open(source_cs, "w", encoding="utf-8") as f:
+                    f.write(source_code)
+                source_dll = os.path.join(staging, f"{mod_id}.dll")
+                comp_res = bepinex.compile_unity_plugin(game_dir, mod_id, source_cs, source_dll)
+                if not comp_res.get("success") or not os.path.isfile(source_dll):
+                    return HTTPStatus.UNPROCESSABLE_ENTITY, {
+                        "success": False,
+                        "error": comp_res.get("error", "plugin compilation failed"),
+                    }
+                pairs.extend([
+                    (source_manifest, os.path.join(mod_folder, "mod.json")),
+                    (source_cs, os.path.join(mod_folder, f"{mod_id}.cs")),
+                    (source_dll, os.path.join(game_dir, "BepInEx", "plugins", f"{mod_id}.dll")),
+                ])
 
                 message = f"Mod【{mod_name}】已成功固化到游戏目录！下次直接在 Steam 启动游戏依然生效。"
                 mods_root = mod_folder

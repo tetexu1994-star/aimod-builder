@@ -19,7 +19,7 @@ _GROUPS = ("code", "config", "assets", "localization", "manifest", "documentatio
 
 _PROFILES = {
     "unity": {
-        "loader": ("BepInEx/BepInExPack", "BepInEx", "5.4.23.0", "5.4.2100"),
+        "loader": ("BepInEx/BepInExPack", "BepInEx", "5.4.23.5", "5.4.2100"),
         "apis": (("HarmonyLib/0Harmony", "Harmony", "2.10.1"),),
     },
     "unreal": {

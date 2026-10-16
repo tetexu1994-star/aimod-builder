@@ -92,7 +92,9 @@ namespace {namespace}
             try
             {{
                 var reportPath = System.IO.Path.Combine(Paths.PluginPath, "{mod_id}.verified.json");
-                System.IO.File.WriteAllText(reportPath, "{{\"mod_id\":\"{mod_id}\",\"loaded\":true}}");
+                var dllSize = new System.IO.FileInfo(typeof({class_name}).Assembly.Location).Length;
+                string reportJson = "{{\\"mod_id\\":\\"{mod_id}\\",\\"loaded\\":true,\\"dll_size\\":" + dllSize + "}}";
+                System.IO.File.WriteAllText(reportPath, reportJson);
             }}
             catch {{ }}
         }}
@@ -403,6 +405,7 @@ def verify_plugin(game_dir: str, mod_id: str) -> dict:
     dll_size = os.path.getsize(dll_path) if dll_exists else 0
 
     log_loaded = False
+    latest_log_mtime = 0.0
     log_errors: list[str] = []
     for log_path in (
         os.path.join(game_dir, "BepInEx", "LogOutput.log"),
@@ -413,14 +416,17 @@ def verify_plugin(game_dir: str, mod_id: str) -> dict:
         try:
             with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
                 text = f.read()
+            latest_log_mtime = max(latest_log_mtime, os.path.getmtime(log_path))
         except OSError:
             continue
-        if mod_id.lower() in text.lower():
-            log_loaded = True
         for line in text.splitlines()[-300:]:
             low = line.lower()
-            if ("error" in low or "exception" in low) and mod_id.lower() in low:
+            has_mod = mod_id.lower() in low
+            has_error = any(token in low for token in ("error", "exception", "failed", "failure"))
+            if has_error and has_mod:
                 log_errors.append(line.strip()[:200])
+            elif has_mod and not has_error and any(token in low for token in ("loading", "loaded", "initialized", "plugin")):
+                log_loaded = True
 
     # Plugin-written load heartbeat: a stronger signal than the log alone.
     heartbeat = False
@@ -433,17 +439,24 @@ def verify_plugin(game_dir: str, mod_id: str) -> dict:
                 report = _json.load(f)
         except Exception:
             report = {}
-        if report.get("loaded") is True or report.get("mod_id"):
-            heartbeat = True
+        heartbeat = (
+            report.get("loaded") is True
+            and report.get("mod_id") == mod_id
+            and report.get("dll_size") == dll_size
+            and dll_exists
+            and os.path.getmtime(report_path) >= os.path.getmtime(dll_path)
+        )
 
     installed = dll_exists and dll_size > 0
-    loaded = log_loaded or heartbeat
+    log_current = log_loaded and dll_exists and latest_log_mtime >= os.path.getmtime(dll_path)
+    loaded = heartbeat or log_current
     return {
         "mod_id": mod_id,
         "installed": installed,
         "dll_path": dll_path if dll_exists else "",
         "dll_size": dll_size,
         "log_loaded": log_loaded,
+        "log_current": log_current,
         "heartbeat": heartbeat,
         "log_errors": log_errors,
         "effective": installed and loaded,
