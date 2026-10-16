@@ -495,9 +495,13 @@ def build_tmod_mod(project_dir: str) -> str:
 
 
 @mcp.tool()
-def rea_managed_members(path: str) -> str:
-    """List .NET types/fields/methods of a managed assembly via rea (no decompiler needed)."""
-    return rea.managed_members(path)
+def rea_managed_members(path: str, type_name: str = "") -> str:
+    """List .NET types/fields/methods of a managed assembly via rea (no decompiler needed).
+
+    `type_name` optionally narrows to one exact type (full_name) to keep large
+    assemblies' output within token limits.
+    """
+    return rea.managed_members(path, type_name or None)
 
 
 @mcp.tool()
@@ -522,6 +526,30 @@ def rea_disassemble(target: str, symbol_or_addr: str) -> str:
 def rea_call_graph(target: str, symbol: str) -> str:
     """Inspect function call graph and cross-references via REA."""
     return rea.call_graph(target, symbol)
+
+
+@mcp.tool()
+def rea_decompile(target: str, symbol_or_addr: str) -> str:
+    """Decompile a native function to pseudocode via REA (needs Hopper/Ghidra/IDA provider)."""
+    return rea.decompile(target, symbol_or_addr)
+
+
+@mcp.tool()
+def rea_search(target: str, query: str) -> str:
+    """Search a native binary's symbols/strings via REA."""
+    return rea.search(target, query)
+
+
+@mcp.tool()
+def rea_trace(target: str, query: str) -> str:
+    """Trace references to a symbol/string across a native binary via REA."""
+    return rea.trace(target, query)
+
+
+@mcp.tool()
+def rea_sqlite_database(path: str) -> str:
+    """Inspect a SQLite database (e.g. a game save) — tables, columns, rows — via rea."""
+    return rea.sqlite_database(path)
 
 
 @mcp.tool()

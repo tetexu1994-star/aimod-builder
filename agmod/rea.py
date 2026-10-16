@@ -42,8 +42,11 @@ def run(args: Sequence[str], token_limit: int = _TOKEN_LIMIT) -> str:
     return _run(args, token_limit)
 
 
-def managed_members(path: str) -> str:
-    return _run(["inspect-managed-members", path])
+def managed_members(path: str, type_name: str | None = None) -> str:
+    args = ["inspect-managed-members", path]
+    if type_name:
+        args += ["--type", type_name]
+    return _run(args)
 
 
 def managed_artifact(path: str) -> str:
@@ -64,6 +67,22 @@ def disassemble(target: str, symbol_or_addr: str) -> str:
 
 def call_graph(target: str, symbol: str) -> str:
     return _run(["xrefs", target, symbol])
+
+
+def decompile(target: str, symbol_or_addr: str) -> str:
+    return _run(["decompile", target, symbol_or_addr])
+
+
+def search(target: str, query: str) -> str:
+    return _run(["search", target, query])
+
+
+def trace(target: str, query: str) -> str:
+    return _run(["trace", target, query])
+
+
+def sqlite_database(path: str) -> str:
+    return _run(["inspect-sqlite-database", path])
 
 
 def fast_search_members(path: str, query: str, limit: int = 50) -> list[str]:
