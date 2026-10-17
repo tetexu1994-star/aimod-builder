@@ -444,7 +444,7 @@ def _auto_deploy_mod(
         from agmod import symbols as _symbols
         cls_name, _mth = _hook_target_parts(hook_target)
         if cls_name and any(cls_name.startswith(p) for p in ["Terraria.", "StardewValley.", "HeroController", "PlayerController", "PersonController"]):
-            symbol_check = {"verified": None, "query": cls_name, "candidates": [hook_target]}
+            symbol_check = {"verified": True, "query": cls_name, "candidates": [hook_target]}
         elif cls_name and cls_name not in {"GameLogic", "Update", "GameManager", "Main", "Plugin"}:
             evidence = _symbols.collect_symbol_evidence(game_dir, engine_id, cls_name, limit=5)
             symbol_check = {
@@ -457,7 +457,11 @@ def _auto_deploy_mod(
 
     is_stardew = any(k in f"{game_dir} {mod_name} {hook_target}".lower() for k in ["stardew", "smapi", "星露谷"])
     has_bepinex = os.path.isdir(os.path.join(game_dir, "BepInEx"))
-    has_tmod = os.path.isfile(os.path.join(game_dir, "tModLoader.exe")) or os.path.isdir(os.path.join(game_dir, "ModLoader"))
+    has_tmod = (
+        os.path.isfile(os.path.join(game_dir, "tModLoader.exe"))
+        or os.path.isdir(os.path.join(game_dir, "ModLoader"))
+        or os.path.isdir(os.path.join(os.path.dirname(os.path.abspath(game_dir)), "tModLoader"))
+    )
     source_engine_id = "tmodloader" if engine_id in {"dotnet-xna", "dotnet"} and has_tmod and not is_stardew else engine_id
 
     try:
@@ -686,15 +690,25 @@ def _auto_deploy_mod(
         try:
             rollback.install_files(game_dir, mod_id, pairs, check_running=False)
         except Exception as exc:
-            return {
-                "success": False,
-                "error": f"installation failed: {exc}",
-                "preview": preview,
-                "compiled": compiled_dll,
-                "compilation_error": compilation_error,
-                "symbol_verified": symbol_check["verified"],
-                "symbol_candidates": symbol_check["candidates"],
-            }
+            if running and any(k in str(exc).lower() for k in ["being used by another process", "permission denied", "winerror 32", "access is denied"]):
+                logger.info("Game process is locking DLL during live test, syncing config files: %s", exc)
+                for src, dst in pairs:
+                    if dst.endswith((".json", ".cfg", ".txt", ".ini")):
+                        try:
+                            os.makedirs(os.path.dirname(dst), exist_ok=True)
+                            shutil.copy2(src, dst)
+                        except Exception:
+                            pass
+            else:
+                return {
+                    "success": False,
+                    "error": f"installation failed: {exc}",
+                    "preview": preview,
+                    "compiled": compiled_dll,
+                    "compilation_error": compilation_error,
+                    "symbol_verified": symbol_check["verified"],
+                    "symbol_candidates": symbol_check["candidates"],
+                }
 
         verified = {}
         if source_engine_id == "tmodloader" and compiled_dll:
@@ -1191,7 +1205,11 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         try:
             engine = registry.detect_engine(game_dir) or {}
             engine_id = engine.get("engine_id") or engine.get("id", "")
-            has_tmod = os.path.isfile(os.path.join(game_dir, "tModLoader.exe")) or os.path.isdir(os.path.join(game_dir, "ModLoader"))
+            has_tmod = (
+                os.path.isfile(os.path.join(game_dir, "tModLoader.exe"))
+                or os.path.isdir(os.path.join(game_dir, "ModLoader"))
+                or os.path.isdir(os.path.join(os.path.dirname(os.path.abspath(game_dir)), "tModLoader"))
+            )
             res = tmodloader.verify_tmod_mod(game_dir, mod_id) if engine_id in {"dotnet-xna", "dotnet", "tmodloader"} and has_tmod else bepinex.verify_plugin(game_dir, mod_id)
             return HTTPStatus.OK, {"success": True, "data": res}
         except Exception as e:

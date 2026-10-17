@@ -169,7 +169,13 @@ def find_tml_root(game_dir: str = "") -> str:
     """Find an installed tModLoader root containing tModLoader.dll and tMLMod.targets."""
     candidates = []
     if game_dir:
-        candidates.extend([game_dir, os.path.dirname(os.path.abspath(game_dir))])
+        abs_game = os.path.abspath(game_dir)
+        candidates.extend([
+            game_dir,
+            os.path.join(os.path.dirname(abs_game), "tModLoader"),
+            os.path.join(game_dir, "tModLoader"),
+            os.path.dirname(abs_game),
+        ])
     env_root = os.environ.get("TML_PATH") or os.environ.get("TMLSteamPath")
     if env_root:
         candidates.append(env_root)
@@ -180,6 +186,13 @@ def find_tml_root(game_dir: str = "") -> str:
         r"C:\Program Files (x86)\Steam\steamapps\common\tModLoader",
         r"C:\Program Files\Steam\steamapps\common\tModLoader",
     ])
+    for drive in ["C:", "D:", "E:", "F:", "G:"]:
+        candidates.extend([
+            f"{drive}\\SteamLibrary\\steamapps\\common\\tModLoader",
+            f"{drive}\\Steam\\steamapps\\common\\tModLoader",
+            f"{drive}\\Program Files (x86)\\Steam\\steamapps\\common\\tModLoader",
+            f"{drive}\\Program Files\\Steam\\steamapps\\common\\tModLoader",
+        ])
     for candidate in candidates:
         if os.path.isfile(os.path.join(candidate, "tModLoader.dll")) and os.path.isfile(os.path.join(candidate, "tMLMod.targets")):
             return os.path.abspath(candidate)
