@@ -293,11 +293,25 @@ def compile_unity_plugin(
         # Non-Unity .NET game (e.g. Terraria / XNA / FNA / SMAPI): reference game executables & managed DLLs
         from .pe import is_managed_assembly
         try:
+            primary_exe = None
+            from . import discovery
+            try:
+                primary_exe = discovery.find_primary_executable_path(game_dir)
+            except Exception:
+                pass
+            if primary_exe and os.path.isfile(primary_exe) and is_managed_assembly(primary_exe):
+                refs.append(primary_exe)
+
             for f in os.listdir(game_dir):
-                if f.lower().endswith((".exe", ".dll")):
+                if f.lower().endswith(".dll"):
                     fp = os.path.join(game_dir, f)
                     if os.path.isfile(fp) and is_managed_assembly(fp):
                         refs.append(fp)
+                elif f.lower().endswith(".exe") and not primary_exe:
+                    if "server" not in f.lower() and "setup" not in f.lower():
+                        fp = os.path.join(game_dir, f)
+                        if os.path.isfile(fp) and is_managed_assembly(fp):
+                            refs.append(fp)
             smapi_internal = os.path.join(game_dir, "smapi-internal")
             if os.path.isdir(smapi_internal):
                 for f in os.listdir(smapi_internal):

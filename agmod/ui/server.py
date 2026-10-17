@@ -66,6 +66,10 @@ def _bepinex_plugin_source(class_name: str, method_name: str, mod_id: str, mod_n
     if not re.fullmatch(r"[A-Za-z0-9_.-]+", mod_id):
         raise ValueError("invalid mod_id")
     escaped_name = mod_name.replace("\\", "\\\\").replace('"', '\\"').replace("\r", " ").replace("\n", " ")
+    is_non_unity = plugin_class != "Plugin"
+    base_stub = "    public class BaseUnityPlugin { }\n" if is_non_unity else ""
+    log_stmt = "Console.WriteLine(\"=== [AIMod] @NAME@ Loaded Successfully! ===\");" if is_non_unity else "Logger.LogInfo(\"=== [AIMod] @NAME@ Loaded Successfully! ===\");"
+
     csharp = r'''using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -77,7 +81,7 @@ using HarmonyLib;
 
 namespace AIModPlugin_@SAFEID@
 {
-    [BepInPlugin("com.aimod.@SAFEID@", "@NAME@", "1.0.0")]
+@BASE_STUB@    [BepInPlugin("com.aimod.@SAFEID@", "@NAME@", "1.0.0")]
     public class @PLUGINCLASS@_@SAFEID@ : BaseUnityPlugin
     {
         public static Dictionary<string, object> Tunables = new Dictionary<string, object>();
@@ -91,7 +95,7 @@ namespace AIModPlugin_@SAFEID@
             ReadTuning();
             Harmony harmony = new Harmony("com.aimod.@SAFEID@");
             harmony.PatchAll();
-            Logger.LogInfo("=== [AIMod] @NAME@ Loaded Successfully! ===");
+            @LOG_STMT@
             try
             {
                 var dllFile = new FileInfo(typeof(@PLUGINCLASS@_@SAFEID@).Assembly.Location);
@@ -331,6 +335,8 @@ namespace AIModPlugin_@SAFEID@
         .replace("@MODID@", mod_id)
         .replace("@CLASS@", class_name)
         .replace("@METHOD@", method_name)
+        .replace("@BASE_STUB@", base_stub)
+        .replace("@LOG_STMT@", log_stmt)
     )
     return csharp, {"class_name": class_name, "method_name": method_name}
 

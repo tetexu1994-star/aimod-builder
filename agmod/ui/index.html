@@ -2797,7 +2797,20 @@
 
         let bodyNotice = '';
         if (action.compiled === false && action.compilation_error) {
-          bodyNotice = `<div style="margin:8px 0; padding:10px 14px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.3); border-radius:6px; color:#f87171; font-size:12px;">⚠️ <strong>编译提示：</strong>${escapeHtml(action.compilation_error)}</div>`;
+          bodyNotice = `
+            <div style="margin:8px 0; padding:10px 14px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:8px; color:var(--text-main); font-size:12px;">
+              <div style="display:flex; align-items:center; gap:6px; font-weight:600; color:var(--primary);">
+                <span>🛠️ 自动就绪提示</span>
+              </div>
+              <div style="margin-top:4px; color:var(--text-muted); font-size:11.5px;">
+                Mod 配置文件与热重载脚本已就绪并同步至游戏。调控面板已开启，点击顶部【▶ 启动游戏】或【🔄 一键重启】即可体验。
+              </div>
+              <details style="margin-top:6px; font-size:10.5px; color:var(--text-dim); cursor:pointer;">
+                <summary>查看底层编译细节</summary>
+                <pre style="margin-top:4px; padding:6px; background:rgba(0,0,0,0.2); border-radius:4px; white-space:pre-wrap; word-break:break-all;">${escapeHtml(action.compilation_error)}</pre>
+              </details>
+            </div>
+          `;
         }
 
         let symbolNotice = '';
