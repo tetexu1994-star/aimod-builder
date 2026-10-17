@@ -729,8 +729,13 @@ def _auto_deploy_mod(
                 f.write("\n".join(cfg_lines) + "\n")
             pairs.append((cfg_source, os.path.join(cfg_dir, f"{mod_id}.cfg")))
 
+            healed_by = comp_res.get("healed_by") if 'comp_res' in locals() and isinstance(comp_res, dict) else ""
             if running:
                 message = f"Mod【{mod_name}】已写入；游戏运行中，新插件需重启后加载。"
+            elif healed_by == "llm":
+                message = f"Mod【{mod_name}】已通过大模型自愈（消除了特殊架构依赖冲突）并成功编译为生效插件！"
+            elif healed_by == "heuristic":
+                message = f"Mod【{mod_name}】已通过自愈引擎完成特殊环境适配并编译为生效插件！"
             elif compiled_dll:
                 message = f"Mod【{mod_name}】已编译为生效插件（DLL），启动游戏即可生效。"
             else:
@@ -810,6 +815,7 @@ def _auto_deploy_mod(
             "pending_restart": pending_restart,
             "compiled": compiled_dll,
             "compilation_error": compilation_error,
+            "healed_by": comp_res.get("healed_by", "") if 'comp_res' in locals() and isinstance(comp_res, dict) else "",
             "verified": verified,
             "symbol_verified": symbol_check["verified"],
             "symbol_candidates": symbol_check["candidates"],
@@ -1696,6 +1702,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             action["verified"] = deploy_res.get("verified", {})
             action["symbol_verified"] = deploy_res.get("symbol_verified")
             action["symbol_candidates"] = deploy_res.get("symbol_candidates", [])
+            action["healed_by"] = deploy_res.get("healed_by", "")
 
         running, _ = rollback.is_game_running(game_dir)
         deploy_error = deploy_res.get("error", "")

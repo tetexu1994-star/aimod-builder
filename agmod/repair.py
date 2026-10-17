@@ -171,12 +171,44 @@ def diagnose_build_output(output: str, return_code: int | None = None) -> dict:
     }
 
 
-def auto_heal_csharp_source(source_code: str, errors: list[CompileError]) -> tuple[str, list[str]]:
-    """Apply safe automated fixes (like missing using statements) to C# source code."""
+def auto_heal_csharp_source(
+    source_code: str,
+    errors: list[CompileError],
+    is_non_unity: bool = False,
+) -> tuple[str, list[str]]:
+    """Apply safe automated fixes (like missing using statements, stubs for non-Unity, semicolons) to C# source code."""
     applied: list[str] = []
     lines = source_code.splitlines()
 
-    # Collect missing using statements
+    # 1. Check for CS0012 (e.g. MonoBehaviour / UnityEngine reference missing in non-Unity games like Terraria)
+    has_cs0012_unity = any(
+        err.code == "CS0012" and ("MonoBehaviour" in err.message or "UnityEngine" in err.message)
+        for err in errors
+    ) or is_non_unity
+
+    if has_cs0012_unity and "public class BaseUnityPlugin" not in source_code:
+        # Check if code inherits BaseUnityPlugin
+        if ": BaseUnityPlugin" in source_code or "BaseUnityPlugin" in source_code:
+            # Inject BaseUnityPlugin stub right after namespace declaration
+            for i, line in enumerate(lines):
+                if re.match(r"^\s*namespace\s+[A-Za-z0-9_.]+", line):
+                    # Find open brace or next line
+                    insert_pos = i + 1
+                    while insert_pos < len(lines) and "{" not in lines[insert_pos]:
+                        insert_pos += 1
+                    insert_pos += 1
+                    stub = "    // Auto-injected stub for non-Unity .NET runtime\n    public class BaseUnityPlugin { }\n"
+                    lines.insert(insert_pos, stub)
+                    applied.append("Injected local `BaseUnityPlugin` stub for non-Unity runtime")
+                    break
+
+        # Replace Logger.LogInfo with Console.WriteLine
+        for i, line in enumerate(lines):
+            if "Logger.LogInfo(" in line:
+                lines[i] = line.replace("Logger.LogInfo(", "Console.WriteLine(")
+                applied.append("Replaced `Logger.LogInfo` with `Console.WriteLine`")
+
+    # 2. Collect missing using statements (CS0246)
     missing_usings: set[str] = set()
     for err in errors:
         if err.code == "CS0246":
@@ -185,7 +217,6 @@ def auto_heal_csharp_source(source_code: str, errors: list[CompileError]) -> tup
                     missing_usings.add(using_stmt)
 
     if missing_usings:
-        # Find where usings are declared or insert at beginning
         insert_idx = 0
         for i, line in enumerate(lines):
             if line.strip().startswith("using "):
@@ -196,7 +227,31 @@ def auto_heal_csharp_source(source_code: str, errors: list[CompileError]) -> tup
             applied.append(f"Injected `{u}`")
             insert_idx += 1
 
+    # 3. Check for CS1002 (missing semicolon)
+    for err in errors:
+        if err.code == "CS1002" and 1 <= err.line <= len(lines):
+            target_line = lines[err.line - 1].rstrip()
+            if target_line and not target_line.endswith((";", "{", "}")):
+                lines[err.line - 1] = target_line + ";"
+                applied.append(f"Appended missing semicolon at line {err.line}")
+
     result = "\n".join(lines)
     if source_code.endswith(("\n", "\r\n")):
         result += "\n"
     return result, applied
+
+
+def auto_heal_compilation_failure(
+    source_code: str,
+    output: str,
+    is_non_unity: bool = False,
+) -> tuple[str, list[str]]:
+    """Parse compiler output, diagnose issues, and apply automated code corrections."""
+    errors = parse_dotnet_errors(output)
+    if not errors and ("CS0012" in output or "MonoBehaviour" in output):
+        errors.append(CompileError(file="Plugin.cs", code="CS0012", message="The type 'MonoBehaviour' is defined in an assembly that is not referenced", severity="error"))
+    if not errors and ("CS1002" in output or "; expected" in output):
+        errors.append(CompileError(file="Plugin.cs", code="CS1002", message="; expected", severity="error"))
+
+    return auto_heal_csharp_source(source_code, errors, is_non_unity=is_non_unity)
+

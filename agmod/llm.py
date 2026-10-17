@@ -456,3 +456,74 @@ def chat_completion(
             "success": False,
             "error": f"调用异常: {str(e)}",
         }
+
+
+def heal_code_with_llm(
+    source_code: str,
+    error_message: str,
+    game_context: Optional[Dict[str, Any]] = None,
+    config: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Use configured LLM to intelligently analyze compilation/runtime errors and heal source code."""
+    if not source_code or not source_code.strip():
+        return {"success": False, "error": "source_code is empty"}
+    if not error_message or not error_message.strip():
+        return {"success": False, "error": "error_message is empty"}
+
+    game_ctx = game_context or {}
+    game_dir = game_ctx.get("game_dir", "")
+    engine = game_ctx.get("engine", "")
+    engine_id = game_ctx.get("engine_id", "")
+    game_name = game_ctx.get("game_name", os.path.basename(game_dir) if game_dir else "目标游戏")
+
+    lang = "lua" if engine_id in ("unreal", "re-engine", "redengine", "cyberpunk") else "csharp"
+
+    prompt = (
+        f"你是一位游戏 Mod 逆向工程与代码编译器自愈修复专家。\n"
+        f"正在构建的游戏：【{game_name}】\n"
+        f"- 引擎架构: {engine} ({engine_id})\n"
+        f"- 游戏路径: {game_dir}\n\n"
+        f"【特殊环境机制与避坑规则（必须严格遵守）】\n"
+        f"1. 若为非 Unity .NET / XNA 游戏（如 Terraria / FNA / MonoGame）：\n"
+        f"   - 严禁引用 UnityEngine 或 UnityEngine.MonoBehaviour（这是最典型的 CS0012 报错根因）！\n"
+        f"   - 若需要继承基类，在命名空间内本地声明 `public class BaseUnityPlugin {{ }}` 桩类，或使用标准插件入口，并使用 Console.WriteLine 替代 Unity 日志。\n"
+        f"   - 若报错 CS0433（类型在多个程序集中重复存在，如 Terraria.exe 和 TerrariaServer.exe），移除多余引用或使用完整命名空间修饰。\n"
+        f"2. 若为星露谷物语（SMAPI）：必须遵循 StardewModdingAPI.Mod 规范，严禁 Unity 类。\n"
+        f"3. 缺少命名空间（CS0246）：请在顶部补充缺失的 `using` 语句。\n"
+        f"4. 语法错误（CS1002/CS1513）：补全缺失的分号、大括号或标点。\n\n"
+        f"【编译器/运行时报错日志】\n"
+        f"{error_message}\n\n"
+        f"【当前出错的源代码】\n"
+        f"```{lang}\n"
+        f"{source_code}\n"
+        f"```\n\n"
+        f"请深入分析报错原因及特殊环境约束，修复以上代码中的全部编译与逻辑问题。\n"
+        f"【输出要求】：必须将修复后的完整代码放置在 ```{lang} ... ``` 代码块中，只返回可直接编译运行的代码，不要输出任何额外的废话或解释！"
+    )
+
+    messages = [{"role": "user", "content": prompt}]
+    res = chat_completion(messages=messages, game_context=game_ctx, config=config)
+    if not res.get("success"):
+        return {"success": False, "error": res.get("error", "LLM request failed")}
+
+    reply = res.get("reply", "")
+    import re as _re
+    m = _re.search(rf"```{lang}\s*([\s\S]*?)```", reply, _re.IGNORECASE)
+    if not m:
+        m = _re.search(r"```(?:\w+)?\s*([\s\S]*?)```", reply)
+
+    if m:
+        repaired_code = m.group(1).strip()
+    else:
+        repaired_code = reply.strip()
+
+    if not repaired_code or len(repaired_code) < 20:
+        return {"success": False, "error": "LLM did not return valid repaired code"}
+
+    return {
+        "success": True,
+        "repaired_code": repaired_code,
+        "raw_reply": reply,
+        "model": res.get("model", ""),
+    }
+
