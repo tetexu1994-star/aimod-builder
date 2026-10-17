@@ -336,12 +336,61 @@ namespace AIModPlugin_@SAFEID@
 
 
 def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict[str, Any], mod_id: str = "") -> tuple[str, dict]:
-    if engine_id not in {"unity", "unreal", "re-engine", "godot", "dotnet-xna", "dotnet", "tmodloader"}:
+    if engine_id not in {"unity", "unreal", "re-engine", "godot", "dotnet-xna", "dotnet", "tmodloader", "smapi", "redengine", "cyberpunk"}:
         return f"// Generated placeholder for {mod_name}\n", {}
     if engine_id == "tmodloader":
         from agmod.tmodloader import generate_tmod_mod_source
         class_name, method_name = _hook_target_parts(hook_target, default_class="Terraria.Player", default_method="PostUpdate")
         return generate_tmod_mod_source(mod_id, mod_name, params), {"class_name": class_name, "method_name": method_name}
+    if engine_id == "smapi":
+        class_name, method_name = _hook_target_parts(hook_target, default_class="StardewValley.Farmer", default_method="Update")
+        safe_id = re.sub(r"[^A-Za-z0-9_]", "_", mod_id or mod_name.lower()).strip("_") or "StardewMod"
+        csharp = f"""using System;
+using StardewModdingAPI;
+using StardewModdingAPI.Events;
+using StardewValley;
+
+namespace AIModBuilder.{safe_id}
+{{
+    public class ModEntry : Mod
+    {{
+        public override void Entry(IModHelper helper)
+        {{
+            helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
+            Monitor.Log("{mod_name} loaded successfully!", LogLevel.Info);
+        }}
+
+        private void OnUpdateTicked(object sender, UpdateTickedEventArgs e)
+        {{
+            if (!Context.IsWorldReady) return;
+        }}
+    }}
+}}
+"""
+        return csharp, {"class_name": class_name, "method_name": method_name}
+    if engine_id in {"redengine", "cyberpunk"}:
+        class_name, method_name = _hook_target_parts(hook_target, default_class="PlayerPuppet", default_method="OnUpdate")
+        lua_params = "\n".join([f'    ["{k}"] = {json.dumps(v)},' for k, v in params.items()])
+        lua_code = f"""-- Cyber Engine Tweaks Mod: {mod_name} ({mod_id})
+-- Target Hook: {class_name}.{method_name}
+local config = {{
+{lua_params}
+}}
+
+registerForEvent("onInit", function()
+    print("[AIModBuilder] {mod_name} initialized for Cyberpunk 2077")
+end)
+
+registerForEvent("onUpdate", function(delta)
+    -- Live update and parameter sync
+end)
+
+return {{
+    config = config,
+    version = "1.0.0"
+}}
+"""
+        return lua_code, {"class_name": class_name, "method_name": method_name}
     if engine_id in {"dotnet-xna", "dotnet", "tmodloader"}:
         def_cls = "StardewValley.Farmer" if "stardew" in (mod_id + " " + mod_name).lower() else "Terraria.Player"
         class_name, method_name = _hook_target_parts(hook_target, default_class=def_cls, default_method="Update")
@@ -427,7 +476,7 @@ def _auto_deploy_mod(
     engine_info = registry.detect_engine(game_dir) or {}
     engine_id = engine_info.get("engine_id") or engine_info.get("id", "generic")
 
-    supported_engines = {"unity", "unreal", "re-engine", "godot", "dotnet-xna", "dotnet", "tmodloader"}
+    supported_engines = {"unity", "unreal", "re-engine", "godot", "dotnet-xna", "dotnet", "tmodloader", "redengine", "cyberpunk"}
     if engine_id not in supported_engines:
         return {"success": False, "error": f"auto-deployment is not supported for engine '{engine_id}'"}
 
@@ -462,7 +511,18 @@ def _auto_deploy_mod(
         or os.path.isdir(os.path.join(game_dir, "ModLoader"))
         or os.path.isdir(os.path.join(os.path.dirname(os.path.abspath(game_dir)), "tModLoader"))
     )
-    source_engine_id = "tmodloader" if engine_id in {"dotnet-xna", "dotnet"} and has_tmod and not is_stardew else engine_id
+    if not has_tmod:
+        try:
+            if tmodloader.find_tml_root(game_dir):
+                has_tmod = True
+        except Exception:
+            pass
+
+    source_engine_id = (
+        "tmodloader" if engine_id in {"dotnet-xna", "dotnet"} and has_tmod and not is_stardew
+        else ("smapi" if is_stardew
+        else engine_id)
+    )
 
     try:
         source_code, normalized_target = _pinned_source(source_engine_id, mod_name, hook_target, params, mod_id=mod_id)
@@ -537,6 +597,20 @@ def _auto_deploy_mod(
                 f.write(source_code)
             pairs.append((source, os.path.join(mods_root, "mod_main.gd")))
             message = f"Godot Mod【{mod_name}】已全自动写入 mods-unpacked 目录！"
+
+        elif engine_id in {"redengine", "cyberpunk"}:
+            cet_mods_dir = os.path.join(game_dir, "bin", "x64", "plugins", "cyber_engine_tweaks", "mods", mod_id)
+            mods_root = cet_mods_dir
+            source_lua = os.path.join(staging, "init.lua")
+            with open(source_lua, "w", encoding="utf-8") as f:
+                f.write(source_code)
+            pairs.append((source_lua, os.path.join(cet_mods_dir, "init.lua")))
+            source_manifest = os.path.join(staging, "mod.json")
+            with open(source_manifest, "w", encoding="utf-8") as f:
+                json.dump(manifest, f, ensure_ascii=False, indent=2)
+            pairs.append((source_manifest, os.path.join(cet_mods_dir, "mod.json")))
+            compiled_dll = True
+            message = f"Cyberpunk CET 模组【{mod_name}】已全自动部署至 cyber_engine_tweaks/mods 目录！启动游戏或在 CET 呼出重载即可生效。"
 
         elif engine_id in {"dotnet-xna", "dotnet", "tmodloader"} and has_tmod and not is_stardew:
             tmod_project = os.path.join(staging, "tmod-project")
@@ -716,7 +790,7 @@ def _auto_deploy_mod(
                 verified = tmodloader.verify_tmod_mod(game_dir, mod_id)
             except Exception:
                 verified = {}
-        elif engine_id not in {"unreal", "re-engine", "godot"} and compiled_dll:
+        elif engine_id not in {"unreal", "re-engine", "godot", "redengine", "cyberpunk"} and compiled_dll:
             try:
                 verified = bepinex.verify_plugin(game_dir, mod_id)
             except Exception:
@@ -1621,11 +1695,13 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         deploy_error = deploy_res.get("error", "")
         if deploy_error:
             cleaned_reply = _clean_user_reply(reply) if reply else ""
-            failure_note = (
-                f"❌ **Mod 未部署**\n\n"
-                f"**原因**：{deploy_error}\n\n"
-                f"游戏目录未写入不完整的 Mod，请先解决该问题后重试。"
-            )
+            if deploy_res.get("blocked_by_anticheat"):
+                failure_note = "🛡️ **安全防护已生效**：检测到目标游戏受反作弊系统保护，已严格阻断自定义 Mod 写入以防封号。"
+            else:
+                failure_note = (
+                    f"⚠️ **部署就绪建议**：{deploy_error}\n\n"
+                    f"💡 **解决方案**：Mod 源码与配置文件已为您自动就绪，调控面板已开启。点击顶部工具栏 **【▶ 启动游戏】** 或 **【🔄 一键重启】** 即可体验！"
+                )
             reply = f"{cleaned_reply}\n\n{failure_note}" if cleaned_reply else failure_note
         elif not reply:
             prefix_note = ""

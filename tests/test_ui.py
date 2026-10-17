@@ -90,6 +90,17 @@ class TestUIServer(unittest.TestCase):
         with self.assertRaises(ValueError):
             _pinned_source("dotnet-xna", "星露谷测试", "StardewValley.Farmer:Update", {}, "stardew_mod")
 
+        # SMAPI source generation
+        smapi_source, smapi_target = _pinned_source("smapi", "星露谷测试", "StardewValley.Farmer:Update", {}, "stardew_mod")
+        self.assertEqual(smapi_target["class_name"], "StardewValley.Farmer")
+        self.assertIn("StardewModdingAPI", smapi_source)
+
+        # REDengine / Cyberpunk CET source generation
+        cet_source, cet_target = _pinned_source("redengine", "赛博朋克极速", "PlayerPuppet:OnUpdate", {"speed": 2.5}, "cp_speed")
+        self.assertEqual(cet_target["class_name"], "PlayerPuppet")
+        self.assertIn("Cyber Engine Tweaks", cet_source)
+        self.assertIn('["speed"] = 2.5', cet_source)
+
     @classmethod
     def setUpClass(cls):
         cls.port = _get_free_port()
@@ -111,6 +122,8 @@ class TestUIServer(unittest.TestCase):
         self.assertEqual(code, 200)
         self.assertIn("AI Mod Builder", html)
         self.assertIn("制作新 Mod", html)
+        self.assertIn("companion-pet", html)
+        self.assertIn("companion-panel", html)
 
     def test_doctor_endpoint(self):
         code, body = _http_get(f"{self.base_url}/api/doctor")
@@ -450,6 +463,18 @@ System.NullReferenceException: Object reference not set to an instance of an obj
             self.assertTrue(result["pending_restart"])
             self.assertIn("重启", result["message"])
             self.assertNotIn("无需重启", result["message"])
+
+    def test_auto_deploy_redengine_cyberpunk_cet(self):
+        with tempfile.TemporaryDirectory() as game:
+            bin_dir = Path(game, "bin", "x64")
+            bin_dir.mkdir(parents=True)
+            (bin_dir / "Cyberpunk2077.exe").write_bytes(b"MZdummy")
+            result = _auto_deploy_mod(game, "cp_mod", "Cyber Mod", "CET speed mod", "PlayerPuppet:OnUpdate", {"multiplier": 2.0})
+            self.assertTrue(result["success"])
+            self.assertTrue(result["compiled"])
+            cet_init = Path(game, "bin", "x64", "plugins", "cyber_engine_tweaks", "mods", result["mod_id"], "init.lua")
+            self.assertTrue(cet_init.exists())
+            self.assertIn("Cyber Engine Tweaks", cet_init.read_text(encoding="utf-8"))
 
     def test_mod_pin_does_not_install_when_compilation_fails(self):
         with tempfile.TemporaryDirectory() as game:

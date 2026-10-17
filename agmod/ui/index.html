@@ -301,6 +301,213 @@
       box-shadow: 0 2px 10px rgba(245, 158, 11, 0.4) !important;
       animation: glow-restart 2.5s infinite ease-in-out;
     }
+    .btn-companion-glow {
+      background: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
+      color: #ffffff !important;
+      border: 1px solid #7c3aed !important;
+      font-weight: 600 !important;
+      box-shadow: 0 2px 8px rgba(139, 92, 246, 0.35) !important;
+    }
+    .btn-companion-glow:hover {
+      box-shadow: 0 4px 14px rgba(139, 92, 246, 0.5) !important;
+    }
+
+    /* Floating Companion Pet */
+    .companion-pet {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 9998;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+    }
+    .companion-pet:hover {
+      transform: scale(1.1) translateY(-2px);
+      box-shadow: 0 8px 28px rgba(139, 92, 246, 0.6);
+    }
+    .companion-pet-avatar {
+      font-size: 24px;
+      line-height: 1;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+      animation: float-pet 3s ease-in-out infinite;
+    }
+    @keyframes float-pet {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+    .companion-pet-badge {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      background: #10b981;
+      color: #ffffff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 8px;
+      border: 2px solid var(--bg-body);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    /* Companion Floating Flyout Panel */
+    .companion-panel {
+      position: fixed;
+      right: 24px;
+      bottom: 86px;
+      width: 380px;
+      max-height: calc(100vh - 110px);
+      background: var(--bg-card);
+      border: 1px solid var(--border-hover);
+      border-radius: 16px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: flyout-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes flyout-in {
+      from { opacity: 0; transform: translateY(12px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .companion-header {
+      padding: 12px 16px;
+      background: var(--bg-card-inner);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .companion-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .companion-icon-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      transition: all 0.15s ease;
+    }
+    .companion-icon-btn:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-main);
+      border-color: var(--border-hover);
+    }
+    .companion-quick-bar {
+      display: flex;
+      gap: 8px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.1);
+    }
+    .companion-section-title {
+      padding: 8px 14px 4px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .companion-live-list {
+      padding: 6px 14px 10px 14px;
+      overflow-y: auto;
+      max-height: 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .companion-empty-hint {
+      font-size: 12px;
+      color: var(--text-dim);
+      padding: 12px 0;
+      text-align: center;
+    }
+    .companion-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 6px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-card-inner);
+    }
+    .companion-chip {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .companion-chip:hover {
+      border-color: var(--primary);
+      color: var(--text-main);
+      background: rgba(99, 102, 241, 0.15);
+    }
+    .companion-input-wrap {
+      display: flex;
+      gap: 8px;
+      padding: 10px 14px;
+      background: var(--bg-card-inner);
+      border-top: 1px solid var(--border);
+    }
+    .companion-input-wrap input {
+      flex: 1;
+      padding: 7px 12px;
+      font-size: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-body);
+      color: var(--text-main);
+      outline: none;
+    }
+    .companion-input-wrap input:focus {
+      border-color: var(--primary);
+    }
+
+    /* Standalone HUD Window View (mode-hud) */
+    body.mode-hud .top-nav,
+    body.mode-hud #stage-library,
+    body.mode-hud #stage-gatekeeper,
+    body.mode-hud #stage-studio,
+    body.mode-hud .companion-pet {
+      display: none !important;
+    }
+    body.mode-hud .companion-panel {
+      position: static !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      max-height: 100vh !important;
+      border: none !important;
+      border-radius: 0 !important;
+      bottom: auto !important;
+      right: auto !important;
+    }
+    body.mode-hud .companion-live-list {
+      max-height: none !important;
+      flex: 1 !important;
+    }
 
     button.btn {
       display: inline-flex;
@@ -1314,6 +1521,13 @@
         <span>🔄</span> 一键重启
       </button>
 
+      <button class="btn btn-sm btn-companion-glow" id="hdr-companion-btn" type="button" onclick="toggleCompanionDialog()" title="唤起 AI 随身伴侣对话与调参框">
+        <span>🐾</span> 随身助手
+      </button>
+      <button class="btn btn-sm" id="hdr-hud-btn" type="button" onclick="openStandaloneHud()" title="以轻量独立浮窗模式打开 (适合游戏侧边置顶)">
+        <span>📌</span> 悬浮窗
+      </button>
+
       <button class="btn btn-sm" onclick="scanGames()" title="重新扫描本地与Steam游戏库">🔍 扫描</button>
       <button class="btn btn-sm" id="btn-save-backup" onclick="createSaveBackup()" title="一键备份当前游戏存档">🛡️ 备份</button>
       <button class="btn btn-sm" onclick="openLLMModal()" title="配置大模型 API Key">⚙️ 模型</button>
@@ -1505,6 +1719,54 @@
         <button class="btn btn-sm btn-primary" onclick="saveLLMConfig()">💾 保存配置</button>
       </div>
     </div>
+  <!-- Floating In-Game Companion Pet & Overlay -->
+  <div id="companion-pet" class="companion-pet" onclick="toggleCompanionDialog()" title="点击唤起 AI 随身伴侣对话与调参框">
+    <div class="companion-pet-avatar">🐾</div>
+    <div class="companion-pet-badge" id="companion-pet-badge">在线</div>
+  </div>
+
+  <!-- Companion Interactive Flyout Panel -->
+  <div id="companion-panel" class="companion-panel" style="display:none;">
+    <div class="companion-header">
+      <div class="companion-title">
+        <span style="font-size:18px;">🐾</span>
+        <div>
+          <div style="font-weight:700; font-size:13px; color:var(--text-main);">AI 随身伴侣 · 边玩边测</div>
+          <div style="font-size:11px; color:var(--text-muted);" id="companion-game-status">未选择游戏</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <button class="companion-icon-btn" onclick="openStandaloneHud()" title="以轻量独立浮窗模式打开 (适合游戏侧边置顶)">📌</button>
+        <button class="companion-icon-btn" onclick="toggleCompanionDialog()" title="收起">✕</button>
+      </div>
+    </div>
+
+    <!-- Fast Controls Inside Companion -->
+    <div class="companion-quick-bar">
+      <button class="btn btn-sm btn-launch-glow" id="companion-launch-btn" onclick="launchCurrentGame()">▶ 启动</button>
+      <button class="btn btn-sm btn-restart-glow" id="companion-restart-btn" onclick="restartGame()">🔄 重启</button>
+      <button class="btn btn-sm" onclick="createSaveBackup()">🛡️ 备份</button>
+    </div>
+
+    <!-- Live Tuning Section inside Companion -->
+    <div class="companion-section-title">⚡ 边玩边测实时调参 (滑动即生效)</div>
+    <div class="companion-live-list" id="companion-live-list">
+      <div class="companion-empty-hint">暂无生效中的 Mod，对伴侣说出你的需求吧！</div>
+    </div>
+
+    <!-- Quick Chips -->
+    <div class="companion-chips">
+      <button class="companion-chip" onclick="sendPromptFromCompanion('角色移动速度提升 100% 极速奔跑')">⚡ 移速翻倍</button>
+      <button class="companion-chip" onclick="sendPromptFromCompanion('受到伤害减免 100% 锁血无敌金身')">🛡️ 无敌金身</button>
+      <button class="companion-chip" onclick="sendPromptFromCompanion('解锁空中二段跳与腾空跃力')">🦘 二段跳</button>
+      <button class="companion-chip" onclick="sendPromptFromCompanion('获得金币与掉落物翻 5 倍')">💰 5倍掉落</button>
+    </div>
+
+    <!-- Companion Fast Input -->
+    <div class="companion-input-wrap">
+      <input type="text" id="companion-prompt-input" placeholder="对小助手说：比如'把跳跃高度加倍'..." onkeydown="handleCompanionKey(event)">
+      <button class="btn btn-sm btn-primary" id="companion-send-btn" onclick="submitPromptFromCompanion()">⚡ 生效</button>
+    </div>
   </div>
 
   <div class="toast-container" id="toast-container"></div>
@@ -1524,6 +1786,11 @@
     window.addEventListener('DOMContentLoaded', async () => {
       await loadLLMConfig();
       await scanGames();
+      const isHud = new URLSearchParams(window.location.search).get('mode') === 'hud';
+      if (isHud) {
+        document.body.classList.add('mode-hud');
+        toggleCompanionDialog(true);
+      }
     });
 
     function showToast(msg, type = 'info') {
@@ -1559,6 +1826,156 @@
       document.documentElement.setAttribute('data-theme', target);
       localStorage.setItem('aimod_theme', target);
       document.getElementById('theme-btn').textContent = target === 'dark' ? '🌙' : '☀️';
+    }
+
+    // --- Floating In-Game Companion Pet & Overlay Logic ---
+    function toggleCompanionDialog(forceOpen = null) {
+      const panel = document.getElementById('companion-panel');
+      if (!panel) return;
+      const isOpen = panel.style.display !== 'none';
+      const targetState = forceOpen !== null ? forceOpen : !isOpen;
+      panel.style.display = targetState ? 'flex' : 'none';
+      if (targetState) {
+        updateCompanionStatus();
+        renderCompanionLiveSliders();
+        const input = document.getElementById('companion-prompt-input');
+        if (input) setTimeout(() => input.focus(), 100);
+      }
+    }
+
+    function updateCompanionStatus() {
+      const statusEl = document.getElementById('companion-game-status');
+      const badgeEl = document.getElementById('companion-pet-badge');
+      const launchBtn = document.getElementById('companion-launch-btn');
+      const restartBtn = document.getElementById('companion-restart-btn');
+      if (!currentGame) {
+        if (statusEl) statusEl.textContent = '未选择游戏 · 正在大厅待命';
+        if (badgeEl) { badgeEl.textContent = '待命'; badgeEl.style.background = '#64748b'; }
+        if (launchBtn) launchBtn.style.display = 'none';
+        if (restartBtn) restartBtn.style.display = 'none';
+        return;
+      }
+      const isRunning = document.getElementById('hdr-status-dot')?.classList.contains('running');
+      if (isRunning) {
+        if (statusEl) statusEl.textContent = `🎮 ${currentGame.name} 运行中 · 边玩边测已连接`;
+        if (badgeEl) { badgeEl.textContent = '测试中'; badgeEl.style.background = '#10b981'; }
+        if (launchBtn) launchBtn.style.display = 'none';
+        if (restartBtn) restartBtn.style.display = 'inline-flex';
+      } else {
+        if (statusEl) statusEl.textContent = `🎮 ${currentGame.name} · 未启动`;
+        if (badgeEl) { badgeEl.textContent = '就绪'; badgeEl.style.background = '#6366f1'; }
+        if (launchBtn) launchBtn.style.display = 'inline-flex';
+        if (restartBtn) restartBtn.style.display = 'none';
+      }
+    }
+
+    function renderCompanionLiveSliders() {
+      const container = document.getElementById('companion-live-list');
+      if (!container) return;
+      if (!activeActions || activeActions.length === 0) {
+        container.innerHTML = '<div class="companion-empty-hint">暂无生效中的 Mod，对伴侣说出你的需求吧！</div>';
+        return;
+      }
+
+      let html = '';
+      activeActions.forEach((act, actIdx) => {
+        if (!act.tuning_params || act.tuning_params.length === 0) return;
+        html += `<div style="background:var(--bg-card-inner); padding:8px 10px; border-radius:8px; border:1px solid var(--border);">`;
+        html += `<div style="font-size:11px; font-weight:700; color:var(--text-main); margin-bottom:6px; display:flex; justify-content:space-between;"><span>✨ ${escapeHtml(act.mod_name)}</span><span style="font-size:10px; color:#10b981;">⚡实时下发</span></div>`;
+        act.tuning_params.forEach((p, pIdx) => {
+          const val = p.value !== undefined ? p.value : (p.min || 0);
+          const min = p.min !== undefined ? p.min : 0;
+          const max = p.max !== undefined ? p.max : 10;
+          const step = p.step !== undefined ? p.step : 0.1;
+          const valId = `comp_val_${actIdx}_${pIdx}`;
+          if (p.type === 'switch') {
+            html += `
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; margin-top:4px;">
+                <span>${escapeHtml(p.label)}</span>
+                <input type="checkbox" ${val ? 'checked' : ''} onchange="tuneActionIndex(${actIdx}, ${pIdx}, this.checked)">
+              </div>
+            `;
+          } else {
+            html += `
+              <div style="font-size:11px; margin-top:4px;">
+                <div style="display:flex; justify-content:space-between; color:var(--text-muted); font-size:10px;">
+                  <span>${escapeHtml(p.label)}</span>
+                  <span id="${valId}" style="font-weight:700; color:var(--primary);">${val}</span>
+                </div>
+                <input type="range" min="${min}" max="${max}" step="${step}" value="${val}" style="width:100%; margin:2px 0;" oninput="document.getElementById('${valId}').textContent = this.value; tuneActionIndex(${actIdx}, ${pIdx}, parseFloat(this.value));">
+              </div>
+            `;
+          }
+        });
+        html += `</div>`;
+      });
+      container.innerHTML = html || '<div class="companion-empty-hint">暂无生效中的 Mod，对伴侣说出你的需求吧！</div>';
+    }
+
+    function openStandaloneHud() {
+      const url = window.location.origin + window.location.pathname + '?mode=hud';
+      const w = 400;
+      const h = 640;
+      const left = window.screen.width - w - 40;
+      const top = 60;
+      window.open(url, 'AIModCompanionHUD', `width=${w},height=${h},top=${top},left=${left},resizable=yes,scrollbars=yes`);
+    }
+
+    function handleCompanionKey(event) {
+      if (event.key === 'Enter') {
+        submitPromptFromCompanion();
+      }
+    }
+
+    function sendPromptFromCompanion(text) {
+      const input = document.getElementById('companion-prompt-input');
+      if (input) input.value = text;
+      submitPromptFromCompanion();
+    }
+
+    async function submitPromptFromCompanion() {
+      const input = document.getElementById('companion-prompt-input');
+      const text = input ? input.value.trim() : '';
+      if (!text) return;
+      if (!currentGame) {
+        showToast('请先选择或启动游戏！', 'warning');
+        return;
+      }
+      input.value = '';
+      showToast(`伴侣正在为你生成与适配【${text}】...`, 'info');
+      
+      const sendBtn = document.getElementById('companion-send-btn');
+      if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.textContent = '⏳';
+      }
+
+      try {
+        const resp = await fetch('/api/mod/interact', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            game_dir: currentGame.game_dir,
+            prompt: text,
+            history: chatHistory
+          })
+        });
+        const res = await resp.json();
+        if (res.success) {
+          appendAIMessage(res.data.reply, res.data.action, res.data.rea_insight, res.data.require_api_key);
+          showToast(`✨ 伴侣已成功下发【${res.data.action?.mod_name || text}】并在游戏中生效！`, 'success');
+          renderCompanionLiveSliders();
+        } else {
+          showToast('生成未完成: ' + res.error, 'error');
+        }
+      } catch (e) {
+        showToast('网络连接异常: ' + e.message, 'error');
+      } finally {
+        if (sendBtn) {
+          sendBtn.disabled = false;
+          sendBtn.textContent = '⚡ 生效';
+        }
+      }
     }
 
     // --- Header Game Context & Status Management ---
@@ -1642,6 +2059,7 @@
           if (lBtn) lBtn.style.display = 'inline-flex';
           if (rBtn) rBtn.style.display = 'none';
         }
+        updateCompanionStatus();
       } catch (e) { }
     }
 

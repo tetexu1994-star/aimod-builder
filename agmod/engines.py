@@ -86,7 +86,7 @@ ENGINE_CATALOG = [
         "id": "redengine",
         "name": "CDPR REDengine (巫师3 / 赛博朋克2077)",
         "family": "redengine",
-        "markers": ["*.archive", "*.bundle", "*.blob"],
+        "markers": ["*.archive", "*.bundle", "*.blob", "bin/x64/Cyberpunk2077.exe", "bin/x64/witcher3.exe", "r6/config"],
         "mod_framework": "RED4ext + Redscript + CET (2077)；WitcherScript (巫师3)",
         "structure": "WolvenKit 解 REDengine 归档",
         "examples": "赛博朋克2077=RED4ext+CET+ArchiveXL；巫师3=WitcherScript",

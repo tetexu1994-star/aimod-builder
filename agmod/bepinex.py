@@ -290,7 +290,7 @@ def compile_unity_plugin(
             if os.path.isfile(rp):
                 refs.append(rp)
     else:
-        # Non-Unity .NET game (e.g. Terraria / XNA / FNA): reference game executables & managed DLLs
+        # Non-Unity .NET game (e.g. Terraria / XNA / FNA / SMAPI): reference game executables & managed DLLs
         from .pe import is_managed_assembly
         try:
             for f in os.listdir(game_dir):
@@ -298,6 +298,11 @@ def compile_unity_plugin(
                     fp = os.path.join(game_dir, f)
                     if os.path.isfile(fp) and is_managed_assembly(fp):
                         refs.append(fp)
+            smapi_internal = os.path.join(game_dir, "smapi-internal")
+            if os.path.isdir(smapi_internal):
+                for f in os.listdir(smapi_internal):
+                    if f.lower().endswith(".dll"):
+                        refs.append(os.path.join(smapi_internal, f))
         except OSError:
             pass
 
