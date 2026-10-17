@@ -564,10 +564,16 @@ def scaffold_tmod_mod(project_dir: str, mod_id: str, mod_name: str, mod_version:
 
 
 @mcp.tool()
-def build_tmod_mod(project_dir: str) -> str:
-    """Build a tModLoader mod with dotnet. Returns the output directory."""
-    out = tmodloader.build_tmod_mod(project_dir)
+def build_tmod_mod(project_dir: str, game_dir: str = "") -> str:
+    """Build a real tModLoader .tmod through tMLMod.targets. Returns the output directory."""
+    out = tmodloader.build_tmod_mod(project_dir, game_dir)
     return json.dumps({"output": out})
+
+
+@mcp.tool()
+def verify_tmod_mod(game_dir: str, mod_id: str) -> str:
+    """Verify that a tModLoader .tmod is installed and loaded by the game."""
+    return json.dumps(tmodloader.verify_tmod_mod(game_dir, mod_id), ensure_ascii=False, indent=2)
 
 
 @mcp.tool()

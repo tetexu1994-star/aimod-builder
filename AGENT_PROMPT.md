@@ -60,8 +60,9 @@
 #### 3. Terraria（tModLoader）
 1. `plan_mod(...)` 或 `scaffold_tmod_mod(project_dir, mod_id, mod_name)`；
 2. 编辑 Mod 类，重写 ModPlayer / GlobalItem；
-3. `build_tmod_mod(project_dir)`；
-4. `install_tmod_mod(project_dir, game_dir)` —— 安装至游戏 Mod 目录并自动记录回滚日志。
+3. `build_tmod_mod(project_dir, game_dir)` —— 使用官方 `tMLMod.targets` 生成真实 `.tmod`；
+4. `install_tmod_mod(project_dir, game_dir)` —— 安装 `.tmod` 至 Mod 目录并自动记录回滚日志；
+5. `verify_tmod_mod(game_dir, mod_id)` —— 检查 `.tmod` 已安装且被 tModLoader 加载。
 
 #### 4. 卡普空 RE 引擎游戏（Monster Hunter / Resident Evil / DMC5 等）
 1. `scaffold_reframework_mod(project_dir, mod_id, mod_name)` —— 生成基于 REFramework 的 Lua Mod 骨架；

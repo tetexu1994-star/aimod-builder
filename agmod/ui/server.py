@@ -338,6 +338,10 @@ namespace AIModPlugin_@SAFEID@
 def _pinned_source(engine_id: str, mod_name: str, hook_target: str, params: Dict[str, Any], mod_id: str = "") -> tuple[str, dict]:
     if engine_id not in {"unity", "unreal", "re-engine", "godot", "dotnet-xna", "dotnet", "tmodloader"}:
         return f"// Generated placeholder for {mod_name}\n", {}
+    if engine_id == "tmodloader":
+        from agmod.tmodloader import generate_tmod_mod_source
+        class_name, method_name = _hook_target_parts(hook_target, default_class="Terraria.Player", default_method="PostUpdate")
+        return generate_tmod_mod_source(mod_id, mod_name, params), {"class_name": class_name, "method_name": method_name}
     if engine_id in {"dotnet-xna", "dotnet", "tmodloader"}:
         def_cls = "StardewValley.Farmer" if "stardew" in (mod_id + " " + mod_name).lower() else "Terraria.Player"
         class_name, method_name = _hook_target_parts(hook_target, default_class=def_cls, default_method="Update")
@@ -408,7 +412,7 @@ def _auto_deploy_mod(
     params: Dict[str, Any],
 ) -> Dict[str, Any]:
     """Automatically scaffolds, builds, and writes mod files to the target game directory immediately."""
-    from agmod import safety, registry, bepinex, install_preview, rollback, paths
+    from agmod import safety, registry, bepinex, install_preview, rollback, tmodloader, paths
 
     if not game_dir:
         return {"success": False, "error": "game_dir is required"}
@@ -451,8 +455,13 @@ def _auto_deploy_mod(
     except Exception:
         pass
 
+    is_stardew = any(k in f"{game_dir} {mod_name} {hook_target}".lower() for k in ["stardew", "smapi", "星露谷"])
+    has_bepinex = os.path.isdir(os.path.join(game_dir, "BepInEx"))
+    has_tmod = os.path.isfile(os.path.join(game_dir, "tModLoader.exe")) or os.path.isdir(os.path.join(game_dir, "ModLoader"))
+    source_engine_id = "tmodloader" if engine_id in {"dotnet-xna", "dotnet"} and has_tmod and not is_stardew else engine_id
+
     try:
-        source_code, normalized_target = _pinned_source(engine_id, mod_name, hook_target, params, mod_id=mod_id)
+        source_code, normalized_target = _pinned_source(source_engine_id, mod_name, hook_target, params, mod_id=mod_id)
     except Exception as exc:
         return {
             "success": False,
@@ -461,9 +470,6 @@ def _auto_deploy_mod(
             "symbol_candidates": symbol_check["candidates"],
         }
 
-    is_stardew = any(k in f"{game_dir} {mod_name} {hook_target}".lower() for k in ["stardew", "smapi", "星露谷"])
-    has_bepinex = os.path.isdir(os.path.join(game_dir, "BepInEx"))
-    has_tmod = os.path.isfile(os.path.join(game_dir, "tModLoader.exe")) or os.path.isdir(os.path.join(game_dir, "ModLoader"))
     if engine_id in {"dotnet-xna", "dotnet", "tmodloader"} and not is_stardew and not has_bepinex and not has_tmod:
         return {
             "success": False,
@@ -492,7 +498,6 @@ def _auto_deploy_mod(
         running, _ = rollback.is_game_running(game_dir)
 
         if engine_id == "unreal":
-            import glob
             win64_candidates = glob.glob(os.path.join(game_dir, "*", "Binaries", "Win64"))
             if not win64_candidates:
                 win64_candidates = [os.path.join(game_dir, "Binaries", "Win64")]
@@ -528,6 +533,29 @@ def _auto_deploy_mod(
                 f.write(source_code)
             pairs.append((source, os.path.join(mods_root, "mod_main.gd")))
             message = f"Godot Mod【{mod_name}】已全自动写入 mods-unpacked 目录！"
+
+        elif engine_id in {"dotnet-xna", "dotnet", "tmodloader"} and has_tmod and not is_stardew:
+            tmod_project = os.path.join(staging, "tmod-project")
+            tmodloader.scaffold_tmod_mod(tmod_project, mod_id, mod_name, "1.0.0", "AIModBuilder")
+            for old_source in glob.glob(os.path.join(tmod_project, "*.cs")):
+                os.remove(old_source)
+            generated_source = os.path.join(tmod_project, "Generated.cs")
+            with open(generated_source, "w", encoding="utf-8") as f:
+                f.write(source_code)
+            out_dir = tmodloader.build_tmod_mod(tmod_project, game_dir)
+            tmod_files = [p for p in glob.glob(os.path.join(out_dir, "*.tmod")) if os.path.isfile(p)]
+            if len(tmod_files) != 1:
+                return {
+                    "success": False,
+                    "error": "tModLoader build did not produce exactly one loadable .tmod",
+                    "compiled": False,
+                    "symbol_verified": symbol_check["verified"],
+                    "symbol_candidates": symbol_check["candidates"],
+                }
+            mods_root = os.path.join(game_dir, "ModLoader", "Mods")
+            pairs.append((tmod_files[0], os.path.join(mods_root, os.path.basename(tmod_files[0]))))
+            compiled_dll = True
+            message = f"tModLoader Mod【{mod_name}】已生成可加载的 .tmod 包。"
 
         elif engine_id in {"dotnet-xna", "dotnet"} and is_stardew:
             mods_root = os.path.join(game_dir, "Mods", mod_id)
@@ -669,7 +697,12 @@ def _auto_deploy_mod(
             }
 
         verified = {}
-        if engine_id not in {"unreal", "re-engine", "godot"} and compiled_dll:
+        if source_engine_id == "tmodloader" and compiled_dll:
+            try:
+                verified = tmodloader.verify_tmod_mod(game_dir, mod_id)
+            except Exception:
+                verified = {}
+        elif engine_id not in {"unreal", "re-engine", "godot"} and compiled_dll:
             try:
                 verified = bepinex.verify_plugin(game_dir, mod_id)
             except Exception:
@@ -1150,13 +1183,16 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         return (HTTPStatus.OK if res.get("success") else HTTPStatus.INTERNAL_SERVER_ERROR), res
 
     def _handle_mod_verify(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
-        from agmod import bepinex
+        from agmod import bepinex, tmodloader
         game_dir = _safe_path(body.get("game_dir", ""))
         mod_id = str(body.get("mod_id", "")).strip()
         if not game_dir or not mod_id:
             return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir and mod_id are required"}
         try:
-            res = bepinex.verify_plugin(game_dir, mod_id)
+            engine = registry.detect_engine(game_dir) or {}
+            engine_id = engine.get("engine_id") or engine.get("id", "")
+            has_tmod = os.path.isfile(os.path.join(game_dir, "tModLoader.exe")) or os.path.isdir(os.path.join(game_dir, "ModLoader"))
+            res = tmodloader.verify_tmod_mod(game_dir, mod_id) if engine_id in {"dotnet-xna", "dotnet", "tmodloader"} and has_tmod else bepinex.verify_plugin(game_dir, mod_id)
             return HTTPStatus.OK, {"success": True, "data": res}
         except Exception as e:
             return HTTPStatus.INTERNAL_SERVER_ERROR, {"success": False, "error": str(e)}

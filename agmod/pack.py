@@ -55,6 +55,7 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
     }
 
     dlls: dict[str, str] = {}
+    tmods: dict[str, str] = {}
     paks: dict[str, str] = {}
     for d in _BUILD_DIRS:
         d = os.path.join(project_dir, d)
@@ -63,6 +64,8 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
         for fn in sorted(os.listdir(d)):
             if fn.endswith(".dll"):
                 dlls.setdefault(fn, os.path.join(d, fn))
+            elif fn.lower().endswith(".tmod"):
+                tmods.setdefault(fn, os.path.join(d, fn))
             elif fn.lower().endswith(".pak"):
                 paks.setdefault(fn, os.path.join(d, fn))
     entry_file = None
@@ -70,10 +73,10 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
         entry_path = safe_join(project_dir, m.entry)
         if os.path.isfile(entry_path):
             entry_file = entry_path
-        elif os.path.basename(m.entry) not in dlls:
+        elif os.path.basename(m.entry) not in dlls and os.path.basename(m.entry) not in tmods:
             raise ValueError(f"manifest entry not found: {m.entry}")
-    if not dlls and not paks and not (m.engine in {"unreal", "re-engine", "godot"} and entry_file):
-        raise ValueError("no built DLL, .pak, or entry script found; build the mod before packaging")
+    if not dlls and not tmods and not paks and not (m.engine in {"unreal", "re-engine", "godot"} and entry_file):
+        raise ValueError("no built DLL, .tmod, .pak, or entry script found; build the mod before packaging")
 
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2))
@@ -83,6 +86,8 @@ def package_mod(project_dir: str, output_dir: str = "") -> str:
                 z.write(metadata_path, metadata)
         for fn in sorted(dlls):
             z.write(dlls[fn], fn)
+        for fn in sorted(tmods):
+            z.write(tmods[fn], f"dist/{fn}")
         for fn in sorted(paks):
             z.write(paks[fn], f"dist/{fn}")
         for group in ("config", "assets", "localization", "docs"):

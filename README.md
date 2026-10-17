@@ -52,7 +52,7 @@ game-mod-agent/
 | `install_unreal_pak_mod` | 安装 .pak 至 `Content/Paks/~mods/`（带回滚记录） | 无 |
 | `unpack_unreal_pak` | 用 repak 解包 `.pak`；`.utoc/.ucas` 需 FModel/CUE4Parse | 网络 |
 | `scaffold_tmod_mod` | 生成 tModLoader mod 骨架（Terraria） | 无 |
-| `build_tmod_mod` | 编译 tModLoader mod | .NET 6 SDK |
+| `build_tmod_mod` | 通过官方 `tMLMod.targets` 生成可加载 `.tmod` | tModLoader + .NET SDK |
 | `install_tmod_mod` | 安装 tModLoader mod 至游戏目录（带回滚日志记录） | 无 |
 | `scaffold_reframework_mod` | **生成卡普空 RE 引擎 REFramework Lua Mod 骨架 (怪猎/生化/DMC5)** | 无 |
 | `install_reframework_mod` | 安装 REFramework Lua Mod 至游戏目录（带回滚日志记录） | 无 |

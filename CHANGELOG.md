@@ -9,6 +9,7 @@
 - New DLL deployment is now reported honestly as requiring a game restart when the game is already running; install failures remain fail-closed instead of falling back to untracked file copies.
 - Stardew/SMAPI is explicitly routed to its package workflow instead of generating an unloadable BepInEx-style entry point.
 - Plugin heartbeat reports include DLL size and remain subject to freshness and identity checks.
+- tModLoader now uses the official `tMLMod.targets` build task, requires a real `.tmod` artifact, installs it to `ModLoader/Mods`, and exposes dedicated verification.
 
 ## 2026-10-16
 

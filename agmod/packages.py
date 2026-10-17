@@ -244,7 +244,7 @@ def check_dependency_compatibility(game_dir: str, package_spec: dict) -> dict:
 
 def _artifact_groups() -> dict:
     return {
-        "code": {"required": True, "paths": ["*.csproj", "*.cs", "*.lua", "*.gd", "build.txt", "scripts", "autorun"], "package": True},
+        "code": {"required": True, "paths": ["*.csproj", "*.cs", "*.lua", "*.gd", "*.tmod", "build.txt", "scripts", "autorun"], "package": True},
         "config": {"required": True, "paths": ["config"], "package": True},
         "assets": {"required": False, "paths": ["assets"], "package": True},
         "localization": {"required": False, "paths": ["localization"], "package": True},

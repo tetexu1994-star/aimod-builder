@@ -178,13 +178,13 @@ class TestRollback(unittest.TestCase):
             scaffold_tmod_mod(proj_dir, "ItemMod", "Item Mod", "0.1.0", "Author")
             out_dir = os.path.join(proj_dir, "out")
             os.makedirs(out_dir, exist_ok=True)
-            dummy_dll = os.path.join(out_dir, "ItemMod.dll")
-            with open(dummy_dll, "w") as f:
-                f.write("DLL_BYTES")
+            dummy_tmod = os.path.join(out_dir, "ItemMod.tmod")
+            with open(dummy_tmod, "w") as f:
+                f.write("TMOD_BYTES")
 
             r = install_tmod_mod(proj_dir, game_dir)
             self.assertTrue(r["success"])
-            installed_target = os.path.join(r["destination"], "ItemMod.dll")
+            installed_target = os.path.join(r["destination"], "ItemMod.tmod")
             self.assertTrue(os.path.isfile(installed_target))
 
             # Rollback
