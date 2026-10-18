@@ -326,7 +326,43 @@ def compile_unity_plugin(
     def _attempt_compile(source_path: str) -> tuple[bool, str, str]:
         last_err = ""
         last_mth = ""
-        # 1. Prefer dotnet SDK (supports modern C#; the plugin template uses C# 6+ syntax)
+
+        # 1. Prefer standalone Roslyn csc (fast, modern C#, no NuGet restore)
+        csc = None
+        csc_type = ""
+        try:
+            csc = compiler.ensure_roslyn_csc()
+            csc_type = "roslyn"
+        except Exception as e:
+            logger.warning("Roslyn csc unavailable, using built-in csc.exe (C# 5 only): %s", e)
+            for candidate in (
+                r"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe",
+                r"C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe",
+            ):
+                if os.path.isfile(candidate):
+                    csc = candidate
+                    csc_type = "csc"
+                    break
+            if not csc:
+                which_csc = shutil.which("csc")
+                if which_csc:
+                    csc = which_csc
+                    csc_type = "csc"
+
+        if csc and os.path.isfile(csc):
+            lang = "latest" if csc_type == "roslyn" else "5"
+            try:
+                res = compiler.compile_with_csc(csc, out_dll_path, refs, source_path, langversion=lang)
+                if res.returncode == 0 and os.path.isfile(out_dll_path):
+                    return True, csc_type, ""
+                last_err = (res.stderr or res.stdout or "").strip()[-800:]
+                last_mth = csc_type
+            except Exception as e:
+                logger.warning("%s compilation error: %s", csc_type, e)
+                last_err = str(e)
+                last_mth = csc_type
+
+        # 2. Fall back to dotnet SDK (handles NuGet package references)
         from . import sdk
         dotnet_bin = sdk.find_dotnet()
         if dotnet_bin:
@@ -368,41 +404,6 @@ def compile_unity_plugin(
                 last_mth = "dotnet"
             finally:
                 shutil.rmtree(tmp_proj, ignore_errors=True)
-
-        # 2. Standalone csc: prefer auto-downloaded Roslyn (modern C#), else built-in csc (C# 5).
-        csc = None
-        csc_type = ""
-        try:
-            csc = compiler.ensure_roslyn_csc()
-            csc_type = "roslyn"
-        except Exception as e:
-            logger.warning("Roslyn csc unavailable, using built-in csc.exe (C# 5 only): %s", e)
-            for candidate in (
-                r"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe",
-                r"C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe",
-            ):
-                if os.path.isfile(candidate):
-                    csc = candidate
-                    csc_type = "csc"
-                    break
-            if not csc:
-                which_csc = shutil.which("csc")
-                if which_csc:
-                    csc = which_csc
-                    csc_type = "csc"
-
-        if csc and os.path.isfile(csc):
-            lang = "latest" if csc_type == "roslyn" else "5"
-            try:
-                res = compiler.compile_with_csc(csc, out_dll_path, refs, source_path, langversion=lang)
-                if res.returncode == 0 and os.path.isfile(out_dll_path):
-                    return True, csc_type, ""
-                last_err = (res.stderr or res.stdout or "").strip()[-800:]
-                last_mth = csc_type
-            except Exception as e:
-                logger.warning("%s compilation error: %s", csc_type, e)
-                last_err = str(e)
-                last_mth = csc_type
 
         return False, last_mth, last_err
 

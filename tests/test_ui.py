@@ -43,7 +43,7 @@ def _http_post(url: str, data: dict):
         method="POST",
     )
     try:
-        with _no_proxy_opener.open(req, timeout=15) as response:
+        with _no_proxy_opener.open(req, timeout=45) as response:
             return response.getcode(), json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         try:
