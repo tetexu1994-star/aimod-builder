@@ -21,7 +21,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable, Dict, Optional, Tuple
 
-from agmod import bepinex, codegen, discovery, doctor, inspector, install_preview, llm, log_repair, logs, paths, planning, process, registry, rollback, safety, saves
+from agmod import bepinex, codegen, discovery, doctor, inspector, install_preview, llm, log_repair, logs, paths, planning, process, recipe, registry, rollback, safety, saves
 
 logger = logging.getLogger("agmod.ui")
 
@@ -1041,6 +1041,8 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             "/api/mod/tune": self._handle_mod_tune,
             "/api/mods/verify": self._handle_mod_verify,
             "/api/rea/overview": self._handle_rea_overview,
+            "/api/recipe/export": self._handle_recipe_export,
+            "/api/recipe/import": self._handle_recipe_import,
         }
 
         handler_fn = routes.get(path)
@@ -1740,6 +1742,17 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 reply = f"{reply}\n\n- 部署状态: {deploy_res['message']}{restart_hint}"
 
 
+        healed_desc = deploy_res.get("healed_by")
+        heal_status = f"已自愈 ({healed_desc})" if healed_desc else "无需自愈"
+        pipeline_flow = [
+            {"id": "detect", "title": "游戏架构识别", "status": "success", "detail": f"{engine_name} ({engine_id})", "icon": "🎮"},
+            {"id": "symbols", "title": "逆向符号嗅探 (REA)", "status": "success", "detail": rea_insight.get("primary_hook") or "GameLogic:Update", "icon": "🔍"},
+            {"id": "safety", "title": "安全边界约束", "status": "success", "detail": boundary.get("boundary_warning", "已开启防穿模与数值保护"), "icon": "🛡️"},
+            {"id": "llm", "title": "代码与动作生成", "status": "success", "detail": f"{'大模型深度推理' if has_llm else '智能模式生成'} · {action['mod_name'] if action else 'Mod'}", "icon": "🧠"},
+            {"id": "compiler", "title": "编译器与自愈回环", "status": "success" if deploy_res.get("compiled") else "warning", "detail": f"编译状态: {'成功 (DLL)' if deploy_res.get('compiled') else '配置写入'} · {heal_status}", "icon": "⚙️"},
+            {"id": "deploy", "title": "热注入与部署", "status": "success" if deploy_res.get("success") else "error", "detail": deploy_res.get("message", "已完成"), "icon": "🚀"},
+        ]
+
         return HTTPStatus.OK, {
             "success": True,
             "data": {
@@ -1747,6 +1760,98 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
                 "reply": reply,
                 "action": action,
                 "rea_insight": rea_insight,
+                "pipeline_flow": pipeline_flow,
+            }
+        }
+
+    def _handle_recipe_export(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        game_dir = _safe_path(body.get("game_dir", ""))
+        mod_id = str(body.get("mod_id", "")).strip() or "pinned_mod"
+        mod_name = str(body.get("mod_name", "")).strip() or "Custom Mod"
+        summary = str(body.get("summary", "")).strip()
+        hook_target = str(body.get("hook_target", "")).strip()
+        params = body.get("params", {})
+        rea_insight = body.get("rea_insight", {})
+        healed_by = str(body.get("healed_by", "")).strip()
+
+        engine_info = registry.detect_engine(game_dir) or {} if game_dir else {}
+        engine_id = engine_info.get("engine_id") or engine_info.get("id", "generic")
+
+        exported = recipe.export_recipe(
+            mod_id=mod_id,
+            mod_name=mod_name,
+            game_dir=game_dir,
+            engine_id=engine_id,
+            summary=summary,
+            hook_target=hook_target,
+            params=params,
+            rea_insight=rea_insight,
+            healed_by=healed_by,
+        )
+        return HTTPStatus.OK, {"success": True, "data": exported}
+
+    def _handle_recipe_import(self, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
+        game_dir = _safe_path(body.get("game_dir", ""))
+        recipe_data = body.get("recipe")
+        if not recipe_data:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "recipe data is required"}
+
+        valid, err, val_recipe = recipe.validate_recipe(recipe_data)
+        if not valid:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": err}
+
+        if not game_dir:
+            return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required to deploy recipe"}
+
+        mod_id = val_recipe.get("recipe_id") or paths.slugify(val_recipe["recipe_name"])
+        mod_name = val_recipe["recipe_name"]
+        summary = val_recipe.get("summary", "")
+        hook_target = val_recipe.get("hook_target", "")
+        params = val_recipe.get("params", {})
+
+        deploy_res = _auto_deploy_mod(
+            game_dir=game_dir,
+            mod_id=mod_id,
+            mod_name=mod_name,
+            summary=summary,
+            hook_target=hook_target,
+            params=params,
+        )
+
+        tuning_params = []
+        for k, v in params.items():
+            param_type = "switch" if isinstance(v, bool) else "slider"
+            tuning_params.append({
+                "id": k,
+                "label": k,
+                "type": param_type,
+                "value": v,
+                "min": 0,
+                "max": max(10, v * 2) if isinstance(v, (int, float)) and not isinstance(v, bool) else 10,
+                "step": 0.1 if isinstance(v, float) else 1,
+            })
+
+        action = {
+            "mod_id": mod_id,
+            "mod_name": mod_name,
+            "summary": summary,
+            "category": "imported_recipe",
+            "tuning_params": tuning_params,
+            "hook_target": hook_target,
+            "can_pin": True,
+            "auto_deployed": deploy_res.get("success", False),
+            "installed_path": deploy_res.get("installed_path", ""),
+            "compiled": deploy_res.get("compiled", False),
+            "healed_by": deploy_res.get("healed_by", ""),
+            "deploy_message": deploy_res.get("message", ""),
+        }
+
+        return HTTPStatus.OK, {
+            "success": deploy_res.get("success", False),
+            "data": {
+                "action": action,
+                "deploy_res": deploy_res,
+                "message": f"🎉 配方【{mod_name}】已成功导入并部署生效！",
             }
         }
 

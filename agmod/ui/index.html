@@ -312,11 +312,11 @@
       box-shadow: 0 4px 14px rgba(139, 92, 246, 0.5) !important;
     }
 
-    /* Floating Companion Pet */
+    /* Floating Companion Pet (Draggable) */
     .companion-pet {
       position: fixed;
-      right: 24px;
-      bottom: 24px;
+      top: 36px;
+      right: 28px;
       width: 52px;
       height: 52px;
       border-radius: 50%;
@@ -325,20 +325,28 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
+      cursor: grab;
       z-index: 9998;
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
       user-select: none;
+      touch-action: none;
     }
     .companion-pet:hover {
-      transform: scale(1.1) translateY(-2px);
+      transform: scale(1.08);
       box-shadow: 0 8px 28px rgba(139, 92, 246, 0.6);
+    }
+    .companion-pet.dragging {
+      cursor: grabbing !important;
+      transform: scale(1.15) !important;
+      box-shadow: 0 14px 36px rgba(99, 102, 241, 0.7) !important;
+      transition: none !important;
     }
     .companion-pet-avatar {
       font-size: 24px;
       line-height: 1;
       filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
       animation: float-pet 3s ease-in-out infinite;
+      pointer-events: none;
     }
     @keyframes float-pet {
       0%, 100% { transform: translateY(0); }
@@ -356,15 +364,34 @@
       border-radius: 8px;
       border: 2px solid var(--bg-body);
       box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      pointer-events: none;
+    }
+    .companion-pet-hint {
+      position: absolute;
+      bottom: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 9px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      background: rgba(0,0,0,0.6);
+      padding: 1px 4px;
+      border-radius: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .companion-pet:hover .companion-pet-hint {
+      opacity: 1;
     }
 
     /* Companion Floating Flyout Panel */
     .companion-panel {
       position: fixed;
-      right: 24px;
-      bottom: 86px;
-      width: 380px;
-      max-height: calc(100vh - 110px);
+      top: 96px;
+      right: 28px;
+      width: 390px;
+      max-height: calc(100vh - 120px);
       background: var(--bg-card);
       border: 1px solid var(--border-hover);
       border-radius: 16px;
@@ -376,6 +403,55 @@
       flex-direction: column;
       overflow: hidden;
       animation: flyout-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* ComfyUI-style Pipeline DAG Cards */
+    .pipeline-view-card {
+      background: var(--bg-card-inner);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      margin: 8px 12px;
+      font-size: 11px;
+    }
+    .pipeline-node-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .pipeline-node-chip {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      padding: 5px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .pipeline-node-chip.success {
+      border-left: 3px solid #10b981;
+    }
+    .pipeline-node-chip.warning {
+      border-left: 3px solid #f59e0b;
+    }
+    .pipeline-node-chip.running {
+      border-left: 3px solid #6366f1;
+      animation: pulse-border 1.5s infinite;
+    }
+    .pipeline-node-chip-title {
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .pipeline-node-chip-detail {
+      font-size: 10px;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     @keyframes flyout-in {
       from { opacity: 0; transform: translateY(12px) scale(0.97); }
@@ -1719,10 +1795,11 @@
         <button class="btn btn-sm btn-primary" onclick="saveLLMConfig()">💾 保存配置</button>
       </div>
     </div>
-  <!-- Floating In-Game Companion Pet & Overlay -->
-  <div id="companion-pet" class="companion-pet" onclick="toggleCompanionDialog()" title="点击唤起 AI 随身伴侣对话与调参框">
+  <!-- Floating In-Game Companion Pet (Draggable anywhere) -->
+  <div id="companion-pet" class="companion-pet" title="按住可随意拖拽位置，点击展开游戏伴侣调参面板">
     <div class="companion-pet-avatar">🐾</div>
     <div class="companion-pet-badge" id="companion-pet-badge">在线</div>
+    <div class="companion-pet-hint">可自由拖拽</div>
   </div>
 
   <!-- Companion Interactive Flyout Panel -->
@@ -1745,7 +1822,26 @@
     <div class="companion-quick-bar">
       <button class="btn btn-sm btn-launch-glow" id="companion-launch-btn" onclick="launchCurrentGame()">▶ 启动</button>
       <button class="btn btn-sm btn-restart-glow" id="companion-restart-btn" onclick="restartGame()">🔄 重启</button>
-      <button class="btn btn-sm" onclick="createSaveBackup()">🛡️ 备份</button>
+      <button class="btn btn-sm" id="companion-pipeline-btn" onclick="togglePipelineView()" title="查看制作管线 DAG 节点流">🧩 管线</button>
+      <button class="btn btn-sm" onclick="exportCurrentRecipe()" title="导出当前 Mod 配方 (.modrecipe)">📦 导出</button>
+      <button class="btn btn-sm" onclick="triggerImportRecipe()" title="导入社区玩家分享的配方">📥 导入</button>
+      <input type="file" id="recipe-file-input" accept=".json,.modrecipe" style="display:none;" onchange="handleRecipeFileSelected(event)">
+    </div>
+
+    <!-- Collapsible ComfyUI-style Pipeline DAG Visualizer -->
+    <div id="companion-pipeline-view" class="pipeline-view-card" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; font-weight:700; color:var(--text-main); font-size:11px;">
+        <span>🧩 制作流水线 DAG 状态</span>
+        <span style="font-size:10px; color:var(--primary); cursor:pointer;" onclick="togglePipelineView()">收起 ▲</span>
+      </div>
+      <div class="pipeline-node-grid" id="pipeline-node-grid">
+        <div class="pipeline-node-chip success"><div class="pipeline-node-chip-title"><span>🎮 游戏架构探测</span><span>✅</span></div><div class="pipeline-node-chip-detail">就绪</div></div>
+        <div class="pipeline-node-chip success"><div class="pipeline-node-chip-title"><span>🔍 逆向符号嗅探</span><span>✅</span></div><div class="pipeline-node-chip-detail">REA 激活</div></div>
+        <div class="pipeline-node-chip success"><div class="pipeline-node-chip-title"><span>🛡️ 安全边界约束</span><span>✅</span></div><div class="pipeline-node-chip-detail">物理/数值守卫</div></div>
+        <div class="pipeline-node-chip success"><div class="pipeline-node-chip-title"><span>🧠 代码动作生成</span><span>✅</span></div><div class="pipeline-node-chip-detail">大模型/智能预设</div></div>
+        <div class="pipeline-node-chip success"><div class="pipeline-node-chip-title"><span>⚙️ 编译与自愈</span><span>✅</span></div><div class="pipeline-node-chip-detail">Roslyn/自愈闭环</div></div>
+        <div class="pipeline-node-chip success"><div class="pipeline-node-chip-title"><span>🚀 热注入与部署</span><span>✅</span></div><div class="pipeline-node-chip-detail">就绪下发</div></div>
+      </div>
     </div>
 
     <!-- Live Tuning Section inside Companion -->
@@ -1786,6 +1882,7 @@
     window.addEventListener('DOMContentLoaded', async () => {
       await loadLLMConfig();
       await scanGames();
+      initDraggableCompanionPet();
       const isHud = new URLSearchParams(window.location.search).get('mode') === 'hud';
       if (isHud) {
         document.body.classList.add('mode-hud');
@@ -1828,7 +1925,137 @@
       document.getElementById('theme-btn').textContent = target === 'dark' ? '🌙' : '☀️';
     }
 
-    // --- Floating In-Game Companion Pet & Overlay Logic ---
+    // --- Floating In-Game Companion Pet & Overlay Logic (Draggable + Smart Docking) ---
+    function initDraggableCompanionPet() {
+      const pet = document.getElementById('companion-pet');
+      if (!pet) return;
+
+      // Restore saved position or default to top-right
+      const savedPos = localStorage.getItem('aimod_companion_pos');
+      if (savedPos) {
+        try {
+          const pos = JSON.parse(savedPos);
+          if (pos.left !== undefined && pos.top !== undefined) {
+            pet.style.left = pos.left;
+            pet.style.top = pos.top;
+            pet.style.right = 'auto';
+            pet.style.bottom = 'auto';
+          }
+        } catch (e) {}
+      } else {
+        pet.style.top = '36px';
+        pet.style.right = '28px';
+        pet.style.left = 'auto';
+        pet.style.bottom = 'auto';
+      }
+
+      let isDragging = false;
+      let hasMoved = false;
+      let startX = 0, startY = 0;
+      let initialLeft = 0, initialTop = 0;
+
+      function onPointerDown(e) {
+        if (e.button && e.button !== 0) return;
+        const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0].clientY);
+        if (clientX === undefined) return;
+
+        isDragging = true;
+        hasMoved = false;
+        startX = clientX;
+        startY = clientY;
+
+        const rect = pet.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+
+        pet.classList.add('dragging');
+        window.addEventListener('mousemove', onPointerMove, { passive: false });
+        window.addEventListener('mouseup', onPointerUp);
+        window.addEventListener('touchmove', onPointerMove, { passive: false });
+        window.addEventListener('touchend', onPointerUp);
+      }
+
+      function onPointerMove(e) {
+        if (!isDragging) return;
+        const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0].clientY);
+        if (clientX === undefined) return;
+
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+
+        if (!hasMoved && Math.hypot(dx, dy) > 4) {
+          hasMoved = true;
+        }
+
+        if (hasMoved) {
+          e.preventDefault();
+          const petW = pet.offsetWidth || 52;
+          const petH = pet.offsetHeight || 52;
+          const maxLeft = window.innerWidth - petW - 8;
+          const maxTop = window.innerHeight - petH - 8;
+          const newLeft = Math.max(8, Math.min(maxLeft, initialLeft + dx));
+          const newTop = Math.max(8, Math.min(maxTop, initialTop + dy));
+
+          pet.style.left = newLeft + 'px';
+          pet.style.top = newTop + 'px';
+          pet.style.right = 'auto';
+          pet.style.bottom = 'auto';
+
+          updateCompanionPanelPosition();
+        }
+      }
+
+      function onPointerUp(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        pet.classList.remove('dragging');
+
+        window.removeEventListener('mousemove', onPointerMove);
+        window.removeEventListener('mouseup', onPointerUp);
+        window.removeEventListener('touchmove', onPointerMove);
+        window.removeEventListener('touchend', onPointerUp);
+
+        if (hasMoved) {
+          localStorage.setItem('aimod_companion_pos', JSON.stringify({
+            left: pet.style.left,
+            top: pet.style.top
+          }));
+        } else {
+          toggleCompanionDialog();
+        }
+      }
+
+      pet.addEventListener('mousedown', onPointerDown);
+      pet.addEventListener('touchstart', onPointerDown, { passive: false });
+    }
+
+    function updateCompanionPanelPosition() {
+      const panel = document.getElementById('companion-panel');
+      const pet = document.getElementById('companion-pet');
+      if (!panel || !pet || panel.style.display === 'none') return;
+
+      const petRect = pet.getBoundingClientRect();
+      const panelW = 390;
+      const panelH = panel.offsetHeight || 440;
+
+      let left = petRect.right - panelW;
+      if (left < 12) left = petRect.left;
+      if (left + panelW > window.innerWidth - 12) left = window.innerWidth - panelW - 12;
+      if (left < 12) left = 12;
+
+      let top = petRect.bottom + 12;
+      if (top + panelH > window.innerHeight - 12) {
+        top = Math.max(12, petRect.top - panelH - 12);
+      }
+
+      panel.style.left = left + 'px';
+      panel.style.top = top + 'px';
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+    }
+
     function toggleCompanionDialog(forceOpen = null) {
       const panel = document.getElementById('companion-panel');
       if (!panel) return;
@@ -1836,10 +2063,134 @@
       const targetState = forceOpen !== null ? forceOpen : !isOpen;
       panel.style.display = targetState ? 'flex' : 'none';
       if (targetState) {
+        updateCompanionPanelPosition();
         updateCompanionStatus();
         renderCompanionLiveSliders();
         const input = document.getElementById('companion-prompt-input');
         if (input) setTimeout(() => input.focus(), 100);
+      }
+    }
+
+    function togglePipelineView() {
+      const pv = document.getElementById('companion-pipeline-view');
+      const btn = document.getElementById('companion-pipeline-btn');
+      if (!pv) return;
+      const isHidden = pv.style.display === 'none';
+      pv.style.display = isHidden ? 'block' : 'none';
+      if (btn) btn.classList.toggle('active', isHidden);
+      updateCompanionPanelPosition();
+    }
+
+    function renderPipelineFlow(flow) {
+      if (!flow || !Array.isArray(flow)) return;
+      const grid = document.getElementById('pipeline-node-grid');
+      if (!grid) return;
+      let html = '';
+      flow.forEach(node => {
+        const statusIcon = node.status === 'success' ? '✅' : node.status === 'warning' ? '⚠️' : node.status === 'running' ? '⚡' : '⏳';
+        html += `
+          <div class="pipeline-node-chip ${node.status || 'success'}" title="${escapeHtml(node.detail || '')}">
+            <div class="pipeline-node-chip-title">
+              <span>${node.icon || '📦'} ${escapeHtml(node.title)}</span>
+              <span>${statusIcon}</span>
+            </div>
+            <div class="pipeline-node-chip-detail">${escapeHtml(node.detail || '就绪')}</div>
+          </div>
+        `;
+      });
+      grid.innerHTML = html;
+      const pv = document.getElementById('companion-pipeline-view');
+      if (pv && pv.style.display === 'none') {
+        pv.style.display = 'block';
+        updateCompanionPanelPosition();
+      }
+    }
+
+    async function exportCurrentRecipe() {
+      if (!activeActions || activeActions.length === 0) {
+        showToast('当前暂无可导出的 Mod 动作，请先生成或选择 Mod！', 'warning');
+        return;
+      }
+      const act = activeActions[activeActions.length - 1];
+      const paramsMap = {};
+      (act.tuning_params || []).forEach(p => {
+        if (p.id) paramsMap[p.id] = p.value;
+      });
+
+      try {
+        const resp = await fetch('/api/recipe/export', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            game_dir: currentGame ? currentGame.game_dir : '',
+            mod_id: act.mod_id,
+            mod_name: act.mod_name,
+            summary: act.summary || '',
+            hook_target: act.hook_target || '',
+            params: paramsMap,
+            rea_insight: act.rea_insight || {},
+            healed_by: act.healed_by || ''
+          })
+        });
+        const res = await resp.json();
+        if (res.success && res.data) {
+          const blob = new Blob([JSON.stringify(res.data, null, 2)], {type: 'application/json'});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${act.mod_id || 'mod'}.modrecipe.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          showToast(`📦 Mod 配方【${act.mod_name}】已成功导出！`, 'success');
+        } else {
+          showToast('配方导出失败: ' + (res.error || '未知错误'), 'error');
+        }
+      } catch (e) {
+        showToast('导出网络错误: ' + e.message, 'error');
+      }
+    }
+
+    function triggerImportRecipe() {
+      const fileInput = document.getElementById('recipe-file-input');
+      if (fileInput) fileInput.click();
+    }
+
+    async function handleRecipeFileSelected(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      event.target.value = '';
+
+      if (!currentGame) {
+        showToast('请先在左侧选择目标游戏后再导入配方！', 'warning');
+        return;
+      }
+
+      try {
+        const text = await file.text();
+        const recipeData = JSON.parse(text);
+        showToast(`正在解析并一键部署配方【${recipeData.recipe_name || file.name}】...`, 'info');
+
+        const resp = await fetch('/api/recipe/import', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            game_dir: currentGame.game_dir,
+            recipe: recipeData
+          })
+        });
+        const res = await resp.json();
+        if (res.success && res.data) {
+          const act = res.data.action;
+          activeActions.push(act);
+          renderCompanionLiveSliders();
+          showToast(res.data.message || '🎉 配方部署成功！', 'success');
+        } else {
+          showToast('配方导入失败: ' + (res.error || '未知错误'), 'error');
+        }
+      } catch (e) {
+        showToast('读取或解析配方文件失败: ' + e.message, 'error');
       }
     }
 
@@ -1963,6 +2314,9 @@
         const res = await resp.json();
         if (res.success) {
           appendAIMessage(res.data.reply, res.data.action, res.data.rea_insight, res.data.require_api_key);
+          if (res.data.pipeline_flow) {
+            renderPipelineFlow(res.data.pipeline_flow);
+          }
           showToast(`✨ 伴侣已成功下发【${res.data.action?.mod_name || text}】并在游戏中生效！`, 'success');
           renderCompanionLiveSliders();
         } else {
@@ -2993,6 +3347,9 @@
         const res = await resp.json();
         if (res.success) {
           appendAIMessage(res.data.reply, res.data.action, res.data.rea_insight, res.data.require_api_key);
+          if (res.data.pipeline_flow) {
+            renderPipelineFlow(res.data.pipeline_flow);
+          }
         } else {
           appendAIMessage('❌ 生成失败: ' + res.error);
         }
