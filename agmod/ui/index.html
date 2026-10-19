@@ -2106,12 +2106,9 @@
       }
     }
 
-    async function exportCurrentRecipe() {
-      if (!activeActions || activeActions.length === 0) {
-        showToast('当前暂无可导出的 Mod 动作，请先生成或选择 Mod！', 'warning');
-        return;
-      }
-      const act = activeActions[activeActions.length - 1];
+    async function exportRecipeByIndex(idx) {
+      const act = activeActions[idx];
+      if (!act) return;
       const paramsMap = {};
       (act.tuning_params || []).forEach(p => {
         if (p.id) paramsMap[p.id] = p.value;
@@ -2150,6 +2147,14 @@
       } catch (e) {
         showToast('导出网络错误: ' + e.message, 'error');
       }
+    }
+
+    async function exportCurrentRecipe() {
+      if (!activeActions || activeActions.length === 0) {
+        showToast('当前暂无可导出的 Mod 动作，请先生成或选择 Mod！', 'warning');
+        return;
+      }
+      return exportRecipeByIndex(activeActions.length - 1);
     }
 
     function triggerImportRecipe() {
@@ -3528,10 +3533,14 @@
             </div>
             <div style="font-size:12px; color:var(--text-muted);">${escapeHtml(act.summary)}</div>
             <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:6px;">
+              <button type="button" class="btn btn-sm" data-export-index="${idx}" title="导出为 .modrecipe.json" style="border:1px solid var(--border);">📦 配方</button>
               <button type="button" class="btn btn-sm btn-primary" data-pin-index="${idx}">📌 固化为 Mod</button>
             </div>
           </div>
         `).join('');
+        container.querySelectorAll('[data-export-index]').forEach(button => {
+          button.addEventListener('click', () => exportRecipeByIndex(Number(button.dataset.exportIndex)));
+        });
         container.querySelectorAll('[data-pin-index]').forEach(button => {
           button.addEventListener('click', () => pinActionIndex(Number(button.dataset.pinIndex)));
         });

@@ -109,6 +109,38 @@ class TestRecipePipeline(unittest.TestCase):
             self.assertTrue(res["success"])
             self.assertEqual(res["data"]["recipe_name"], "导出测试")
 
+    def test_validate_recipe_allows_blank_recipe_id(self):
+        rec = {
+            "format": "aimod-recipe-v1",
+            "recipe_id": "",
+            "recipe_name": "中文配方测试",
+        }
+        valid, err, val_recipe = recipe.validate_recipe(rec)
+        self.assertTrue(valid, err)
+
+    @mock.patch("agmod.ui.server._auto_deploy_mod")
+    def test_handle_recipe_import_chinese_fallback_mod_id(self, mock_deploy):
+        mock_deploy.return_value = {
+            "success": True,
+            "message": "deployed",
+            "compiled": True,
+            "healed_by": "",
+            "installed_path": "/fake/plugins",
+        }
+        handler = server.ModUIRequestHandler.__new__(server.ModUIRequestHandler)
+        rec = {
+            "format": "aimod-recipe-v1",
+            "recipe_name": "超级三倍速度",
+            "summary": "自动生成 safe id",
+        }
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            status, res = handler._handle_recipe_import({"game_dir": tmp_dir, "recipe": rec})
+            self.assertEqual(status, 200)
+            self.assertTrue(res["success"])
+            mod_id = res["data"]["action"]["mod_id"]
+            self.assertTrue(mod_id.startswith("recipe_"))
+
 
 if __name__ == "__main__":
     unittest.main()
+

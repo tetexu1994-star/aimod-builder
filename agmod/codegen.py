@@ -124,6 +124,19 @@ func hook_{cls_clean.lower()}_{mth_clean.lower()}(target_node: Node) -> void:
         return _result(target, "gdscript", "GodotModLoader", code, "Call this helper from the GodotModLoader mod_main.gd lifecycle.")
 
     if target.engine in {"dotnet-xna", "dotnet", "tmodloader", "smapi"}:
+        traverse_code = ""
+        if params:
+            lines = []
+            for p in params:
+                p_name = p.get("name", "")
+                if p_name:
+                    safe_fld = _sanitize_ident(p_name)
+                    lines.append(f'            traverse.Field("{safe_fld}")?.SetValue(/* tunable value */);')
+            if lines:
+                traverse_code = "\n".join(lines)
+        if not traverse_code:
+            traverse_code = '            // e.g. traverse.Field("fieldName")?.SetValue(value);'
+
         code = f'''using System;
 using HarmonyLib;
 
@@ -137,7 +150,7 @@ namespace AIModPlugin
             if (__instance == null) return;
             // Apply tunable fields through Harmony Traverse (game-agnostic).
             var traverse = Traverse.Create(__instance);
-            // e.g. traverse.Field("fieldName").SetValue(value);
+{traverse_code}
         }}
     }}
 }}

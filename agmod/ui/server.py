@@ -1803,7 +1803,15 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
         if not game_dir:
             return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required to deploy recipe"}
 
-        mod_id = val_recipe.get("recipe_id") or paths.slugify(val_recipe["recipe_name"])
+        mod_id = val_recipe.get("recipe_id")
+        if not mod_id:
+            slug = paths.slugify(val_recipe.get("recipe_name", "recipe"))
+            if slug == "item":
+                import hashlib
+                name_hash = hashlib.sha256(val_recipe["recipe_name"].encode("utf-8")).hexdigest()[:8]
+                mod_id = f"recipe_{name_hash}"
+            else:
+                mod_id = slug
         mod_id = paths.safe_component(mod_id, "mod_id")
         mod_name = val_recipe["recipe_name"]
         summary = val_recipe.get("summary", "")

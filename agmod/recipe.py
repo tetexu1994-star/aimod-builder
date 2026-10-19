@@ -75,7 +75,7 @@ def validate_recipe(data: Any) -> tuple[bool, str, Dict[str, Any]]:
         return False, "Recipe must contain a valid 'recipe_name'", {}
 
     recipe_id = data.get("recipe_id")
-    if recipe_id is not None:
+    if recipe_id is not None and str(recipe_id).strip() != "":
         try:
             from .paths import safe_component
             safe_component(str(recipe_id), "recipe_id")
