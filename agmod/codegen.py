@@ -125,20 +125,24 @@ func hook_{cls_clean.lower()}_{mth_clean.lower()}(target_node: Node) -> void:
 
     if target.engine in {"dotnet-xna", "dotnet", "tmodloader", "smapi"}:
         code = f'''using System;
+using HarmonyLib;
 
 namespace AIModPlugin
 {{
-    // Hook target: {target.full_class_name}.{mth_clean}
+    [HarmonyPatch(typeof({target.full_class_name}), "{mth_clean}")]
     public static class Patch_{cls_clean}_{mth_clean}
     {{
-        public static void Postfix()
+        static void Postfix({target.full_class_name} __instance)
         {{
-            // Execute custom game logic hook
+            if (__instance == null) return;
+            // Apply tunable fields through Harmony Traverse (game-agnostic).
+            var traverse = Traverse.Create(__instance);
+            // e.g. traverse.Field("fieldName").SetValue(value);
         }}
     }}
 }}
 '''
-        return _result(target, "csharp", "tModLoader/SMAPI", code, "Compile this C# hook class into your plugin assembly.")
+        return _result(target, "csharp", "BepInEx/Harmony", code, "Add this patch to a BepInEx plugin and call Harmony.PatchAll().")
 
     if target.engine in {"redengine", "cyberpunk"}:
         code = f'''-- Cyber Engine Tweaks (CET) Hook for {target.full_class_name}.{mth_clean}

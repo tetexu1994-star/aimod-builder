@@ -227,6 +227,23 @@ class TestBenchmarkEvaluation(unittest.TestCase):
         self.assertNotIn("__instance", result["code"])
         self.assertIn("int points", result["code"])
 
+    def test_dotnet_xna_codegen_is_real_harmony_patch(self):
+        result = generate_hook_from_evidence({
+            "engine": "dotnet-xna",
+            "target": {
+                "class_name": "Terraria.Player",
+                "method_name": "Update",
+                "is_static": False,
+                "parameters": [],
+            },
+        })
+        self.assertTrue(result["validation"]["valid"])
+        self.assertIn("HarmonyPatch", result["code"])
+        self.assertIn("Traverse", result["code"])
+        self.assertIn("__instance", result["code"])
+        # must NOT be the old dead static class
+        self.assertNotIn("public static void Postfix()", result["code"])
+
 
     def test_plan_generation_all_16_cases(self):
         """Verify plan_mod generates complete ModSpec, MODDING_PLAN, and engine project across all 16 cases."""
