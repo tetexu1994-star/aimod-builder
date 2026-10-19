@@ -1804,6 +1804,7 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
             return HTTPStatus.BAD_REQUEST, {"success": False, "error": "game_dir is required to deploy recipe"}
 
         mod_id = val_recipe.get("recipe_id") or paths.slugify(val_recipe["recipe_name"])
+        mod_id = paths.safe_component(mod_id, "mod_id")
         mod_name = val_recipe["recipe_name"]
         summary = val_recipe.get("summary", "")
         hook_target = val_recipe.get("hook_target", "")

@@ -50,6 +50,24 @@ class TestRecipePipeline(unittest.TestCase):
         valid, err, _ = recipe.validate_recipe({"format": "aimod-recipe-v1", "params": "not a dict"})
         self.assertFalse(valid)
 
+    def test_validate_recipe_rejects_unsafe_recipe_id(self):
+        valid, err, _ = recipe.validate_recipe({
+            "format": "aimod-recipe-v1",
+            "recipe_name": "bad",
+            "recipe_id": "../../evil",
+        })
+        self.assertFalse(valid)
+        self.assertIn("recipe_id", err)
+
+    def test_validate_recipe_rejects_bad_param_types(self):
+        valid, err, _ = recipe.validate_recipe({
+            "format": "aimod-recipe-v1",
+            "recipe_name": "bad",
+            "params": {"nested": {"a": 1}},
+        })
+        self.assertFalse(valid)
+        self.assertIn("bool/int/float/str", err)
+
     @mock.patch("agmod.ui.server._auto_deploy_mod")
     def test_handle_recipe_import(self, mock_deploy):
         mock_deploy.return_value = {

@@ -74,9 +74,25 @@ def validate_recipe(data: Any) -> tuple[bool, str, Dict[str, Any]]:
     if not recipe_name or not isinstance(recipe_name, str):
         return False, "Recipe must contain a valid 'recipe_name'", {}
 
+    recipe_id = data.get("recipe_id")
+    if recipe_id is not None:
+        try:
+            from .paths import safe_component
+            safe_component(str(recipe_id), "recipe_id")
+        except Exception:
+            return False, "'recipe_id' must be a safe identifier (letters, digits, . _ -)", {}
+
     hook_target = data.get("hook_target", "")
+    if hook_target and not isinstance(hook_target, str):
+        return False, "'hook_target' must be a string", {}
+
     params = data.get("params", {})
     if not isinstance(params, dict):
         return False, "'params' must be a JSON dictionary", {}
+    for key, value in params.items():
+        if not isinstance(key, str):
+            return False, "'params' keys must be strings", {}
+        if not isinstance(value, (bool, int, float, str)):
+            return False, f"'params' value for '{key}' must be bool/int/float/str", {}
 
     return True, "", data
