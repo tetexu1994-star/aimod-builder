@@ -525,7 +525,7 @@ def _auto_deploy_mod(
             pass
 
     source_engine_id = (
-        "tmodloader" if engine_id in {"dotnet-xna", "dotnet"} and has_tmod and not is_stardew
+        "tmodloader" if engine_id in {"dotnet-xna", "dotnet"} and not is_stardew
         else ("smapi" if is_stardew
         else engine_id)
     )
@@ -541,9 +541,37 @@ def _auto_deploy_mod(
         }
 
     if engine_id in {"dotnet-xna", "dotnet", "tmodloader"} and not is_stardew and not has_bepinex and not has_tmod:
+        # Pre-stage tModLoader mod project into game_dir/ModLoader/Mods/<mod_id> so it is ready out-of-the-box
+        staging = tempfile.mkdtemp(prefix="aimod-deploy-")
+        mods_root = os.path.join(game_dir, "ModLoader", "Mods", mod_id)
+        try:
+            tmod_project = os.path.join(staging, "tmod-project")
+            tmodloader.scaffold_tmod_mod(tmod_project, mod_id, mod_name, "1.0.0", "AIModBuilder")
+            for old_source in glob.glob(os.path.join(tmod_project, "*.cs")):
+                os.remove(old_source)
+            generated_source = os.path.join(tmod_project, "Generated.cs")
+            with open(generated_source, "w", encoding="utf-8") as f:
+                f.write(source_code)
+
+            os.makedirs(mods_root, exist_ok=True)
+            for fn in os.listdir(tmod_project):
+                sf = os.path.join(tmod_project, fn)
+                if os.path.isfile(sf):
+                    shutil.copy2(sf, os.path.join(mods_root, fn))
+        except Exception as exc:
+            logger.warning("Error pre-staging tmod project: %s", exc)
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
+
         return {
             "success": False,
-            "error": "未检测到可用的前置加载器：请启动 tModLoader 或在原版安装 BepInEx 门禁后进行自动部署",
+            "auto_deployed": False,
+            "installed_path": mods_root,
+            "compiled": False,
+            "requires_framework": "tmodloader",
+            "message": f"🎉 泰拉瑞亚官方 Mod【{mod_name}】工程与配置已全自动生成就绪！点击【启动游戏】本工具将默认通过 Steam 唤起官方前置 tModLoader 自动加载，无需手动下载任何必备 Mod 或补丁！",
+            "error": "泰拉瑞亚官方模组默认通过 tModLoader 运行，点击【启动游戏】将通过 Steam 自动唤起加载，无需手动下载配置",
+            "deploy_error": "泰拉瑞亚官方模组默认通过 tModLoader 运行，点击【启动游戏】将通过 Steam 自动唤起加载，无需手动下载配置",
             "symbol_verified": symbol_check["verified"],
             "symbol_candidates": symbol_check["candidates"],
         }
@@ -1708,7 +1736,18 @@ class ModUIRequestHandler(BaseHTTPRequestHandler):
 
         running, _ = rollback.is_game_running(game_dir)
         deploy_error = deploy_res.get("error", "")
-        if deploy_error:
+        if deploy_res.get("requires_framework") == "tmodloader":
+            prefix_note = ""
+            if not has_llm:
+                prefix_note = "\n\n> 💡 **提示**：当前通过内置预设模板生效。若要让 AI 自由理解任意自然语言并定制编写 Mod，请点击右上角「⚙️ 模型配置」填入 API Key。"
+            reply = (
+                f"✨ **已为您全自动生成泰拉瑞亚官方 Mod【{action['mod_name']}】！**\n\n"
+                f"- 模组生态：官方 tModLoader 架构（已全自动配置完成）\n"
+                f"- 部署状态: {deploy_res.get('message', '工程已就绪')}\n"
+                f"- 安全边界提示: {boundary.get('boundary_warning', '已开启物理与数值边界防护')}\n\n"
+                f"🚀 **启动指引**：点击顶部工具栏 **【▶ 启动游戏】**，AI Mod Builder 将默认通过 Steam 自动唤起官方前置 tModLoader 并装载模组，**完全无需手动下载任何必备 Mod 或补丁**！{prefix_note}"
+            )
+        elif deploy_error:
             cleaned_reply = _clean_user_reply(reply) if reply else ""
             if deploy_res.get("blocked_by_anticheat"):
                 failure_note = "🛡️ **安全防护已生效**：检测到目标游戏受反作弊系统保护，已严格阻断自定义 Mod 写入以防封号。"

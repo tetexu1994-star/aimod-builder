@@ -302,24 +302,51 @@ def launch_game(game_dir: str, appid: str = "") -> Dict[str, Any]:
     except Exception:
         pass
 
-    # 2. Prioritize Steam URI protocol for Steam games to ensure Steam DRM and overlay initialize cleanly
-    if sys.platform == "win32" and appid and str(appid).isdigit():
+    # 2. Framework-aware launch routing (e.g. Terraria -> tModLoader by default)
+    fw = frameworks.detect_game_framework(game_dir)
+    effective_appid = str(appid or "").strip()
+    is_terraria = (
+        fw.get("game_type") == "terraria"
+        or effective_appid == "105600"
+        or "terraria" in os.path.basename(game_dir).lower()
+    )
+
+    tmod_exe = None
+    if is_terraria:
+        # Default to official tModLoader AppID on Steam so user's mods run out-of-the-box
+        effective_appid = fw.get("steam_appid") or "1281930"
+        candidates = [
+            os.path.join(game_dir, "tModLoader.exe"),
+            os.path.join(os.path.dirname(os.path.abspath(game_dir)), "tModLoader", "tModLoader.exe"),
+        ]
+        for c in candidates:
+            if os.path.isfile(c):
+                tmod_exe = c
+                break
+
+    # Prioritize Steam URI protocol for Steam games to ensure Steam DRM and overlay initialize cleanly
+    if sys.platform == "win32" and effective_appid and effective_appid.isdigit():
         try:
             try:
-                os.startfile(f"steam://rungameid/{appid}")
+                os.startfile(f"steam://rungameid/{effective_appid}")
             except Exception:
-                subprocess.Popen(["cmd.exe", "/c", "start", "", f"steam://rungameid/{appid}"])
+                subprocess.Popen(["cmd.exe", "/c", "start", "", f"steam://rungameid/{effective_appid}"])
+            msg = (
+                f"已通过 Steam 官方客户端安全唤起官方模组前置 tModLoader (AppID: {effective_appid})！全自动装载模组，无需手动配置。"
+                if is_terraria else
+                f"已通过 Steam 官方客户端安全唤起游戏 (AppID: {effective_appid})"
+            )
             return {
                 "success": True,
                 "method": "steam_protocol",
-                "appid": str(appid),
-                "message": f"已通过 Steam 官方客户端安全唤起游戏 (AppID: {appid})",
+                "appid": str(effective_appid),
+                "message": msg,
             }
         except Exception as e:
             logger.warning("Steam protocol launch failed: %s, attempting direct executable launch", e)
 
-    # 3. Direct executable launch (DRM-free games, standalone installs, or fallback)
-    main_exe = process.find_primary_executable_path(game_dir)
+    # 3. Direct executable launch (tModLoader.exe if terraria, DRM-free games, standalone installs, or fallback)
+    main_exe = tmod_exe if tmod_exe else process.find_primary_executable_path(game_dir)
     if main_exe and os.path.isfile(main_exe):
         exe_cwd = os.path.dirname(main_exe)
         exe_name = os.path.basename(main_exe)

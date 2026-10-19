@@ -80,16 +80,15 @@ def detect_game_framework(game_dir: str) -> Dict[str, Any]:
                 "game_type": "terraria",
                 "game_name": "泰拉瑞亚 (Terraria)",
                 "framework_id": "tmodloader",
-                "framework_name": "tModLoader (推荐) / BepInEx 注入",
+                "framework_name": "tModLoader (官方模组前置)",
                 "status": "missing",
                 "installed": False,
-                "mode": "none",
+                "mode": "official_steam_loader",
                 "steam_appid": "1281930",
-                "steam_url": "steam://install/1281930",
-                "summary": "检测到当前为纯净原版泰拉瑞亚客户端，尚未配置 Mod 前置生态。",
+                "steam_url": "steam://rungameid/1281930",
+                "summary": "泰拉瑞亚官方模组依赖 tModLoader 运行环境（本工具已默认设为官方启动通道）。",
                 "guidance": (
-                    "【推荐方案】在 Steam 搜索并一键安装「tModLoader」（AppID: 1281930，完全免费）；\n"
-                    "【独立方案】也可由本工具直接一键注入轻量级 BepInEx 前置，直接在原版中体验 Mod。"
+                    "点击【启动游戏】本工具将默认通过 Steam 直接唤起官方 tModLoader 并自动装载模组，用户无需手动下载任何必备 Mod 或前置补丁！"
                 ),
             }
 

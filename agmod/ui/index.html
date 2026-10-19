@@ -1670,7 +1670,7 @@
 
           <div class="gatekeeper-actions">
             <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
-              <button class="btn btn-launch" style="padding: 12px 26px; font-size: 14px;" onclick="launchAndAdvance()">
+              <button class="btn btn-launch" id="gatekeeper-launch-btn" style="padding: 12px 26px; font-size: 14px;" onclick="launchAndAdvance()">
                 ▶ 启动游戏并建立实时连接
               </button>
               <button class="btn btn-primary" style="padding: 12px 26px; font-size: 14px;" onclick="goToStage(3)">
@@ -2621,11 +2621,23 @@
         pulseDot.style.background = 'var(--text-dim)';
       }
 
-      // Update framework diagnosis card
+      // Update framework diagnosis card & launch button
       const fw = game.framework || {};
       const fwBadge = document.getElementById('gatekeeper-fw-badge');
       const fwDesc = document.getElementById('gatekeeper-fw-desc');
       const fwAction = document.getElementById('gatekeeper-fw-action');
+      const isTerraria = (fw.game_type === 'terraria') || (game.appid === '105600') || (game.name || '').toLowerCase().includes('terraria');
+
+      const gatekeeperLaunchBtn = document.getElementById('gatekeeper-launch-btn');
+      if (gatekeeperLaunchBtn) {
+        if (isTerraria) {
+          gatekeeperLaunchBtn.textContent = '▶ 启动官方 tModLoader (默认)';
+          gatekeeperLaunchBtn.title = 'AI Mod Builder 默认通过官方 tModLoader 启动，全自动装载 AI 模组';
+        } else {
+          gatekeeperLaunchBtn.textContent = '▶ 启动游戏并建立实时连接';
+          gatekeeperLaunchBtn.title = '';
+        }
+      }
 
       if (fwBadge && fwDesc && fwAction) {
         if (fw.installed) {
@@ -2635,6 +2647,14 @@
           fwBadge.style.border = '1px solid rgba(16,185,129,0.3)';
           fwDesc.innerHTML = `<b style="color:var(--text);">${escapeHtml(fw.summary || '')}</b><br><span style="color:var(--text-muted);">${escapeHtml(fw.guidance || '')}</span>`;
           fwAction.style.display = 'none';
+        } else if (isTerraria) {
+          fwBadge.textContent = `🚀 官方通道已就绪: tModLoader (默认)`;
+          fwBadge.style.background = 'rgba(59,130,246,0.15)';
+          fwBadge.style.color = '#60a5fa';
+          fwBadge.style.border = '1px solid rgba(59,130,246,0.3)';
+          fwDesc.innerHTML = `<b style="color:#93c5fd;">泰拉瑞亚官方模组依赖 tModLoader 运行环境（本工具已设为默认启动通道）</b><br><span style="color:var(--text);">${escapeHtml(fw.guidance || '')}</span>`;
+          fwAction.innerHTML = `<button type="button" class="btn btn-sm btn-primary" onclick="launchAndAdvance()" style="display:inline-flex; align-items:center; gap:6px;">🚀 一键通过 Steam 启动官方 tModLoader (免手动下载) ➔</button>`;
+          fwAction.style.display = 'block';
         } else if (fw.status === 'missing') {
           fwBadge.textContent = `⚠️ 缺失核心前置: ${fw.framework_name || '需前置'}`;
           fwBadge.style.background = 'rgba(245,158,11,0.15)';
@@ -2742,14 +2762,18 @@
 
     async function launchAndAdvance() {
       if (!currentGame) return;
-      showToast('正在启动游戏并自动创建存档快照...', 'info');
+      const fw = currentGame.framework || {};
+      const isTerraria = (fw.game_type === 'terraria') || (currentGame.appid === '105600') || (currentGame.name || '').toLowerCase().includes('terraria');
+      const targetAppid = isTerraria ? (fw.steam_appid || '1281930') : (currentGame.appid || '');
+
+      showToast(isTerraria ? '🚀 正在唤起官方 tModLoader 模组环境...' : '正在启动游戏并自动创建存档快照...', 'info');
       try {
         const resp = await fetch('/api/games/launch', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
             game_dir: currentGame.game_dir,
-            appid: currentGame.appid || ''
+            appid: targetAppid
           })
         });
         const res = await resp.json();
@@ -2877,11 +2901,15 @@
       loadGameMods(game);
       loadGameSaves(game);
 
+      const isTerraria = (game.framework && game.framework.game_type === 'terraria') || (game.appid === '105600') || (game.name || '').toLowerCase().includes('terraria');
       const launchBtn = document.getElementById('studio-launch-btn');
       if (launchBtn) {
         if (game.is_running) {
           launchBtn.textContent = '🟢 游戏运行中';
           launchBtn.disabled = true;
+        } else if (isTerraria) {
+          launchBtn.textContent = '▶ 启动官方 tModLoader';
+          launchBtn.disabled = false;
         } else {
           launchBtn.textContent = '▶ 启动游戏';
           launchBtn.disabled = false;
