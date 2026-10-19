@@ -56,6 +56,8 @@ def detect_game_framework(game_dir: str) -> Dict[str, Any]:
                 "installed": True,
                 "mode": "official_loader",
                 "loader_exe": "tModLoader.exe" if "tmodloader.exe" in files else "",
+                "loader_candidates": ["tModLoader.exe", "tModLoaderServer.exe"],
+                "sibling_folders": ["tModLoader"],
                 "framework_path": tmod_path,
                 "mods_dir": os.path.join(tmod_path, "Mods") if os.path.isdir(os.path.join(tmod_path, "Mods")) else os.path.join(game_dir, "ModLoader", "Mods"),
                 "summary": "已检测到官方 tModLoader 模组前置生态，支持标准 .tmod 与 C# Mod 架构。",
@@ -86,6 +88,9 @@ def detect_game_framework(game_dir: str) -> Dict[str, Any]:
                 "mode": "official_steam_loader",
                 "steam_appid": "1281930",
                 "steam_url": "steam://rungameid/1281930",
+                "loader_exe": "tModLoader.exe",
+                "loader_candidates": ["tModLoader.exe", "tModLoaderServer.exe"],
+                "sibling_folders": ["tModLoader"],
                 "summary": "泰拉瑞亚官方模组依赖 tModLoader 运行环境（本工具已默认设为官方启动通道）。",
                 "guidance": (
                     "点击【启动游戏】本工具将默认通过 Steam 直接唤起官方 tModLoader 并自动装载模组，用户无需手动下载任何必备 Mod 或前置补丁！"
@@ -105,6 +110,7 @@ def detect_game_framework(game_dir: str) -> Dict[str, Any]:
                 "installed": True,
                 "mode": "official_loader",
                 "loader_exe": "StardewModdingAPI.exe",
+                "loader_candidates": ["StardewModdingAPI.exe"],
                 "framework_path": game_dir,
                 "mods_dir": os.path.join(game_dir, "Mods"),
                 "summary": "已检测到星露谷官方唯一核心前置 SMAPI，生态完整。",
@@ -119,7 +125,10 @@ def detect_game_framework(game_dir: str) -> Dict[str, Any]:
                 "status": "missing",
                 "installed": False,
                 "mode": "none",
+                "loader_exe": "StardewModdingAPI.exe",
+                "loader_candidates": ["StardewModdingAPI.exe"],
                 "download_url": "https://smapi.io",
+                "mods_dir": os.path.join(game_dir, "Mods"),
                 "summary": "⚠️ 当前为原版星露谷物语，尚未安装核心前置 SMAPI！原版游戏无法直接加载任何 Mod。",
                 "guidance": (
                     "星露谷物语的所有 Mod 均依赖 SMAPI 前置。\n"
@@ -250,6 +259,8 @@ def detect_game_framework(game_dir: str) -> Dict[str, Any]:
             or os.path.isdir(os.path.join(game_dir, "Data", "F4SE"))
         )
         se_name = "SKSE64" if "skyrimse.exe" in files else ("F4SE" if "fallout4.exe" in files else ("SFSE" if "starfield.exe" in files else "Script Extender"))
+        se_loader = "skse64_loader.exe" if "skyrimse.exe" in files else ("f4se_loader.exe" if "fallout4.exe" in files else ("sfse_loader.exe" if "starfield.exe" in files else "nvse_loader.exe"))
+        se_candidates = ["skse64_loader.exe", "f4se_loader.exe", "sfse_loader.exe", "nvse_loader.exe"]
         if has_skse:
             return {
                 "game_type": "bethesda",
@@ -258,6 +269,8 @@ def detect_game_framework(game_dir: str) -> Dict[str, Any]:
                 "framework_name": f"{se_name} (Script Extender)",
                 "status": "installed",
                 "installed": True,
+                "loader_exe": se_loader,
+                "loader_candidates": se_candidates,
                 "mods_dir": os.path.join(game_dir, "Data"),
                 "summary": f"已检测到 {se_name} 脚本扩展器，支持深度内存钩子与 Papyrus 脚本扩展。",
                 "guidance": f"Mod 插件文件放置于 Data/ 目录；请通过对应 {se_name} 加载器启动游戏。",
@@ -270,6 +283,8 @@ def detect_game_framework(game_dir: str) -> Dict[str, Any]:
                 "framework_name": se_name,
                 "status": "missing",
                 "installed": False,
+                "loader_exe": se_loader,
+                "loader_candidates": se_candidates,
                 "download_url": "https://silverlock.org",
                 "summary": f"检测到 B社游戏环境，暂未安装核心脚本扩展器 {se_name}。",
                 "guidance": f"推荐前往 https://silverlock.org 下载安装 {se_name}，绝大部分复杂机制 Mod 均以此为基础。",
@@ -308,6 +323,7 @@ def detect_game_framework(game_dir: str) -> Dict[str, Any]:
     if is_fromsoft:
         has_modengine = "modengine2_launcher.exe" in files or "modengine2" in dirs or "launchmod_eldenring.bat" in files
         has_seamless = "ersc.dll" in files
+        me_candidates = ["modengine2_launcher.exe", "launchmod_eldenring.bat"]
         if has_modengine or has_seamless:
             names = []
             if has_modengine: names.append("Mod Engine 2")
@@ -319,6 +335,9 @@ def detect_game_framework(game_dir: str) -> Dict[str, Any]:
                 "framework_name": " + ".join(names),
                 "status": "installed",
                 "installed": True,
+                "loader_exe": "modengine2_launcher.exe",
+                "loader_candidates": me_candidates,
+                "sibling_folders": ["ModEngine2", "modengine2"],
                 "mods_dir": os.path.join(game_dir, "mod"),
                 "summary": "已检测到 FromSoftware 无损文件劫持前置 (Mod Engine 2 / 无缝联机)。",
                 "guidance": "Mod 资产文件放置于 mod/ 目录；自动绕过反作弊启动独立沙箱。",
@@ -331,6 +350,9 @@ def detect_game_framework(game_dir: str) -> Dict[str, Any]:
                 "framework_name": "Mod Engine 2",
                 "status": "missing",
                 "installed": False,
+                "loader_exe": "modengine2_launcher.exe",
+                "loader_candidates": me_candidates,
+                "sibling_folders": ["ModEngine2", "modengine2"],
                 "download_url": "https://github.com/soulsmods/ModEngine2/releases",
                 "summary": "检测到 FromSoftware 原版客户端，推荐配置 Mod Engine 2 前置沙箱。",
                 "guidance": "推荐使用 Mod Engine 2（直接将解包的 modengine2 放入游戏根目录），实现免解包非破坏性 Mod 载入。",

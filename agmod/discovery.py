@@ -302,51 +302,74 @@ def launch_game(game_dir: str, appid: str = "") -> Dict[str, Any]:
     except Exception:
         pass
 
-    # 2. Framework-aware launch routing (e.g. Terraria -> tModLoader by default)
+    # 2. Framework-aware launch routing (fully generic across all game frameworks)
     fw = frameworks.detect_game_framework(game_dir)
     effective_appid = str(appid or "").strip()
-    is_terraria = (
-        fw.get("game_type") == "terraria"
-        or effective_appid == "105600"
-        or "terraria" in os.path.basename(game_dir).lower()
-    )
+    fw_name = fw.get("framework_name", "游戏")
+    companion_appid = str(fw.get("steam_appid", "")).strip()
 
-    tmod_exe = None
-    if is_terraria:
-        # Default to official tModLoader AppID on Steam so user's mods run out-of-the-box
-        effective_appid = fw.get("steam_appid") or "1281930"
-        candidates = [
-            os.path.join(game_dir, "tModLoader.exe"),
-            os.path.join(os.path.dirname(os.path.abspath(game_dir)), "tModLoader", "tModLoader.exe"),
-        ]
-        for c in candidates:
-            if os.path.isfile(c):
-                tmod_exe = c
+    # If framework specifies an official Steam companion tool (e.g. tModLoader AppID 1281930),
+    # prioritize it when launching through Steam so mods load by default
+    if companion_appid:
+        effective_appid = companion_appid
+
+    # Locate candidate loader executable in game_dir or framework_path or sibling directory
+    loader_exe = None
+    loader_candidates = list(fw.get("loader_candidates") or [])
+    if fw.get("loader_exe") and fw["loader_exe"] not in loader_candidates:
+        loader_candidates.insert(0, fw["loader_exe"])
+
+    search_dirs = [game_dir]
+    fw_path = fw.get("framework_path")
+    if fw_path and os.path.isdir(fw_path) and os.path.abspath(fw_path) != os.path.abspath(game_dir):
+        search_dirs.append(fw_path)
+    parent_dir = os.path.dirname(os.path.abspath(game_dir))
+    for sub in (fw.get("sibling_folders") or []):
+        cand_dir = os.path.join(parent_dir, sub)
+        if os.path.isdir(cand_dir):
+            search_dirs.append(cand_dir)
+
+    for cand_name in loader_candidates:
+        if not cand_name:
+            continue
+        for sdir in search_dirs:
+            p = os.path.join(sdir, cand_name)
+            if os.path.isfile(p):
+                loader_exe = p
                 break
+        if loader_exe:
+            break
 
     # Prioritize Steam URI protocol for Steam games to ensure Steam DRM and overlay initialize cleanly
-    if sys.platform == "win32" and effective_appid and effective_appid.isdigit():
+    if effective_appid and str(effective_appid).isdigit():
         try:
-            try:
-                os.startfile(f"steam://rungameid/{effective_appid}")
-            except Exception:
-                subprocess.Popen(["cmd.exe", "/c", "start", "", f"steam://rungameid/{effective_appid}"])
+            if sys.platform == "win32":
+                try:
+                    os.startfile(f"steam://rungameid/{effective_appid}")
+                except Exception:
+                    subprocess.Popen(["cmd.exe", "/c", "start", "", f"steam://rungameid/{effective_appid}"])
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", f"steam://rungameid/{effective_appid}"])
+            else:
+                subprocess.Popen(["xdg-open", f"steam://rungameid/{effective_appid}"])
+
             msg = (
-                f"已通过 Steam 官方客户端安全唤起官方模组前置 tModLoader (AppID: {effective_appid})！全自动装载模组，无需手动配置。"
-                if is_terraria else
+                f"已通过 Steam 官方客户端安全唤起官方模组前置 {fw_name} (AppID: {effective_appid})！全自动装载模组，无需手动配置。"
+                if companion_appid else
                 f"已通过 Steam 官方客户端安全唤起游戏 (AppID: {effective_appid})"
             )
             return {
                 "success": True,
                 "method": "steam_protocol",
                 "appid": str(effective_appid),
+                "is_companion_loader": bool(companion_appid),
                 "message": msg,
             }
         except Exception as e:
             logger.warning("Steam protocol launch failed: %s, attempting direct executable launch", e)
 
-    # 3. Direct executable launch (tModLoader.exe if terraria, DRM-free games, standalone installs, or fallback)
-    main_exe = tmod_exe if tmod_exe else process.find_primary_executable_path(game_dir)
+    # 3. Direct executable launch (loader executable prioritized, else primary game executable)
+    main_exe = loader_exe if loader_exe else process.find_primary_executable_path(game_dir)
     if main_exe and os.path.isfile(main_exe):
         exe_cwd = os.path.dirname(main_exe)
         exe_name = os.path.basename(main_exe)
@@ -358,14 +381,17 @@ def launch_game(game_dir: str, appid: str = "") -> Dict[str, Any]:
                     os.startfile(main_exe)
             else:
                 subprocess.Popen([main_exe], cwd=exe_cwd)
+            is_custom_loader = bool(loader_exe and main_exe == loader_exe)
+            msg = f"已通过专用模组加载器启动: {exe_name}" if is_custom_loader else f"游戏主程序已安全启动: {exe_name}"
             return {
                 "success": True,
                 "method": "direct_executable",
                 "exe": main_exe,
-                "message": f"游戏主程序已安全启动: {exe_name}",
+                "is_loader": is_custom_loader,
+                "message": msg,
             }
         except Exception as e:
             logger.warning("Direct launch failed: %s", e)
 
-    return {"success": False, "error": "未在游戏目录中找到有效的主程序 (.exe)"}
+    return {"success": False, "error": "未在游戏目录中找到有效的主程序或模组加载器 (.exe)"}
 

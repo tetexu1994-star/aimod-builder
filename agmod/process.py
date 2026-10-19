@@ -318,11 +318,22 @@ def get_running_game_processes(game_dir: str, force_refresh: bool = False) -> li
         known_exes_lower.add(base_name.replace(" ", "_") + ".exe")
         known_exes_lower.add(base_name.replace(" ", "-") + ".exe")
 
-    sibling_tmod = os.path.join(os.path.dirname(game_dir_abs), "tModLoader")
-    if "terraria" in base_name or "terraria" in known_exes_lower or "terraria.exe" in known_exes_lower:
-        known_exes_lower.add("tmodloader.exe")
-        known_exes_lower.add("tmodloader")
-        known_exes_lower.add("tmodloaderserver.exe")
+    sibling_dirs = []
+    try:
+        from . import frameworks
+        fw = frameworks.detect_game_framework(game_dir)
+        for cand in fw.get("loader_candidates", []):
+            if cand:
+                cand_low = cand.lower()
+                known_exes_lower.add(cand_low)
+                if cand_low.endswith(".exe"):
+                    known_exes_lower.add(cand_low[:-4])
+        for sib in fw.get("sibling_folders", []):
+            sib_dir = os.path.join(os.path.dirname(game_dir_abs), sib)
+            if os.path.isdir(sib_dir):
+                sibling_dirs.append(os.path.realpath(sib_dir))
+    except Exception:
+        pass
 
     hits = []
     seen_pids = set()
@@ -345,11 +356,11 @@ def get_running_game_processes(game_dir: str, force_refresh: bool = False) -> li
 
                     matched = False
 
-                    # Check 1: Executable path is inside game directory or sibling tModLoader directory
-                    if p_exe and (_is_subpath(game_dir_abs, p_exe) or (os.path.isdir(sibling_tmod) and _is_subpath(sibling_tmod, p_exe))):
+                    # Check 1: Executable path is inside game directory or companion sibling directory
+                    if p_exe and (_is_subpath(game_dir_abs, p_exe) or any(_is_subpath(sd, p_exe) for sd in sibling_dirs)):
                         matched = True
-                    # Check 2: Working directory is inside game directory or sibling tModLoader directory
-                    elif cwd and (_is_subpath(game_dir_abs, cwd) or (os.path.isdir(sibling_tmod) and _is_subpath(sibling_tmod, cwd))):
+                    # Check 2: Working directory is inside game directory or companion sibling directory
+                    elif cwd and (_is_subpath(game_dir_abs, cwd) or any(_is_subpath(sd, cwd) for sd in sibling_dirs)):
                         matched = True
                     # Check 3: Process name matches known game executable
                     elif p_name_low and (p_name_low in known_exes_lower or p_name_stem in known_exes_lower):
