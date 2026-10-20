@@ -64,21 +64,28 @@ def collect_symbol_evidence(game_dir: str, engine_id: str, query: str, limit: in
     if not query:
         return {"query": query, "status": "unknown", "candidates": [], "errors": ["query is empty"]}
 
-    if engine_id == "unity":
+    if engine_id in {"unity", "dotnet-xna", "dotnet", "tmodloader", "smapi"}:
         import glob
-        # Search Assembly-CSharp.dll or game-specific managed/interop DLLs
-        managed_dlls = (
-            glob.glob(os.path.join(game_dir, "*_Data", "Managed", "Assembly-CSharp*.dll"))
-            + glob.glob(os.path.join(game_dir, "*_data", "Managed", "Assembly-CSharp*.dll"))
-            + glob.glob(os.path.join(game_dir, "BepInEx", "interop", "*.dll"))
-            + glob.glob(os.path.join(game_dir, "MelonLoader", "Il2CppAssemblies", "*.dll"))
-            + glob.glob(os.path.join(game_dir, "DummyDll", "Assembly-CSharp*.dll"))
-        )
+        if engine_id == "unity":
+            managed_dlls = (
+                glob.glob(os.path.join(game_dir, "*_Data", "Managed", "Assembly-CSharp*.dll"))
+                + glob.glob(os.path.join(game_dir, "*_data", "Managed", "Assembly-CSharp*.dll"))
+                + glob.glob(os.path.join(game_dir, "BepInEx", "interop", "*.dll"))
+                + glob.glob(os.path.join(game_dir, "MelonLoader", "Il2CppAssemblies", "*.dll"))
+                + glob.glob(os.path.join(game_dir, "DummyDll", "Assembly-CSharp*.dll"))
+            )
+        else:
+            managed_dlls = [
+                p for p in (
+                    glob.glob(os.path.join(game_dir, "*.exe"))
+                    + glob.glob(os.path.join(game_dir, "*.dll"))
+                ) if not any(k in os.path.basename(p).lower() for k in ("crash", "setup", "install", "vcredist"))
+            ]
         for target_dll in managed_dlls[:3]:
             try:
                 for raw in rea.fast_search_members(target_dll, query, limit=limit):
-                    candidate = SymbolCandidate(raw[:240], "rea_fast_search", "observed", 0.82, target_dll, signature=raw[:500])
-                    candidate.hook_target = normalize_hook_target(candidate.to_dict(), "unity", source="rea_fast_search", status="observed", confidence=0.82)
+                    candidate = SymbolCandidate(raw[:240], "rea_fast_search", "observed", 0.90, target_dll, signature=raw[:500])
+                    candidate.hook_target = normalize_hook_target(candidate.to_dict(), engine_id, source="rea_fast_search", status="observed", confidence=0.90)
                     candidates.append(candidate)
                     if len(candidates) >= limit:
                         break

@@ -257,17 +257,26 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
             + glob.glob(os.path.join(game_dir, "DummyDll", "Assembly-CSharp*.dll"))
         )
 
+        unity_types = {
+            "movement_speed": ["Player", "PlayerController", "CharacterMotor", "PlayerMovement", "Movement"],
+            "jump_mobility": ["Player", "PlayerController", "CharacterMotor", "Movement", "HeroController"],
+            "combat_defense": ["Player", "PlayerStats", "PlayerHealth", "Health", "Stats", "Combat"],
+            "combat_offense": ["Player", "PlayerStats", "Weapon", "PlayerAttack", "Combat", "Damage"],
+            "economy": ["Player", "PlayerInventory", "Inventory", "EconomyManager", "Wallet", "Farmer"],
+            "generic_enhancement": ["Player", "PlayerController", "GameManager", "Stats"],
+        }
+        cand_types = unity_types.get(category, ["Player", "Character", "GameManager"])
         if is_il2cpp:
             target_binary = "GameAssembly.dll (IL2CPP + global-metadata.dat)"
             if csharp_dlls and not matched_symbols:
                 for dll_p in csharp_dlls[:2]:
                     try:
-                        real_found = rea.fast_search_members(dll_p, term, limit=5)
+                        real_found = rea.fast_search_members(dll_p, term, candidate_types=cand_types, limit=5)
                         if real_found:
                             matched_symbols = real_found
                             evidence_source = "rea_il2cpp_interop_search"
                             evidence_status = "observed"
-                            evidence_confidence = 0.80
+                            evidence_confidence = 0.88
                             break
                     except Exception:
                         pass
@@ -276,12 +285,12 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
             if not matched_symbols:
                 for dll_p in csharp_dlls[:2]:
                     try:
-                        real_found = rea.fast_search_members(dll_p, term, limit=5)
+                        real_found = rea.fast_search_members(dll_p, term, candidate_types=cand_types, limit=5)
                         if real_found:
                             matched_symbols = real_found
                             evidence_source = "rea_managed_search"
                             evidence_status = "observed"
-                            evidence_confidence = 0.85
+                            evidence_confidence = 0.92
                             break
                     except Exception:
                         pass
@@ -361,12 +370,20 @@ def analyze_reverse_engineering_context(game_dir: str, user_prompt: str) -> dict
         exe_path = os.path.join(game_dir, target_binary)
         if os.path.isfile(exe_path) and not matched_symbols:
             try:
-                found_rea = rea.fast_search_members(exe_path, term, limit=5)
+                dotnet_types = {
+                    "movement_speed": ["Player", "Farmer", "Main"],
+                    "jump_mobility": ["Player", "Farmer"],
+                    "combat_defense": ["Player", "Farmer", "Item"],
+                    "combat_offense": ["Player", "Item", "Farmer", "MeleeWeapon"],
+                    "economy": ["Player", "Farmer", "Item"],
+                    "generic_enhancement": ["Player", "Farmer", "Main", "Game1"],
+                }
+                found_rea = rea.fast_search_members(exe_path, term, candidate_types=dotnet_types.get(category), limit=5)
                 if found_rea:
                     matched_symbols = found_rea
                     evidence_source = "rea_managed_assembly_search"
                     evidence_status = "observed"
-                    evidence_confidence = 0.88
+                    evidence_confidence = 0.92
             except Exception:
                 pass
 

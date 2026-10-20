@@ -60,6 +60,32 @@ class TestStability(unittest.TestCase):
             args, _ = run.call_args
         self.assertEqual(args[0][:3], ["rea", "xrefs", "game.exe"])
 
+    def test_rea_managed_artifact_and_members(self):
+        result = mock.Mock(returncode=0, stdout='{"normalized_result": {"methods": [{"name": "Damage"}], "fields": [{"name": "stat_health"}]}}', stderr="")
+        with mock.patch.object(rea, "_find_rea", return_value="rea"), mock.patch.object(rea.subprocess, "run", return_value=result) as run:
+            res = rea.inspect_managed_members("game.dll", type_names=["Player", "PlayerStats"])
+            args, _ = run.call_args
+            self.assertEqual(args[0][:2], ["rea", "inspect-managed-members"])
+            self.assertIn("--type", args[0])
+            self.assertIn("Player", args[0])
+            self.assertIn("PlayerStats", args[0])
+            self.assertIn("methods", res["normalized_result"])
+
+    def test_rea_fast_search_members_extracts_members(self):
+        import json
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".dll") as tmp:
+            fake_json = json.dumps({
+                "normalized_result": {
+                    "methods": [{"name": "Damage"}, {"name": "Update"}],
+                    "fields": [{"name": "stat_health"}, {"name": "speed"}]
+                }
+            })
+            result = mock.Mock(returncode=0, stdout=fake_json, stderr="")
+            with mock.patch.object(rea, "_find_rea", return_value="rea"), mock.patch.object(rea.subprocess, "run", return_value=result):
+                found = rea.fast_search_members(tmp.name, "health", candidate_types=["PlayerStats"])
+                self.assertIn("PlayerStats.stat_health", found)
+
     def test_build_diagnostics_report_non_cs_failure(self):
         result = repair.diagnose_build_output("NETSDK1004: Assets file not found.", return_code=1)
         self.assertTrue(result["has_errors"])

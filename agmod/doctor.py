@@ -23,7 +23,7 @@ from .sdk import find_dotnet as _find_dotnet
 from .uassetgui import find_uassetgui as _find_uassetgui
 
 from .config import CACHE_ROOT
-from .rea import _find_rea
+from .rea import _find_rea, _find_rea_cmd
 
 
 @dataclass
@@ -161,13 +161,13 @@ def check_environment() -> dict:
 
 
     # 3. REA CLI (morluto/rea)
-    rea_bin = _find_rea()
-    if rea_bin:
+    rea_cmd = _find_rea_cmd()
+    if rea_cmd:
         rea_version = "installed"
         rea_status = "ok"
         rea_remedy = ""
         try:
-            rea_check = subprocess.run([rea_bin, "--version"], capture_output=True, text=True, timeout=5, check=False)
+            rea_check = subprocess.run([*rea_cmd, "--version"], capture_output=True, text=True, timeout=5, check=False)
             if rea_check.returncode != 0:
                 rea_status = "warn"
                 rea_remedy = "REA binary exists but failed its version check"
@@ -182,7 +182,7 @@ def check_environment() -> dict:
                 category="reverse_engineering",
                 status=rea_status,
                 version=rea_version,
-                path=rea_bin,
+                path=" ".join(rea_cmd),
                 remedy=rea_remedy,
             )
         )
